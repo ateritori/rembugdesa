@@ -13,7 +13,9 @@
     <div x-data="{
         {{-- Ambil tab dari URL, jika tidak ada sesuaikan dengan Role --}}
         tab: new URLSearchParams(window.location.search).get('tab') ||
-            (@json(auth()->user()->hasRole('dm')) ? 'pairwise' : 'criteria'),
+            (@json(auth()->user()->hasRole('dm')) ?
+                (@json(!empty($criteriaWeights)) ? 'weights' : 'pairwise') :
+                'criteria'),
     
             {{-- Fungsi untuk update URL tanpa reload halaman --}}
         updateUrl(val) {
@@ -66,10 +68,15 @@
                 @endrole
 
                 @role('dm')
+                    <button @click="tab='weights'"
+                        :class="tab === 'weights' ? 'border-b-2 border-primary text-primary font-bold' : 'opacity-60'"
+                        class="px-4 py-2 text-sm font-medium transition-all">
+                        Bobot Kriteria
+                    </button>
                     <button @click="tab='pairwise'"
                         :class="tab === 'pairwise' ? 'border-b-2 border-primary text-primary font-bold' : 'opacity-60'"
                         class="px-4 py-2 text-sm font-medium transition-all">
-                        Pairwise Kriteria
+                        Perbandingan Kriteria
                     </button>
                 @endrole
             </div>
@@ -101,6 +108,10 @@
         @endrole
 
         @role('dm')
+            <div x-show="tab === 'weights'" x-cloak x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 transform translate-y-2">
+                @include('decision-sessions.partials.dm-weights')
+            </div>
             <div x-show="tab === 'pairwise'" x-cloak x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 transform translate-y-2">
                 @include('decision-sessions.partials.pairwise')

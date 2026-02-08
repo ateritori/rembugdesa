@@ -90,6 +90,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     )->name('decision-sessions.activate');
 
     Route::patch(
+        '/decision-sessions/{decisionSession}/lock-criteria',
+        [DecisionSessionController::class, 'lockCriteria']
+    )->name('decision-sessions.lock-criteria');
+
+    Route::patch(
         '/decision-sessions/{decisionSession}/close',
         [DecisionSessionController::class, 'close']
     )->name('decision-sessions.close');
@@ -103,6 +108,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         '/decision-sessions/{decisionSession}',
         [DecisionSessionController::class, 'destroy']
     )->name('decision-sessions.destroy');
+
+    Route::post(
+        '/decision-sessions/{decisionSession}/aggregate-criteria-weight',
+        [DecisionSessionController::class, 'aggregateCriteriaWeight']
+    )->name('decision-sessions.aggregate-criteria-weight');
 });
 
 Route::middleware(['auth'])->group(function () {

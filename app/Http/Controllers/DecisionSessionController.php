@@ -8,6 +8,8 @@ use App\Models\CriteriaPairwise;
 use App\Models\CriteriaWeight;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\AHP\AhpGroupWeightService;
+use Illuminate\Http\RedirectResponse;
 
 class DecisionSessionController extends Controller
 {
@@ -136,11 +138,35 @@ class DecisionSessionController extends Controller
         return back()->with('success', 'Sesi berhasil diaktifkan.');
     }
 
+    public function lockCriteria(
+        DecisionSession $decisionSession,
+        AhpGroupWeightService $service
+    ): RedirectResponse {
+        abort_if(! auth()->user()->hasRole('admin'), 403);
+
+        // Hanya boleh mengunci saat sesi aktif
+        abort_if($decisionSession->status !== 'active', 403);
+
+        // Jalankan agregasi bobot kriteria kelompok
+        $service->aggregate($decisionSession->id);
+
+        // Update status sesi ke fase alternatif (langsung penilaian alternatif)
+        $decisionSession->update([
+            'status' => 'alternatives',
+        ]);
+
+        return redirect()
+            ->to(route('decision-sessions.show', $decisionSession->id) . '?tab=control')
+            ->with('success', 'Penilaian kriteria dikunci dan bobot kelompok berhasil dibentuk.');
+    }
+
     public function close(DecisionSession $decisionSession)
     {
-        abort_if($decisionSession->status !== 'active', 403);
+        abort_if($decisionSession->status !== 'alternatives', 403);
         $decisionSession->update(['status' => 'closed']);
-        return back()->with('success', 'Sesi berhasil ditutup.');
+        return redirect()
+            ->to(route('decision-sessions.show', $decisionSession->id) . '?tab=control')
+            ->with('success', 'Sesi berhasil ditutup.');
     }
 
     public function destroy(DecisionSession $decisionSession)
@@ -286,5 +312,18 @@ class DecisionSessionController extends Controller
             ->route('dashboard')
             ->with('tab', 'pairwise')
             ->with('success', 'Penilaian berhasil disimpan. CR = ' . round($ahp['cr'], 4));
+    }
+
+    public function aggregateCriteriaWeight(
+        DecisionSession $decisionSession,
+        AhpGroupWeightService $service
+    ): RedirectResponse {
+        abort_if(! auth()->user()->hasRole('admin'), 403);
+
+        $service->aggregate($decisionSession->id);
+
+        return redirect()
+            ->route('decision-sessions.show', $decisionSession->id)
+            ->with('success', 'Agregasi bobot kriteria kelompok berhasil dijalankan.');
     }
 }

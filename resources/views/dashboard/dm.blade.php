@@ -104,12 +104,9 @@
                     class="adaptive-card rounded-2xl p-6 flex flex-col justify-between group hover:shadow-lg transition-all border border-white/5">
                     <div class="space-y-4">
                         <div class="flex justify-between items-start">
-                            <h3 class="font-bold text-sm adaptive-text-main group-hover:text-primary transition-colors">
-                                {{ $session->name }}
+                            <h3 class="font-black text-base adaptive-text-main group-hover:text-primary transition-colors">
+                                {{ $session->name }} - {{ $session->year }}
                             </h3>
-                            <span class="text-[10px] font-black px-2 py-0.5 rounded bg-gray-500/20 adaptive-text-sub">
-                                {{ $session->year }}
-                            </span>
                         </div>
 
                         <div class="flex items-center gap-4">
@@ -128,7 +125,8 @@
                                 <div class="flex flex-col">
                                     <span
                                         class="text-[10px] font-black uppercase tracking-widest adaptive-text-sub">Konsistensi
-                                        (CR)</span>
+                                        (CR)
+                                    </span>
                                     <span
                                         class="mt-1 text-xs font-bold adaptive-text-main">{{ number_format($weight->cr, 4) }}</span>
                                 </div>
@@ -158,10 +156,12 @@
 
                     <div class="mt-6">
                         @if ($session->status === 'active')
-                            <a href="{{ route('decision-sessions.show', $session->id) }}?tab=pairwise"
-                                class="inline-flex items-center justify-center w-full px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all
-                                  {{ $weight ? 'btn-update-penilaian' : 'bg-primary text-white hover:brightness-110 shadow-lg shadow-primary/20' }}">
-                                {{ $weight ? 'Perbarui Data' : 'Mulai Penilaian' }}
+                            <a href="{{ route('decision-sessions.show', $session->id) }}?tab={{ $weight ? 'weights' : 'pairwise' }}"
+                                class="inline-flex items-center justify-center w-full px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg
+                                {{ $weight
+                                    ? 'border-2 border-amber-500 text-amber-500 bg-amber-500/10 hover:bg-amber-500 hover:text-white shadow-amber-500/20'
+                                    : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20' }}">
+                                Kelola Penilaian
                             </a>
                         @else
                             <button disabled
