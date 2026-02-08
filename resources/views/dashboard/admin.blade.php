@@ -1,52 +1,24 @@
 @extends('layouts.dashboard')
 
 @section('content')
-    <style>
-        /* CSS Pintar untuk Dashboard Adaptif */
-        .adaptive-card {
-            background-color: rgba(255, 255, 255, 0.04);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(156, 163, 175, 0.15);
-            transition: all 0.3s ease;
-        }
-
-        .adaptive-text-main {
-            color: inherit;
-        }
-
-        .adaptive-text-sub {
-            color: inherit;
-            opacity: 0.6;
-        }
-
-        /* Perbaikan kontras tabel pada mode gelap */
-        .adaptive-table-header {
-            background-color: rgba(156, 163, 175, 0.05);
-            color: inherit;
-            opacity: 0.5;
-        }
-
-        /* Status Badge Adaptif */
-        .badge-status {
-            background-color: rgba(156, 163, 175, 0.1);
-            border: 1px solid rgba(156, 163, 175, 0.2);
-        }
-    </style>
-
     <div class="space-y-8 animate-in fade-in duration-700">
 
         {{-- HEADER & ACTION --}}
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 adaptive-text-main">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-                <h1 class="text-2xl font-black tracking-tight">Dashboard Admin</h1>
-                <p class="text-sm adaptive-text-sub">Ringkasan aktivitas dan kontrol sistem keputusan.</p>
+                <h1 class="text-3xl font-black tracking-tight adaptive-header-title">
+                    Dashboard Sesi Keputusan
+                </h1>
+                <p class="text-sm font-medium adaptive-text-sub">
+                    Ringkasan aktivitas dan kontrol sistem keputusan.
+                </p>
             </div>
-            <a href="{{ route('decision-sessions.create') }}"
-                class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 transition-all">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="{{ route('decision-sessions.create') }}" class="btn-manage">
+                {{-- Icon Plus (+) --}}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path>
                 </svg>
-                Sesi Baru
+                <span>Sesi Baru</span>
             </a>
         </div>
 
@@ -88,9 +60,8 @@
                 <div
                     class="relative overflow-hidden adaptive-card p-6 rounded-2xl group hover:shadow-xl transition-all duration-300">
                     <div class="relative z-10 flex flex-col adaptive-text-main">
-                        <span
-                            class="text-[11px] font-black uppercase tracking-widest opacity-50 mb-1">{{ $card['label'] }}</span>
-                        <span class="text-3xl font-black">{{ $card['value'] }}</span>
+                        <span class="card-label mb-1">{{ $card['label'] }}</span>
+                        <span class="card-value text-3xl">{{ $card['value'] }}</span>
                     </div>
                     <div class="absolute -right-2 -bottom-2 opacity-10 group-hover:opacity-20 transition-all duration-500">
                         <svg class="w-20 h-20 {{ $card['color'] }} text-white rounded-full p-4" fill="none"
@@ -110,9 +81,9 @@
                     <h2 class="text-base font-bold opacity-100">Sesi Terbaru</h2>
                     <p class="text-[11px] uppercase tracking-tighter opacity-70">Riwayat aktivitas pengambilan keputusan</p>
                 </div>
-                <a href="{{ route('decision-sessions.index') }}"
-                    class="text-xs font-bold text-primary hover:brightness-125 transition-colors uppercase tracking-widest">Lihat
-                    Semua →</a>
+                <a href="{{ route('decision-sessions.index') }}" class="text-xs font-bold uppercase adaptive-header-link">
+                    Lihat Semua →
+                </a>
             </div>
 
             <div class="overflow-x-auto">
@@ -156,8 +127,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <a href="{{ route('decision-sessions.show', $session->id) }}"
-                                        class="inline-flex items-center gap-1.5 px-4 py-2 border border-white/10 rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-all">
+                                    <a href="{{ route('decision-sessions.show', $session->id) }}" class="btn-manage">
                                         Kelola
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

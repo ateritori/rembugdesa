@@ -1,0 +1,85 @@
+/* 1. VARIABEL SISTEM (ADAPTIVE PALETTE) */
+:root {
+    --body-bg: #f8fafc;
+    --card-bg: #ffffff;
+    --border-color: rgba(15, 23, 42, 0.08);
+    --text-main: #0f172a;
+    --text-sub: #64748b;
+    --link-color: #2563eb;
+}
+
+html.dark {
+    --body-bg: #0f172a; /* Navy Gelap */
+    --card-bg: #1e293b; /* Slate Navy */
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-main: #f8fafc;
+    --text-sub: #94a3b8;
+    --link-color: #60a5fa;
+}
+
+/* 2. PENERAPAN GLOBAL */
+body.adaptive-base {
+    background-color: var(--body-bg) !important;
+    color: var(--text-main) !important;
+}
+
+/* 3. REUSABLE ADAPTIVE CLASSES */
+.adaptive-card {
+    background-color: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-main) !important;
+}
+
+.adaptive-text-main {
+    color: var(--text-main) !important;
+}
+.adaptive-text-sub {
+    color: var(--text-sub) !important;
+}
+
+/* 4. FIX NAVIGASI KELOLA (SOLUSI UNTUK DARK MODE) */
+.btn-manage {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+
+    /* BACKGROUND: Kita paksa pakai warna body (Navy di Dark Mode, Abu di Light Mode) */
+    /* Ini agar tombol TIDAK terlihat putih di mode dark */
+    background-color: var(--body-bg) !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+/* Efek saat Dark Mode: Pastikan border terlihat */
+html.dark .btn-manage {
+    background-color: rgba(
+        255,
+        255,
+        255,
+        0.05
+    ) !important; /* Navy sedikit terang */
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Hover State: Langsung jadi Biru agar sangat tegas */
+.btn-manage:hover {
+    background-color: var(--link-color) !important;
+    color: #ffffff !important;
+    border-color: var(--link-color) !important;
+    transform: translateY(-1px);
+}
+
+/* Fix Header Tabel agar teksnya tidak hilang */
+.adaptive-table-header {
+    background-color: transparent !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.adaptive-header-link {
+    color: var(--link-color) !important;
+}
