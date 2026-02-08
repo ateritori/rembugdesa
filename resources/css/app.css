@@ -1,8 +1,20 @@
-@import "./dashboard.css";
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===== MAPPING PRESET (Anti-Kelip & Dinamis) ===== */
+[data-theme-preset="gray"] {
+    --primary: #4b5563;
+}
+[data-theme-preset="green"] {
+    --primary: #15803d;
+}
+[data-theme-preset="blue"] {
+    --primary: #2563eb;
+}
+[data-theme-preset="brown"] {
+    --primary: #78350f;
+}
 
 /* ===== 1. THEME VARIABLES ===== */
 :root {
@@ -23,13 +35,24 @@
     --border: rgba(255, 255, 255, 0.1);
 }
 
-/* ===== 2. GLOBAL HELPERS ===== */
+/* ===== 2. GLOBAL HELPERS & RESET ===== */
 body {
     background-color: var(--bg);
     color: var(--text-main);
-    transition:
-        background-color 0.3s ease,
-        color 0.3s ease;
+    transition: none !important;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Sinkronisasi untuk elemen dengan class adaptive-base */
+body.adaptive-base {
+    background-color: var(--bg) !important;
+    color: var(--text-main) !important;
+}
+
+*:focus,
+*:active {
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .bg-app {
@@ -37,9 +60,6 @@ body {
 }
 .text-app {
     color: var(--text-main) !important;
-}
-.text-sub-app {
-    color: var(--text-sub) !important;
 }
 .bg-card {
     background-color: var(--card) !important;
@@ -51,27 +71,34 @@ body {
     background-color: var(--primary) !important;
 }
 
-/* ===== 3. ADAPTIVE CLASSES FOR DASHBOARD ===== */
-.adaptive-header-title,
-.adaptive-text-main {
-    color: var(--text-main) !important;
-}
-
-.adaptive-text-sub {
-    color: var(--text-sub) !important;
-}
-
+/* ===== 3. ADAPTIVE CLASSES (DASHBOARD CONTENT) ===== */
 .adaptive-card {
     background-color: var(--card) !important;
     border: 1px solid var(--border) !important;
     border-radius: 1rem;
-    transition:
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+    transition: none !important;
 }
 
-/* ===== 4. FIX NAVIGASI KELOLA (FOKUS UTAMA) ===== */
-/* ===== FIX TOMBOL KELOLA: DASAR PRIMARY ===== */
+.adaptive-text-main {
+    color: var(--text-main) !important;
+}
+.adaptive-text-sub {
+    color: var(--text-sub) !important;
+}
+
+/* Fix Tabel Dashboard */
+.adaptive-table-header {
+    background-color: transparent !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+/* Reset link dalam konten dashboard agar tidak biru default browser */
+.dashboard-content a {
+    text-decoration: none;
+    transition: none !important;
+}
+
+/* ===== 4. TOMBOL KELOLA (EFEK HOVER TANPA GANTI WARNA) ===== */
 .btn-manage {
     display: inline-flex;
     align-items: center;
@@ -80,63 +107,73 @@ body {
     border-radius: 0.75rem;
     font-size: 0.75rem;
     font-weight: 700;
-    transition: all 0.2s ease;
-
-    /* WARNA DASAR: PRIMARY (BIRU) */
     background-color: var(--primary) !important;
-    color: #ffffff !important; /* Teks wajib putih */
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* HOVER: MENYESUAIKAN (MAKIN CERAH & TEGAS) */
-.btn-manage:hover {
-    background-color: var(--primary) !important;
-    filter: brightness(1.15); /* Lebih cerah saat disentuh */
-    transform: translateY(-2px); /* Efek angkat lebih berasa */
-    box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3); /* Glow biru */
     color: #ffffff !important;
+    border: none !important;
+    transition:
+        transform 0.2s ease,
+        filter 0.2s ease !important;
 }
 
-/* DARK MODE: Tetap Primary tapi sesuaikan border agar tidak flat */
-.dark .btn-manage,
-[data-theme="dark"] .btn-manage {
-    background-color: var(--primary) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+.btn-manage:hover {
+    filter: brightness(110%) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Pas di-klik/active */
 .btn-manage:active {
     transform: translateY(0);
-    filter: brightness(0.9);
 }
 
-/* FIX HEADER TABEL DASHBOARD */
-.adaptive-table-header {
-    border-bottom: 1px solid var(--border) !important;
-}
-
-/* ===== NAVIGASI LIHAT SEMUA (TOTALLY ADAPTIVE) ===== */
+/* ===== 5. NAVIGASI LIHAT SEMUA ===== */
 .adaptive-header-link {
-    color: var(--text-main) !important; /* Ikut warna teks utama tema */
-    opacity: 0.6; /* Pas diam agak redup biar nggak ganggu judul */
+    color: var(--primary) !important;
+    opacity: 0.8;
     font-weight: 700;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
     text-decoration: none;
 }
 
-/* Hover State: TEGAS & TEBAL */
 .adaptive-header-link:hover {
-    opacity: 1 !important; /* Nyala 100% */
-    font-weight: 900 !important; /* Jadi sangat tebal */
-    letter-spacing: 0.02em; /* Sedikit meregang biar tegas */
-    transform: translateX(4px); /* Geser dikit ke kanan biar interaktif */
+    opacity: 1 !important;
+    text-decoration: underline !important;
 }
 
-/* Mode Dark khusus: kasih sedikit glow pas hover agar 'nyala' */
-.dark .adaptive-header-link:hover,
-[data-theme="dark"] .adaptive-header-link:hover {
-    text-shadow: 0 0 10px rgba(241, 245, 249, 0.5);
+/* ===== 6. SIDEBAR LINKS ===== */
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+    transition: none !important;
+}
+
+.sidebar-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.sidebar-link-active {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    border-left: 4px solid white;
+    border-radius: 0 0.75rem 0.75rem 0;
+}
+
+/* ===== 7. RESPONSIVE SIDEBAR MOBILE ===== */
+@media (max-width: 1023px) {
+    .sidebar-container {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    .sidebar-open .sidebar-container {
+        transform: translateX(0);
+    }
 }

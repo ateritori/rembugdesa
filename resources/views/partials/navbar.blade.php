@@ -2,15 +2,21 @@
 
     {{-- LEFT --}}
     <div class="flex items-center gap-3">
-        {{-- Mobile menu --}}
-        <button onclick="toggleSidebar()" class="md:hidden px-2 py-1 rounded border border-app text-app">
+        {{-- Mobile menu button --}}
+        <button onclick="toggleSidebar()"
+            class="md:hidden px-2 py-1 rounded border border-app text-app hover:bg-white/5 transition-colors focus:outline-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                stroke-width="2.5">
+                {{-- Icon Hamburger --}}
+                <path class="menu-open-icon" stroke-linecap="round" stroke-linejoin="round"
+                    d="M4 6h16M4 12h16M4 18h16" />
+                {{-- Icon Close (X) --}}
+                <path class="menu-close-icon hidden" stroke-linecap="round" stroke-linejoin="round"
+                    d="M6 18L18 6M6 6l12 12" />
             </svg>
         </button>
 
-        <h1 class="font-semibold text-sm text-app">
+        <h1 class="font-bold text-sm text-app tracking-tight">
             Dashboard Sesi Keputusan
         </h1>
     </div>
@@ -20,7 +26,7 @@
 
         {{-- Theme palette toggle (mobile) --}}
         <button onclick="document.getElementById('theme-palette').classList.toggle('hidden')"
-            class="md:hidden px-2 py-1 rounded border border-app text-app" title="Theme">
+            class="md:hidden px-2 py-1 rounded border border-app text-app hover:bg-white/5" title="Theme">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -30,21 +36,22 @@
 
         {{-- Preset Colors --}}
         <div id="theme-palette"
-            class="hidden absolute top-full right-0 mt-2 bg-card border border-app rounded shadow-md p-3
+            class="hidden absolute top-full right-0 mt-2 bg-card border border-app rounded shadow-xl p-3
                     md:static md:mt-0 md:shadow-none md:border-0 md:bg-transparent
-                    md:flex items-center gap-2">
+                    md:flex items-center gap-2 z-50 animate-in slide-in-from-top-2 duration-200">
             <button onclick="setThemePreset('gray')"
-                class="w-4 h-4 rounded-full bg-gray-600 border border-app"></button>
+                class="w-4 h-4 rounded-full bg-gray-600 border border-white/20 hover:scale-125 transition-transform"></button>
             <button onclick="setThemePreset('green')"
-                class="w-4 h-4 rounded-full bg-green-700 border border-app"></button>
+                class="w-4 h-4 rounded-full bg-green-700 border border-white/20 hover:scale-125 transition-transform"></button>
             <button onclick="setThemePreset('blue')"
-                class="w-4 h-4 rounded-full bg-blue-700 border border-app"></button>
+                class="w-4 h-4 rounded-full bg-blue-700 border border-white/20 hover:scale-125 transition-transform"></button>
             <button onclick="setThemePreset('brown')"
-                class="w-4 h-4 rounded-full bg-amber-800 border border-app"></button>
+                class="w-4 h-4 rounded-full bg-amber-800 border border-white/20 hover:scale-125 transition-transform"></button>
         </div>
 
         {{-- Dark / Light --}}
-        <button onclick="toggleThemeMode()" class="px-2 py-1 rounded border border-app text-app" title="Dark / Light">
+        <button onclick="toggleThemeMode()"
+            class="px-2 py-1 rounded border border-app text-app hover:bg-white/5 transition-all" title="Dark / Light">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" />
@@ -52,17 +59,17 @@
         </button>
 
         {{-- User --}}
-        <span class="hidden sm:block text-sm text-app">
+        <span class="hidden lg:block text-xs font-bold text-app uppercase tracking-widest opacity-70">
             {{ auth()->user()->name ?? 'User' }}
         </span>
 
         {{-- Logout --}}
-        <form method="POST" action="{{ route('logout') }}">
+        <form method="POST" action="{{ route('logout') }}" class="flex items-center">
             @csrf
-            <button type="submit" class="text-sm text-red-600 hover:text-red-800">
+            <button type="submit"
+                class="text-xs font-black text-red-500 hover:text-red-600 uppercase tracking-tighter transition-colors px-2 py-1">
                 Logout
             </button>
         </form>
-
     </div>
 </header>
