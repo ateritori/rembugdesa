@@ -84,7 +84,8 @@
                     @php $rule = $scoringRules->get($c->id); @endphp
                     <div x-data="{ open: false, openScoring: false }" class="group">
                         <div
-                            class="flex flex-col md:flex-row justify-between items-center bg-card border border-app rounded-2xl px-5 py-4 transition-all group-hover:border-primary/30 group-hover:shadow-md {{ !$c->is_active ? 'opacity-60 grayscale' : '' }}">
+                            class="flex flex-col md:flex-row justify-between items-center bg-card border border-app rounded-2xl px-5 py-4 transition-all
+    {{ !$c->is_active || $decisionSession->status !== 'draft' ? 'opacity-60 grayscale pointer-events-none' : 'group-hover:border-primary/30 group-hover:shadow-md' }}">
 
                             <div class="flex items-center gap-4 w-full md:w-auto">
                                 <div
@@ -119,7 +120,7 @@
 
                             <div class="flex items-center gap-2 mt-4 md:mt-0 w-full md:w-auto justify-end">
                                 {{-- Edit Toggle --}}
-                                <button @click="open = !open"
+                                <button @click="open = !open" {{ $decisionSession->status !== 'draft' ? 'disabled' : '' }}
                                     class="p-2 text-app hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
                                     title="Edit Kriteria">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,7 +130,8 @@
                                 </button>
 
                                 {{-- Toggle Active --}}
-                                <form method="POST" action="{{ route('criteria.toggle', $c->id) }}">
+                                <form method="POST" action="{{ route('criteria.toggle', $c->id) }}"
+                                    {{ $decisionSession->status !== 'draft' ? 'onsubmit=return false;' : '' }}>
                                     @csrf @method('PATCH')
                                     <button type="submit"
                                         class="p-2 text-app hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-all"
@@ -143,7 +145,7 @@
 
                                 {{-- Delete --}}
                                 <form method="POST" action="{{ route('criteria.destroy', $c->id) }}"
-                                    onsubmit="return confirm('Hapus kriteria ini?')">
+                                    onsubmit="{{ $decisionSession->status !== 'draft' ? 'return false;' : 'return confirm(\'Hapus kriteria ini?\')' }}">
                                     @csrf @method('DELETE')
                                     <button type="submit"
                                         class="p-2 text-app hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
@@ -166,8 +168,8 @@
                         </div>
 
                         {{-- Inline Form: Edit Identitas --}}
-                        <form x-show="open" x-transition.origin.top method="POST"
-                            action="{{ route('criteria.update', $c->id) }}"
+                        <form x-show="open && '{{ $decisionSession->status }}' === 'draft'" x-transition.origin.top
+                            method="POST" action="{{ route('criteria.update', $c->id) }}"
                             class="mt-2 flex flex-col md:flex-row gap-3 bg-app/20 border border-app rounded-2xl p-4 shadow-inner"
                             @click.outside="open = false">
                             @csrf @method('PUT')

@@ -29,9 +29,9 @@ class CriteriaAggregationController extends Controller
         ]);
 
         return redirect()
-            ->to(
-                route('decision-sessions.show', $decisionSession->id)
-                    . '?tab=control'
+            ->route(
+                'control.index',
+                $decisionSession->id
             )
             ->with(
                 'success',

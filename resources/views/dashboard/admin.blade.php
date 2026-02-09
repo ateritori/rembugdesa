@@ -133,7 +133,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-5 text-right">
-                                    <a href="{{ route('criteria.index', $session->id) }}"
+                                    <a href="{{ $session->status === 'draft' ? route('criteria.index', $session->id) : route('control.index', $session->id) }}"
                                         class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all">
                                         <span>Kelola</span>
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

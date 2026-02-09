@@ -1,152 +1,162 @@
 @if ($decisionSession->status === 'draft')
     @php
-        $dbRange = $rule?->getParameter('scale_range');
-        $dbSemantics = $rule?->getParameter('scale_semantics') ?? new stdClass();
-        $dbUtilities = $rule?->getParameter('scale_utilities') ?? new stdClass();
+        $isEdit = $rule !== null;
+        // Data lama dari database untuk mode Edit
+        $oldSemantics = $rule?->getParameter('scale_semantics') ?? [];
+        $oldUtilities = $rule?->getParameter('scale_utilities') ?? [];
     @endphp
 
-    <form x-show="openScoring" x-transition:enter="transition ease-out duration-300"
-        x-transition:enter-start="opacity-0 -translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-cloak
-        method="POST" action="{{ route('criteria.scoring.store', $c->id) }}" x-data="{
-            inputType: '{{ $rule?->input_type ?? '' }}',
-            utilityType: '{{ $rule?->preference_type ?? '' }}',
-            scaleMin: {{ $dbRange['min'] ?? 1 }},
-            scaleMax: {{ $dbRange['max'] ?? 5 }},
-            utilities: @json($dbUtilities),
-            semantics: @json($dbSemantics)
-        }"
-        x-effect="if (utilityType) { utilities = {}; }"
-        class="mt-4 p-6 rounded-2xl border border-app bg-card shadow-xl shadow-primary/5 space-y-6 relative overflow-hidden"
-        @click.outside="openScoring = false">
+    <div x-data="{ openScoring: {{ $isEdit ? 'true' : 'false' }} }">
+        <form id="scoringForm" x-show="openScoring" x-cloak x-transition method="POST"
+            action="{{ $isEdit ? route('criteria.scoring.update', [$c->id, $rule->id]) : route('criteria.scoring.store', $c->id) }}"
+            class="mt-6 p-8 rounded-[2rem] border border-[#f5f5f4] bg-white shadow-xl space-y-8 relative overflow-hidden">
 
-        @csrf
+            @csrf
+            @if ($isEdit)
+                @method('PUT')
+            @endif
 
-        {{-- Aksesori Dekoratif --}}
-        <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-
-        <div class="flex items-center gap-2 border-b border-app pb-4">
-            <div class="p-2 bg-primary/10 rounded-lg">
-                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                        d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                        d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-                </svg>
-            </div>
-            <div>
-                <h4 class="font-black text-app tracking-tight">Aturan Penilaian</h4>
-                <p class="text-[10px] uppercase font-bold text-primary tracking-widest">{{ $c->name }}</p>
-            </div>
-        </div>
-
-        {{-- Konfigurasi Utama --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-black text-app uppercase tracking-widest opacity-60">Jenis Input</label>
-                <select name="input_type" x-model="inputType"
-                    class="w-full bg-app/50 border-app rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all">
-                    <option value="">Pilih Mekanisme</option>
-                    <option value="scale">Skala (Pilihan Terukur)</option>
-                    <option value="numeric">Angka Bebas (Raw Data)</option>
-                </select>
+            <div class="flex items-center justify-between border-b border-[#f5f5f4] pb-5">
+                <h4 class="text-sm font-[900] text-[#2d1a12] uppercase tracking-tighter">Aturan Penilaian:
+                    {{ $c->name }}</h4>
             </div>
 
-            <div class="space-y-1.5">
-                <label class="text-[11px] font-black text-app uppercase tracking-widest opacity-60">Tipe Fungsi
-                    Utilitas</label>
-                <select name="preference_type" x-model="utilityType"
-                    class="w-full bg-app/50 border-app rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all">
-                    <option value="">Pilih Fungsi</option>
-                    <option value="linear">Linear (Stabil)</option>
-                    <option value="concave">Konkaf (Sensitif di Awal)</option>
-                    <option value="convex">Konveks (Sensitif di Akhir)</option>
-                </select>
-            </div>
-        </div>
+            {{-- Konfigurasi Tipe --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-[900] uppercase opacity-50">Mekanisme Input</label>
+                    <select id="inputType" name="input_type" onchange="toggleInputView()"
+                        class="w-full bg-[#fafaf9] border-[#f5f5f4] rounded-xl text-sm font-bold py-3.5">
+                        <option value="">Pilih Jenis</option>
+                        <option value="scale" {{ ($rule->input_type ?? '') == 'scale' ? 'selected' : '' }}>Skala
+                            (Terukur)</option>
+                        <option value="numeric" {{ ($rule->input_type ?? '') == 'numeric' ? 'selected' : '' }}>Angka
+                            Bebas (Raw)</option>
+                    </select>
+                </div>
 
-        {{-- Range Skala --}}
-        <div x-show="inputType === 'scale'" x-transition
-            class="p-4 bg-app/30 rounded-2xl border border-app/50 grid grid-cols-2 gap-4">
-            <div class="space-y-1">
-                <label class="text-[10px] font-black uppercase opacity-50">Batas Minimum</label>
-                <input type="number" name="scale_min" x-model.number="scaleMin"
-                    class="w-full bg-card border-app rounded-lg text-sm font-black focus:border-primary">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-[900] uppercase opacity-50">Fungsi Utilitas</label>
+                    <select id="utilityType" name="preference_type" onchange="renderUtilityItems()"
+                        class="w-full bg-[#fafaf9] border-[#f5f5f4] rounded-xl text-sm font-bold py-3.5">
+                        <option value="linear" {{ ($rule->preference_type ?? '') == 'linear' ? 'selected' : '' }}>Linear
+                            (Stabil)</option>
+                        <option value="concave" {{ ($rule->preference_type ?? '') == 'concave' ? 'selected' : '' }}>
+                            Konkaf (Sensitif Awal)</option>
+                        <option value="convex" {{ ($rule->preference_type ?? '') == 'convex' ? 'selected' : '' }}>
+                            Konveks (Sensitif Akhir)</option>
+                    </select>
+                </div>
             </div>
-            <div class="space-y-1">
-                <label class="text-[10px] font-black uppercase opacity-50">Batas Maksimum</label>
-                <input type="number" name="scale_max" x-model.number="scaleMax"
-                    class="w-full bg-card border-app rounded-lg text-sm font-black focus:border-primary">
-            </div>
-        </div>
 
-        {{-- Semantik / Label --}}
-        <div x-show="inputType === 'scale'" x-transition
-            x-effect="if(inputType === 'scale') {
-                let min = parseInt(scaleMin); let max = parseInt(scaleMax);
-                if (!isNaN(min) && !isNaN(max) && max >= min) {
-                    for (let i = min; i <= max; i++) { if (!(i in semantics)) semantics[i] = ''; }
-                    Object.keys(semantics).forEach(k => { if (k < min || k > max) delete semantics[k]; });
-                }
-            }">
-            <label class="text-[11px] font-black text-app uppercase tracking-widest opacity-60 block mb-3">Label
-                Keterangan (Semantik)</label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <template x-for="(label, key) in semantics" :key="key">
-                    <div
-                        class="flex items-center gap-3 bg-app/20 p-2 rounded-xl border border-app group focus-within:border-primary/50 transition-all">
-                        <div class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center text-xs font-black shadow-sm"
-                            x-text="key"></div>
-                        <input type="text" :name="`semantics[${key}]`" x-model="semantics[key]"
-                            placeholder="Misal: Sangat Baik"
-                            class="flex-1 border-none bg-transparent text-xs font-bold focus:ring-0 placeholder:opacity-30">
-                    </div>
-                </template>
+            {{-- Range Control --}}
+            <div id="rangeControl"
+                class="hidden p-6 bg-[#fafaf9] rounded-2xl border border-[#f5f5f4] grid grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="text-[9px] font-[900] uppercase opacity-50">Min Skala</label>
+                    <input type="number" id="scaleMin" name="scale_min" value="{{ $dbRange['min'] ?? 1 }}"
+                        oninput="renderUtilityItems()" class="w-full border-[#f5f5f4] rounded-lg text-sm font-black">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[9px] font-[900] uppercase opacity-50">Max Skala</label>
+                    <input type="number" id="scaleMax" name="scale_max" value="{{ $dbRange['max'] ?? 5 }}"
+                        oninput="renderUtilityItems()" class="w-full border-[#f5f5f4] rounded-lg text-sm font-black">
+                </div>
             </div>
-        </div>
 
-        {{-- Nilai Utilitas --}}
-        <div x-show="inputType === 'scale' && utilityType && utilityType !== 'linear'" x-transition
-            x-effect="if(inputType === 'scale' && utilityType !== 'linear') {
-                let min = parseInt(scaleMin); let max = parseInt(scaleMax);
-                let range = max - min;
-                if (range > 0) {
-                    for (let i = min; i <= max; i++) {
-                        let x = (i - min) / range;
-                        let val = utilityType === 'concave' ? Math.sqrt(x) : Math.pow(x, 2);
-                        utilities[i] = Number(val.toFixed(2));
-                    }
-                    Object.keys(utilities).forEach(k => { if (k < min || k > max) delete utilities[k]; });
-                }
-            }">
-            <label
-                class="text-[11px] font-black text-app uppercase tracking-widest opacity-60 block mb-3 text-primary">Preview
-                Bobot Utilitas (0-1)</label>
-            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <template x-for="(val, key) in utilities" :key="key">
-                    <div class="bg-card border border-app rounded-xl p-3 text-center shadow-sm">
-                        <p class="text-[9px] font-black opacity-40 uppercase mb-1">Skala <span x-text="key"></span>
-                        </p>
-                        <input type="number" step="0.01" :name="`utilities[${key}]`" x-model.number="utilities[key]"
-                            class="w-full border-none bg-transparent text-center font-black text-sm text-primary p-0 focus:ring-0">
-                    </div>
-                </template>
-            </div>
-        </div>
+            {{-- Container untuk List Dinamis --}}
+            <div id="utilityContainer" class="space-y-4"></div>
 
-        {{-- Action Buttons --}}
-        <div class="flex items-center justify-between pt-6 border-t border-app">
-            <p class="text-[10px] font-bold text-app opacity-40 max-w-[200px] leading-tight">Perubahan akan mempengaruhi
-                kalkulasi normalisasi akhir.</p>
-            <div class="flex gap-3">
+            <div class="flex items-center justify-end gap-4 pt-8 border-t border-[#f5f5f4]">
                 <button type="button" @click="openScoring = false"
-                    class="px-5 py-2.5 text-xs font-black uppercase tracking-widest text-app opacity-60 hover:opacity-100 transition-all">
-                    Batal
-                </button>
+                    class="px-6 py-3 text-[10px] font-black uppercase text-[#a8a29e]">Batal</button>
                 <button type="submit"
-                    class="px-8 py-2.5 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
-                    Simpan Aturan
+                    class="px-10 py-4 bg-[#2d1a12] hover:bg-[#7f1d1d] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all">
+                    {{ $isEdit ? 'Simpan Perubahan' : 'Tetapkan Aturan' }}
                 </button>
             </div>
-        </div>
-    </form>
+        </form>
+    </div>
+
+    <script>
+        // Data awal dari PHP ke JS
+        const initialSemantics = @json($oldSemantics);
+        const initialUtilities = @json($oldUtilities);
+        let firstLoad = true;
+
+        function toggleInputView() {
+            const type = document.getElementById('inputType').value;
+            const rangeControl = document.getElementById('rangeControl');
+            const container = document.getElementById('utilityContainer');
+
+            if (type === 'scale') {
+                rangeControl.classList.remove('hidden');
+                renderUtilityItems();
+            } else {
+                rangeControl.classList.add('hidden');
+                container.innerHTML = '';
+            }
+        }
+
+        function renderUtilityItems() {
+            const min = parseInt(document.getElementById('scaleMin').value);
+            const max = parseInt(document.getElementById('scaleMax').value);
+            const type = document.getElementById('utilityType').value;
+            const container = document.getElementById('utilityContainer');
+
+            if (isNaN(min) || isNaN(max) || min > max) {
+                container.innerHTML = '<p class="text-xs text-center opacity-50 font-bold">Range tidak valid</p>';
+                return;
+            }
+
+            let html = '';
+            const range = max - min;
+
+            for (let i = min; i <= max; i++) {
+                // Ambil data lama jika tersedia dan ini adalah loading pertama
+                let label = (firstLoad && initialSemantics[i]) ? initialSemantics[i] : '';
+                let utilVal = (firstLoad && initialUtilities[i]) ? initialUtilities[i] : null;
+
+                // Jika utilVal kosong (bukan 0), hitung otomatis
+                if (utilVal === null) {
+                    const x = range === 0 ? 1 : (i - min) / range;
+                    let calc = 0;
+                    if (type === 'concave') calc = Math.sqrt(x);
+                    else if (type === 'convex') calc = Math.pow(x, 2);
+                    else calc = x; // linear
+                    utilVal = calc.toFixed(2);
+                }
+
+                html += `
+                    <div class="flex items-center gap-4 bg-white p-3 rounded-2xl border border-[#f5f5f4] shadow-sm animate-in fade-in duration-300">
+                        <div class="w-10 h-10 rounded-xl bg-[#2d1a12] text-white flex items-center justify-center font-black text-xs">${i}</div>
+                        <div class="flex-1">
+                            <input type="text" name="semantics[${i}]" value="${label}" placeholder="Label..."
+                                class="w-full border-none bg-transparent text-sm font-bold text-[#2d1a12] focus:ring-0">
+                        </div>
+                        <div class="w-24">
+                            <input type="number" step="0.01" name="utilities[${i}]" value="${utilVal}"
+                                class="w-full border-none bg-[#fafaf9] rounded-lg text-center font-black text-xs text-[#7f1d1d] py-2 focus:ring-1 focus:ring-[#7f1d1d]">
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+
+            // Setelah render pertama selesai, set firstLoad ke false
+            // agar perubahan input type/range berikutnya menghitung ulang nilai otomatis
+            if (firstLoad) {
+                // Cek apakah data benar-benar ada, jika ya biarkan firstLoad tetap true sejenak
+                // atau matikan setelah render inisial berhasil
+                setTimeout(() => {
+                    firstLoad = false;
+                }, 100);
+            }
+        }
+
+        // Jalankan saat dokumen siap
+        document.addEventListener('DOMContentLoaded', () => {
+            toggleInputView();
+        });
+    </script>
 @endif

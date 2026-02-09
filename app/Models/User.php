@@ -27,4 +27,9 @@ class User extends Authenticatable
             'decision_session_dm'
         )->withTimestamps();
     }
+
+    public function criteriaPairwise()
+    {
+        return $this->hasMany(CriteriaPairwise::class, 'dm_id');
+    }
 }

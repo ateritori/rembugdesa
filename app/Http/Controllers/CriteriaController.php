@@ -30,9 +30,7 @@ class CriteriaController extends Controller
 
     public function store(Request $request, DecisionSession $decisionSession)
     {
-        if ($response = $this->authorizeDraft($decisionSession)) {
-            return $response;
-        }
+        $this->authorizeDraft($decisionSession);
 
         $request->validate([
             'name' => 'required|string',
@@ -52,9 +50,7 @@ class CriteriaController extends Controller
 
     public function update(Request $request, Criteria $criteria)
     {
-        if ($response = $this->authorizeDraft($criteria->decisionSession)) {
-            return $response;
-        }
+        $this->authorizeDraft($criteria->decisionSession);
 
         $request->validate([
             'name' => 'required|string',
@@ -72,9 +68,7 @@ class CriteriaController extends Controller
 
     public function toggle(Criteria $criteria)
     {
-        if ($response = $this->authorizeDraft($criteria->decisionSession)) {
-            return $response;
-        }
+        $this->authorizeDraft($criteria->decisionSession);
 
         $criteria->update([
             'is_active' => ! $criteria->is_active,
@@ -89,9 +83,7 @@ class CriteriaController extends Controller
 
     public function destroy(Criteria $criteria)
     {
-        if ($response = $this->authorizeDraft($criteria->decisionSession)) {
-            return $response;
-        }
+        $this->authorizeDraft($criteria->decisionSession);
 
         $criteria->delete();
 
@@ -104,14 +96,12 @@ class CriteriaController extends Controller
 
     /* ================= INTERNAL ================= */
 
-    private function authorizeDraft(DecisionSession $decisionSession)
+    private function authorizeDraft(DecisionSession $decisionSession): void
     {
-        if ($decisionSession->status !== 'draft') {
-            return redirect()
-                ->route('criteria.index', $decisionSession->id)
-                ->with('error', 'Sesi sudah aktif. Perubahan kriteria tidak diperbolehkan.');
-        }
-
-        return null;
+        abort_if(
+            $decisionSession->status !== 'draft',
+            403,
+            'Sesi sudah aktif. Perubahan kriteria tidak diperbolehkan.'
+        );
     }
 }

@@ -67,9 +67,9 @@
         {{-- SECTION: STATISTIK PROGRES PENILAIAN --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             @php
-                $dmPairwiseDone = $assignedDms->where('has_submitted', true)->count();
                 $pairwisePercent = $assignedDmCount > 0 ? ($dmPairwiseDone / $assignedDmCount) * 100 : 0;
-                $dmAltDone = 0; // Sesuaikan logic Anda nanti
+
+                $dmAltDone = 0; // TODO: hitung dari controller
                 $altPercent = $assignedDmCount > 0 ? ($dmAltDone / $assignedDmCount) * 100 : 0;
             @endphp
 
@@ -186,11 +186,25 @@
                                 secara permanen.</p>
                         </div>
 
+                        @php
+                            $canLockCriteria = $assignedDmCount > 0 && $dmPairwiseDone === $assignedDmCount;
+                        @endphp
+                        @unless ($canLockCriteria)
+                            <div
+                                class="mt-4 inline-flex items-center gap-2 text-amber-600 font-bold text-xs bg-amber-500/10 px-4 py-2 rounded-xl border border-amber-500/20">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                Menunggu seluruh Decision Maker menyelesaikan pairwise kriteria.
+                            </div>
+                        @endunless
                         <form method="POST" action="{{ route('decision-sessions.lock-criteria', $decisionSession->id) }}"
                             onsubmit="return confirm('Kunci kriteria?')">
                             @csrf @method('PATCH')
                             <button type="submit"
-                                class="px-10 py-4 bg-amber-500 text-white rounded-2xl font-black text-sm transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-500/30 active:scale-95">
+                                class="px-10 py-4 bg-amber-500 text-white rounded-2xl font-black text-sm transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-500/30 active:scale-95 disabled:opacity-30 disabled:grayscale disabled:pointer-events-none"
+                                {{ $canLockCriteria ? '' : 'disabled' }}>
                                 KUNCI & LANJUTKAN
                             </button>
                         </form>
@@ -214,11 +228,25 @@
                                 penilaian. Hasil ranking akhir akan dibentuk dan tidak dapat diubah lagi.</p>
                         </div>
 
+                        @php
+                            $canFinalize = $assignedDmCount > 0 && $dmAltDone === $assignedDmCount;
+                        @endphp
+                        @unless ($canFinalize)
+                            <div
+                                class="mt-4 inline-flex items-center gap-2 text-rose-600 font-bold text-xs bg-rose-500/10 px-4 py-2 rounded-xl border border-rose-500/20">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                Menunggu seluruh Decision Maker menyelesaikan penilaian alternatif.
+                            </div>
+                        @endunless
                         <form method="POST" action="{{ route('decision-sessions.close', $decisionSession->id) }}"
                             onsubmit="return confirm('Tutup sesi dan finalisasi?')">
                             @csrf @method('PATCH')
                             <button type="submit"
-                                class="px-10 py-4 bg-rose-600 text-white rounded-2xl font-black text-sm transition-all hover:scale-105 hover:shadow-xl hover:shadow-rose-500/30 active:scale-95">
+                                class="px-10 py-4 bg-rose-600 text-white rounded-2xl font-black text-sm transition-all hover:scale-105 hover:shadow-xl hover:shadow-rose-500/30 active:scale-95 disabled:opacity-30 disabled:grayscale disabled:pointer-events-none"
+                                {{ $canFinalize ? '' : 'disabled' }}>
                                 TUTUP & FINALISASI
                             </button>
                         </form>

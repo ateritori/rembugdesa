@@ -14,7 +14,10 @@ use App\Http\Controllers\DecisionControlController;
 use App\Http\Controllers\CriteriaScoringRuleController;
 
 Route::get('/', function () {
-    return view('welcome');
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+    return view('auth.login');
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -70,6 +73,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         '/criteria/{criteria}/scoring-rule',
         [CriteriaScoringRuleController::class, 'store']
     )->name('criteria.scoring.store');
+    Route::put(
+        '/criteria/{criteria}/scoring-rule/{rule}',
+        [CriteriaScoringRuleController::class, 'update']
+    )->name('criteria.scoring.update');
 
     // ================= ALTERNATIVES =================
 

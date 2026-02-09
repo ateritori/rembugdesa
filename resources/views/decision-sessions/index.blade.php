@@ -118,7 +118,7 @@
 
                         {{-- ACTIONS --}}
                         <div class="flex items-center gap-3 w-full md:w-auto justify-end">
-                            <a href="{{ route('criteria.index', $s->id) }}"
+                            <a href="{{ $s->status === 'draft' ? route('criteria.index', $s->id) : route('control.index', $s->id) }}"
                                 class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-sm shadow-primary/20">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                                     stroke="currentColor" stroke-width="3">
