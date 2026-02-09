@@ -1,46 +1,56 @@
 <?php
 
-namespace App\Services\BORDA;
+namespace App\Services\Borda;
 
-class BordaService
+use InvalidArgumentException;
+
+class BordaRankingService
 {
     /**
-     * Agregasi preferensi kelompok menggunakan metode Borda
+     * Hitung skor Borda dari skor SMART
      *
-     * @param array $allRankings  Array ranking dari setiap DM
-     *                            Contoh:
-     *                            [
-     *                              ['A1','A2','A3'],
-     *                              ['A2','A1','A3'],
-     *                              ['A1','A3','A2'],
-     *                            ]
-     * @param int $candidateCount Jumlah alternatif
-     * @return array Skor Borda terurut (descending)
+     * @param array $smartScores [alternative_id => score]
+     * @return array [alternative_id => borda_score]
      */
-    public function aggregateVotes(array $allRankings, int $candidateCount): array
+    public function calculate(array $smartScores): array
     {
-        $bordaScores = [];
-
-        // Iterasi setiap Decision Maker
-        foreach ($allRankings as $rankingList) {
-
-            // Iterasi ranking milik satu DM
-            foreach ($rankingList as $rankIndex => $candidateId) {
-
-                // Skema Borda: poin = N - posisi
-                $points = $candidateCount - $rankIndex;
-
-                if (!isset($bordaScores[$candidateId])) {
-                    $bordaScores[$candidateId] = 0;
-                }
-
-                $bordaScores[$candidateId] += $points;
-            }
+        if (empty($smartScores)) {
+            throw new InvalidArgumentException('Skor SMART kosong.');
         }
 
-        // Urutkan skor dari tertinggi ke terendah
-        arsort($bordaScores);
+        // Urutkan alternatif berdasarkan skor SMART (desc)
+        arsort($smartScores);
+
+        $n = count($smartScores);
+        $bordaScores = [];
+
+        $rank = 0;
+        foreach ($smartScores as $altId => $score) {
+            // Skor Borda: (n - rank)
+            $bordaScores[$altId] = $n - $rank;
+            $rank++;
+        }
 
         return $bordaScores;
+    }
+
+    /**
+     * Ambil peringkat akhir dari skor Borda
+     *
+     * @param array $bordaScores
+     * @return array [alternative_id => rank]
+     */
+    public function ranking(array $bordaScores): array
+    {
+        arsort($bordaScores);
+
+        $ranking = [];
+        $rank = 1;
+
+        foreach ($bordaScores as $altId => $score) {
+            $ranking[$altId] = $rank++;
+        }
+
+        return $ranking;
     }
 }

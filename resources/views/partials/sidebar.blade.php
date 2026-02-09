@@ -1,9 +1,13 @@
-<aside class="sidebar-container w-64 bg-primary text-white min-h-screen flex-shrink-0">
-    <div class="p-6 font-black tracking-widest border-b border-white/10 uppercase text-sm">
-        SPK Desa
+{{-- 1. Hapus bg-primary, biarkan .sidebar-container di CSS yang menentukan warna gelapnya --}}
+<aside class="sidebar-container w-64 text-white min-h-screen flex-shrink-0">
+
+    <div class="p-6 font-black tracking-widest border-b border-white/10 uppercase text-sm flex items-center gap-3">
+        {{-- 2. Tambahkan aksen warna preset di logo agar tetap ada identitas warna --}}
+        <div class="w-2 h-6 bg-primary rounded-full shadow-[0_0_10px_var(--primary)]"></div>
+        <span>SPK Desa</span>
     </div>
 
-    <nav class="p-4 space-y-2 text-sm">
+    <nav class="p-4 space-y-1.5 text-sm">
         {{-- Dashboard --}}
         <a href="{{ route('dashboard') }}"
             class="sidebar-link {{ request()->routeIs('dashboard') ? 'sidebar-link-active' : '' }}">
@@ -16,8 +20,9 @@
 
         @role('admin')
             {{-- Sesi Keputusan --}}
+            {{-- 3. Perluas pengecekan route agar menu tetap 'active' saat mengelola kriteria/alternatif --}}
             <a href="{{ route('decision-sessions.index') }}"
-                class="sidebar-link {{ request()->routeIs('decision-sessions.*') ? 'sidebar-link-active' : '' }}">
+                class="sidebar-link {{ request()->is('decision-sessions*', 'criteria*', 'alternatives*', 'dms*') ? 'sidebar-link-active' : '' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />

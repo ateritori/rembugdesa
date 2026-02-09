@@ -2,10 +2,11 @@ const COLOR_KEY = "theme-color";
 const PRESET_KEY = "theme-preset";
 const MODE_KEY = "theme-mode";
 
+// Nilai HEX di sini disamakan dengan warna di app.css
 const PRESETS = {
-    gray: "#374151",
-    green: "#166534",
-    blue: "#1e40af",
+    gray: "#4b5563",
+    green: "#15803d",
+    blue: "#2563eb",
     brown: "#78350f",
 };
 
@@ -19,6 +20,7 @@ export const initTheme = () => {
 
     // Fungsi Apply (Internal)
     const apply = (color, mode, preset) => {
+        // Mengubah variabel --primary agar sinkron ke seluruh CSS
         root.style.setProperty("--primary", color);
         root.setAttribute("data-theme-preset", preset);
 
@@ -51,10 +53,11 @@ export const initTheme = () => {
         const isDark = root.classList.contains("dark");
         const newMode = isDark ? "light" : "dark";
         localStorage.setItem(MODE_KEY, newMode);
-        apply(
-            localStorage.getItem(COLOR_KEY),
-            newMode,
-            localStorage.getItem(PRESET_KEY),
-        );
+
+        // Mengambil warna terakhir agar tidak reset ke biru saat toggle mode
+        const currentColor = localStorage.getItem(COLOR_KEY) || PRESETS.blue;
+        const currentPreset = localStorage.getItem(PRESET_KEY) || "blue";
+
+        apply(currentColor, newMode, currentPreset);
     };
 };

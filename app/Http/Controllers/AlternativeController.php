@@ -8,6 +8,18 @@ use Illuminate\Http\Request;
 
 class AlternativeController extends Controller
 {
+    public function index(DecisionSession $decisionSession)
+    {
+        $alternatives = $decisionSession->alternatives()
+            ->orderBy('order')
+            ->get();
+
+        return view('alternatives.index', compact(
+            'decisionSession',
+            'alternatives'
+        ));
+    }
+
     /**
      * Store new alternative
      */
@@ -36,7 +48,7 @@ class AlternativeController extends Controller
         ]);
 
         return redirect()
-            ->to(route('decision-sessions.show', $decisionSession->id) . '?tab=alternatives')
+            ->route('alternatives.index', $decisionSession->id)
             ->with('success', 'Alternatif berhasil ditambahkan.');
     }
 
@@ -60,7 +72,7 @@ class AlternativeController extends Controller
         ]);
 
         return redirect()
-            ->to(route('decision-sessions.show', $decisionSession->id) . '?tab=alternatives')
+            ->route('alternatives.index', $decisionSession->id)
             ->with('success', 'Alternatif berhasil diperbarui.');
     }
 
@@ -80,7 +92,7 @@ class AlternativeController extends Controller
         ]);
 
         return redirect()
-            ->to(route('decision-sessions.show', $decisionSession->id) . '?tab=alternatives')
+            ->route('alternatives.index', $decisionSession->id)
             ->with('success', 'Status alternatif diperbarui.');
     }
 
@@ -98,7 +110,7 @@ class AlternativeController extends Controller
         $alternative->delete();
 
         return redirect()
-            ->to(route('decision-sessions.show', $decisionSession->id) . '?tab=alternatives')
+            ->route('alternatives.index', $decisionSession->id)
             ->with('success', 'Alternatif berhasil dihapus.');
     }
 }

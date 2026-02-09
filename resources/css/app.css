@@ -2,7 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== MAPPING PRESET (Anti-Kelip & Dinamis) ===== */
+/* 1. VARIABLE SYSTEM (PRESET & THEME) */
+:root {
+    --primary: #2563eb;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text-main: #0f172a;
+    --text-sub: #64748b;
+    --border: #e2e8f0;
+}
+
+/* Preset Mapping */
 [data-theme-preset="gray"] {
     --primary: #4b5563;
 }
@@ -16,16 +26,7 @@
     --primary: #78350f;
 }
 
-/* ===== 1. THEME VARIABLES ===== */
-:root {
-    --primary: #2563eb;
-    --bg: #f8fafc;
-    --card: #ffffff;
-    --text-main: #0f172a;
-    --text-sub: #64748b;
-    --border: #e2e8f0;
-}
-
+/* Dark Mode Logic */
 .dark,
 [data-theme="dark"] {
     --bg: #0f172a;
@@ -35,47 +36,58 @@
     --border: rgba(255, 255, 255, 0.1);
 }
 
-/* ===== 2. GLOBAL HELPERS & RESET ===== */
+/* 2. GLOBAL ADAPTIVE RESET */
 body {
+    @apply transition-colors duration-300 antialiased;
     background-color: var(--bg);
     color: var(--text-main);
-    transition: none !important;
-    -webkit-tap-highlight-color: transparent;
 }
 
-body.adaptive-base {
-    background-color: var(--bg) !important;
-    color: var(--text-main) !important;
-}
-
-*:focus,
-*:active {
-    outline: none !important;
-    box-shadow: none !important;
-}
-
+/* Base Utility Classes */
 .bg-app {
     background-color: var(--bg) !important;
-}
-.text-app {
-    color: var(--text-main) !important;
 }
 .bg-card {
     background-color: var(--card) !important;
 }
-.border-app {
-    border-color: var(--border) !important;
-}
 .bg-primary {
     background-color: var(--primary) !important;
 }
+.text-app {
+    color: var(--text-main) !important;
+}
+.text-primary {
+    color: var(--primary) !important;
+}
+.border-app {
+    border-color: var(--border) !important;
+}
 
-/* ===== 3. ADAPTIVE CLASSES (DASHBOARD CONTENT) ===== */
+/* 3. SIDEBAR NAVIGATION (THE PRIDE) */
+.sidebar-container {
+    background-color: #1e293b; /* Tetap gelap agar kontras dengan konten */
+    @apply min-h-screen transition-transform duration-300 ease-in-out;
+}
+
+.sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-white/60;
+}
+
+.sidebar-link:hover {
+    @apply text-white bg-white/10;
+}
+
+/* State Aktif Sidebar -> Mengikuti Warna Preset */
+.sidebar-link-active {
+    background-color: var(--primary) !important;
+    @apply text-white font-bold shadow-lg shadow-black/20 translate-x-1;
+}
+
+/* 4. CONTENT COMPONENTS */
 .adaptive-card {
     background-color: var(--card) !important;
     border: 1px solid var(--border) !important;
-    border-radius: 1rem;
-    transition: none !important;
+    @apply rounded-2xl shadow-sm transition-all duration-300;
 }
 
 .adaptive-text-main {
@@ -85,111 +97,43 @@ body.adaptive-base {
     color: var(--text-sub) !important;
 }
 
-.adaptive-table-header {
-    background-color: transparent !important;
-    border-bottom: 1px solid var(--border) !important;
-}
-
-.dashboard-content a {
-    text-decoration: none;
-    transition: none !important;
-}
-
-/* ===== 4. TOMBOL KELOLA ===== */
-.btn-manage {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    background-color: var(--primary) !important;
-    color: #ffffff !important;
-    border: none !important;
-    transition:
-        transform 0.2s ease,
-        filter 0.2s ease !important;
-}
-
-.btn-manage:hover {
-    filter: brightness(110%) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-}
-
-.btn-manage:active {
-    transform: translateY(0);
-}
-
-/* ===== 5. NAVIGASI LIHAT SEMUA ===== */
-.adaptive-header-link {
+/* Navigasi Tab Sesi */
+.nav-tab-active {
     color: var(--primary) !important;
-    opacity: 0.8;
-    font-weight: 700;
-    text-decoration: none;
+    @apply relative font-bold;
 }
 
-.adaptive-header-link:hover {
-    opacity: 1 !important;
-    text-decoration: underline !important;
+.nav-tab-active::after {
+    content: "";
+    @apply absolute bottom-0 left-0 right-0 h-1 bg-current rounded-t-full;
+    background-color: var(--primary);
 }
 
-/* ===== 6. SIDEBAR LINKS ===== */
-.sidebar-link {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-radius: 0.75rem;
-    color: rgba(255, 255, 255, 0.8);
-    transition: none !important;
-}
-
-.sidebar-link:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-}
-
-.sidebar-link-active {
-    background-color: rgba(255, 255, 255, 0.2) !important;
-    color: #ffffff !important;
-    font-weight: 800 !important;
-    border-left: 4px solid white;
-    border-radius: 0 0.75rem 0.75rem 0;
-}
-
-/* ===== 7. RESPONSIVE SIDEBAR MOBILE (PERBAIKAN) ===== */
+/* 5. RESPONSIVE & OVERLAY */
 @media (max-width: 1023px) {
-    /* Overlay Latar Belakang */
     .sidebar-overlay {
-        position: fixed;
-        inset: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 40;
-        display: none; /* Sembunyi secara default */
+        @apply fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden;
     }
-
-    /* Tampilkan overlay hanya jika sidebar open */
     .sidebar-open .sidebar-overlay {
-        display: block;
+        @apply block;
     }
-
     .sidebar-container {
-        position: fixed !important;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        width: 280px; /* Atur lebar eksplisit */
-        z-index: 50;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease-in-out;
-        background-color: var(
-            --card
-        ); /* Pastikan punya background agar tidak transparan */
+        @apply fixed top-0 left-0 bottom-0 w-[280px] z-50 -translate-x-full shadow-2xl;
     }
-
     .sidebar-open .sidebar-container {
-        transform: translateX(0);
+        @apply translate-x-0;
     }
+}
+
+/* 6. MISC UTILITIES */
+button:disabled {
+    @apply opacity-40 cursor-not-allowed grayscale;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }

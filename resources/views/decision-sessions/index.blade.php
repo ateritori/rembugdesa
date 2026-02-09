@@ -3,159 +3,163 @@
 @section('title', 'Sesi Keputusan')
 
 @section('content')
-    <style>
-        /* Mengambil warna primary dari sistem Anda secara dinamis */
-        :root {
-            /* Fallback jika variabel CSS tidak ditemukan, tapi class Tailwind akan tetap mendominasi */
-            --primary-smart: var(--primary, #3b82f6);
-        }
-
-        .theme-adaptive-text {
-            color: inherit;
-        }
-
-        .theme-adaptive-subtext {
-            color: inherit;
-            opacity: 0.6;
-        }
-
-        .smart-card {
-            background-color: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(156, 163, 175, 0.15);
-        }
-
-        /* Tombol Workspace: Border & Text mengikuti warna Picked User */
-        .btn-workspace-user {
-            border: 2px solid currentColor;
-            /* Mengikuti warna teks primary */
-            background: transparent;
-            transition: all 0.2s ease-in-out;
-        }
-
-        .btn-workspace-user:hover {
-            background-color: currentColor;
-            /* Menjadi solid warna picked user */
-        }
-
-        .btn-workspace-user:hover span,
-        .btn-workspace-user:hover svg {
-            filter: brightness(0) invert(1);
-            /* Memastikan icon/teks jadi putih saat hover */
-        }
-
-        .smart-list-item:hover {
-            background-color: rgba(156, 163, 175, 0.08);
-        }
-    </style>
-
-    <div class="space-y-6 animate-in fade-in duration-500">
+    <div class="space-y-8 animate-in fade-in duration-500 pb-10">
 
         {{-- HEADER SECTION --}}
-        <div class="flex justify-between items-center">
-            <div class="theme-adaptive-text">
-                <h1 class="text-2xl font-black tracking-tight">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+            <div>
+                <h1 class="text-3xl font-black tracking-tight leading-tight adaptive-text-main">
                     Daftar Sesi Keputusan
                 </h1>
-                <p class="text-sm theme-adaptive-subtext">
-                    Kelola sesi pengambilan keputusan dengan tema pilihan Anda.
+                <p class="adaptive-text-sub mt-2 max-w-xl leading-relaxed text-sm">
+                    Atur periode pengambilan keputusan, kelola kriteria, dan pantau status seleksi dalam satu tampilan
+                    terpadu.
                 </p>
             </div>
 
-            {{-- Menggunakan bg-primary (Warna Picked User) --}}
             <a href="{{ route('decision-sessions.create') }}"
-                class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm shadow-lg hover:brightness-110 active:scale-95 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" stroke-width="3">
+                class="group flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl font-black text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
                 <span>Sesi Baru</span>
             </a>
         </div>
 
-        {{-- LIST SECTION --}}
-        <div class="smart-card rounded-2xl overflow-hidden p-2">
+        {{-- CONTENT SECTION --}}
+        <div class="grid grid-cols-1 gap-4">
             @forelse ($sessions as $s)
-                <div
-                    class="smart-list-item group flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 mb-2 last:mb-0 rounded-xl border border-transparent transition-all">
+                @php
+                    // Kita ganti warna BIRU/PURPLE statis menjadi warna PRIMARY agar selaras preset
+                    $statusConfig = match ($s->status) {
+                        'draft' => [
+                            'label' => 'Draft',
+                            'css' => 'text-slate-500 bg-slate-500/10 border-slate-500/20',
+                            'icon' =>
+                                'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+                        ],
+                        'active' => [
+                            'label' => 'Sesi Aktif',
+                            'css' => 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20',
+                            'icon' => 'M13 10V3L4 14h7v7l9-11h-7z',
+                        ],
+                        // Menggunakan warna Primary Preset untuk fase input
+                        'criteria', 'alternatives' => [
+                            'label' => $s->status === 'criteria' ? 'Input Kriteria' : 'Input Alternatif',
+                            'css' => 'text-primary bg-primary/10 border-primary/20',
+                            'icon' =>
+                                'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+                        ],
+                        'closed' => [
+                            'label' => 'Selesai',
+                            'css' => 'text-rose-600 bg-rose-500/10 border-rose-500/20',
+                            'icon' =>
+                                'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
+                        ],
+                        default => [
+                            'label' => $s->status,
+                            'css' => 'text-slate-500 bg-slate-500/10 border-slate-500/20',
+                            'icon' =>
+                                'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+                        ],
+                    };
+                @endphp
 
-                    {{-- INFO --}}
-                    <div class="flex items-center gap-4">
-                        <div
-                            class="hidden sm:flex w-12 h-12 rounded-lg bg-gray-500/10 items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
+                <div class="group adaptive-card p-5 hover:border-primary/40 transition-all duration-300">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
 
-                        <div class="theme-adaptive-text">
-                            <div class="flex items-center gap-2">
-                                <h3 class="font-bold group-hover:text-primary transition-colors">
-                                    {{ $s->name }}
-                                </h3>
-                                <span
-                                    class="text-[10px] font-black px-2 py-0.5 rounded bg-gray-500/20 text-gray-400 uppercase tracking-widest">
-                                    {{ $s->year }}
-                                </span>
-                            </div>
-                            <div class="flex items-center gap-2 mt-1">
-                                @php
-                                    $statusDot =
-                                        [
-                                            'draft' => 'bg-gray-400',
-                                            'active' => 'bg-emerald-500 animate-pulse',
-                                            'closed' => 'bg-rose-500',
-                                        ][$s->status] ?? 'bg-gray-400';
-                                @endphp
-                                <span class="w-2 h-2 rounded-full {{ $statusDot }}"></span>
-                                <span
-                                    class="text-xs font-semibold theme-adaptive-subtext capitalize">{{ $s->status }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- ACTIONS --}}
-                    <div class="flex items-center gap-3 mt-4 sm:mt-0 w-full sm:w-auto justify-end">
-
-                        {{-- Workspace: Menggunakan text-primary (Picked User) untuk border dan teks --}}
-                        <a href="{{ route('decision-sessions.show', $s->id) }}"
-                            class="btn-workspace-user text-primary inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wide">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10" />
-                            </svg>
-                            <span>Workspace</span>
-                        </a>
-
-                        @if ($s->status === 'draft')
-                            <a href="{{ route('decision-sessions.edit', $s->id) }}"
-                                class="p-2 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 transition-all">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M16.862 3.487a2.1 2.1 0 013.02 3.02L7.5 18.889l-4.5 1.125 1.125-4.5L16.862 3.487z" />
+                        <div class="flex items-start gap-5 w-full">
+                            {{-- Icon Box Dinamis --}}
+                            <div
+                                class="shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center bg-app border border-app {{ $statusConfig['css'] }}">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="{{ $statusConfig['icon'] }}" />
                                 </svg>
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-3 mb-1.5">
+                                    <h3
+                                        class="text-lg font-black adaptive-text-main truncate group-hover:text-primary transition-colors">
+                                        {{ $s->name }}
+                                    </h3>
+                                    {{-- Tag Status Vibrant --}}
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border {{ $statusConfig['css'] }}">
+                                        @if ($s->status === 'active')
+                                            <span class="relative flex h-2 w-2 mr-1.5">
+                                                <span
+                                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75"></span>
+                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-current"></span>
+                                            </span>
+                                        @endif
+                                        {{ $statusConfig['label'] }}
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center gap-4">
+                                    <span
+                                        class="flex items-center gap-1.5 text-xs font-black text-primary px-2 py-0.5 bg-primary/10 rounded-lg">
+                                        Periode {{ $s->year }}
+                                    </span>
+                                    <span
+                                        class="text-[11px] adaptive-text-sub opacity-60 font-bold flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        {{ $s->created_at->translatedFormat('d M Y') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ACTIONS --}}
+                        <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+                            <a href="{{ route('criteria.index', $s->id) }}"
+                                class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-sm shadow-primary/20">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                                <span>Kelola</span>
                             </a>
 
-                            <form method="POST" action="{{ route('decision-sessions.destroy', $s->id) }}"
-                                onsubmit="return confirm('Hapus sesi ini?')">
-                                @csrf @method('DELETE')
-                                <button type="submit"
-                                    class="p-2 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
-                            </form>
-                        @endif
+                            @if ($s->status === 'draft')
+                                <div class="flex items-center gap-1 ml-2">
+                                    <a href="{{ route('decision-sessions.edit', $s->id) }}"
+                                        class="p-2 adaptive-text-sub hover:text-primary hover:bg-primary/10 rounded-lg transition-all">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="2">
+                                            <path
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </a>
+
+                                    <form method="POST" action="{{ route('decision-sessions.destroy', $s->id) }}"
+                                        onsubmit="return confirm('Hapus sesi ini?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit"
+                                            class="p-2 adaptive-text-sub hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all">
+                                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                stroke-width="2">
+                                                <path
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
             @empty
-                <div class="py-20 text-center theme-adaptive-subtext">
-                    <p class="text-sm font-bold uppercase tracking-widest">Belum ada sesi keputusan.</p>
+                <div
+                    class="flex flex-col items-center justify-center py-24 adaptive-card border-dashed border-2 bg-transparent">
+                    <p class="text-[10px] font-black uppercase tracking-[0.3em] adaptive-text-sub opacity-30">Belum Ada Sesi
+                        Tersedia</p>
                 </div>
             @endforelse
         </div>

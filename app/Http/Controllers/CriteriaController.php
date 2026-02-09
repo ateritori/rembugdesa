@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Criteria;
+use App\Models\CriteriaScoringRule;
 use App\Models\DecisionSession;
 use Illuminate\Http\Request;
 
@@ -14,7 +15,17 @@ class CriteriaController extends Controller
             ->orderBy('order')
             ->get();
 
-        return view('criteria.index', compact('decisionSession', 'criteria'));
+        $scoringRules = CriteriaScoringRule::with('parameters')
+            ->whereIn('criteria_id', $criteria->pluck('id'))
+            ->where('decision_session_id', $decisionSession->id)
+            ->get()
+            ->keyBy('criteria_id');
+
+        return view('criteria.index', compact(
+            'decisionSession',
+            'criteria',
+            'scoringRules'
+        ));
     }
 
     public function store(Request $request, DecisionSession $decisionSession)
@@ -35,7 +46,7 @@ class CriteriaController extends Controller
         ]);
 
         return redirect()
-            ->to(route('decision-sessions.show', $decisionSession->id) . '?tab=criteria')
+            ->route('criteria.index', $decisionSession->id)
             ->with('success', 'Kriteria berhasil ditambahkan.');
     }
 
@@ -55,7 +66,7 @@ class CriteriaController extends Controller
         $decisionSession = $criteria->decisionSession;
 
         return redirect()
-            ->to(route('decision-sessions.show', $decisionSession->id) . '?tab=criteria')
+            ->route('criteria.index', $decisionSession->id)
             ->with('success', 'Kriteria berhasil diperbarui.');
     }
 
@@ -72,7 +83,7 @@ class CriteriaController extends Controller
         $decisionSession = $criteria->decisionSession;
 
         return redirect()
-            ->to(route('decision-sessions.show', $decisionSession->id) . '?tab=criteria')
+            ->route('criteria.index', $decisionSession->id)
             ->with('success', 'Status kriteria diperbarui.');
     }
 
@@ -87,7 +98,7 @@ class CriteriaController extends Controller
         $decisionSession = $criteria->decisionSession;
 
         return redirect()
-            ->to(route('decision-sessions.show', $decisionSession->id) . '?tab=criteria')
+            ->route('criteria.index', $decisionSession->id)
             ->with('success', 'Kriteria berhasil dihapus.');
     }
 
@@ -97,7 +108,7 @@ class CriteriaController extends Controller
     {
         if ($decisionSession->status !== 'draft') {
             return redirect()
-                ->back()
+                ->route('criteria.index', $decisionSession->id)
                 ->with('error', 'Sesi sudah aktif. Perubahan kriteria tidak diperbolehkan.');
         }
 

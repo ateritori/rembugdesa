@@ -6,6 +6,12 @@ use App\Http\Controllers\DecisionSessionController;
 use App\Http\Controllers\CriteriaController;
 use App\Http\Controllers\AlternativeController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AhpPairwiseController;
+use App\Http\Controllers\CriteriaAggregationController;
+use App\Http\Controllers\DecisionResultController;
+use App\Http\Controllers\DecisionMakerController;
+use App\Http\Controllers\DecisionControlController;
+use App\Http\Controllers\CriteriaScoringRuleController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -19,15 +25,25 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    Route::get(
-        '/decision-sessions/{decisionSession}',
-        [DecisionSessionController::class, 'show']
-    )->name('decision-sessions.show');
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/decision-sessions', [DecisionSessionController::class, 'index'])->name('decision-sessions.index');
+
+    Route::get('/decision-sessions/create', [DecisionSessionController::class, 'create'])->name('decision-sessions.create');
+
+
+    Route::get(
+        '/decision-sessions/{decisionSession}/edit',
+        [DecisionSessionController::class, 'edit']
+    )->name('decision-sessions.edit');
+
+    Route::post('/decision-sessions', [DecisionSessionController::class, 'store'])->name('decision-sessions.store');
+
+    Route::get(
+        '/decision-sessions/{decisionSession}/criteria',
+        [CriteriaController::class, 'index']
+    )->name('criteria.index');
 
     Route::post(
         '/decision-sessions/{decisionSession}/criteria',
@@ -49,7 +65,18 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         [CriteriaController::class, 'destroy']
     )->name('criteria.destroy');
 
+    // ================= CRITERIA SCORING RULE =================
+    Route::post(
+        '/criteria/{criteria}/scoring-rule',
+        [CriteriaScoringRuleController::class, 'store']
+    )->name('criteria.scoring.store');
+
     // ================= ALTERNATIVES =================
+
+    Route::get(
+        '/decision-sessions/{decisionSession}/alternatives',
+        [AlternativeController::class, 'index']
+    )->name('alternatives.index');
 
     Route::post(
         '/decision-sessions/{decisionSession}/alternatives',
@@ -71,13 +98,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         [AlternativeController::class, 'destroy']
     )->name('alternatives.destroy');
 
-    Route::get('/decision-sessions/create', [DecisionSessionController::class, 'create'])->name('decision-sessions.create');
-    Route::post('/decision-sessions', [DecisionSessionController::class, 'store'])->name('decision-sessions.store');
+    // ================= CONTROL =================
 
     Route::get(
-        '/decision-sessions/{decisionSession}/edit',
-        [DecisionSessionController::class, 'edit']
-    )->name('decision-sessions.edit');
+        '/decision-sessions/{decisionSession}/control',
+        [DecisionControlController::class, 'index']
+    )->name('control.index');
 
     Route::put(
         '/decision-sessions/{decisionSession}',
@@ -91,7 +117,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::patch(
         '/decision-sessions/{decisionSession}/lock-criteria',
-        [DecisionSessionController::class, 'lockCriteria']
+        [CriteriaAggregationController::class, 'lock']
     )->name('decision-sessions.lock-criteria');
 
     Route::patch(
@@ -99,28 +125,50 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         [DecisionSessionController::class, 'close']
     )->name('decision-sessions.close');
 
-    Route::post(
-        '/decision-sessions/{decisionSession}/assign-dm',
+    Route::get(
+        '/decision-sessions/{decisionSession}/assign-dms',
         [DecisionSessionController::class, 'assignDms']
-    )->name('decision-sessions.assign-dm');
+    )->name('decision-sessions.assign-dms');
+
+    Route::post(
+        '/decision-sessions/{decisionSession}/assign-dms',
+        [DecisionSessionController::class, 'storeAssignedDms']
+    )->name('decision-sessions.assign-dms.store');
 
     Route::delete(
         '/decision-sessions/{decisionSession}',
         [DecisionSessionController::class, 'destroy']
     )->name('decision-sessions.destroy');
-
-    Route::post(
-        '/decision-sessions/{decisionSession}/aggregate-criteria-weight',
-        [DecisionSessionController::class, 'aggregateCriteriaWeight']
-    )->name('decision-sessions.aggregate-criteria-weight');
 });
 
 Route::middleware(['auth'])->group(function () {
 
+
+    Route::get(
+        '/decision-sessions/{decisionSession}/dms',
+        [DecisionMakerController::class, 'index']
+    )->name('dms.index')
+        ->middleware('role:dm');
+
+    // DM workspace: alternative evaluations (must come after workspace, and be DM-only)
+    Route::post(
+        '/decision-sessions/{decisionSession}/alternative-evaluations',
+        [\App\Http\Controllers\AlternativeEvaluationController::class, 'store']
+    )->name('alternative-evaluations.store')
+        ->middleware('role:dm');
+
     Route::post(
         '/decision-sessions/{decisionSession}/pairwise',
-        [DecisionSessionController::class, 'storePairwise']
-    )->name('decision-sessions.pairwise.store');
+        [AhpPairwiseController::class, 'store']
+    )->name('decision-sessions.pairwise.store')
+        ->middleware('role:dm');
+
+    Route::get(
+        '/decision-sessions/{decisionSession}/result',
+        [DecisionResultController::class, 'show']
+    )->name('decision-sessions.result')
+        ->middleware('role:admin');
 });
+
 
 require __DIR__ . '/auth.php';
