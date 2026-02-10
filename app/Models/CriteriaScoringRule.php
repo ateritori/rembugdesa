@@ -31,6 +31,12 @@ class CriteriaScoringRule extends Model
         return $this->hasMany(CriteriaScoringParameter::class, 'scoring_rule_id');
     }
 
+    public function scaleItems()
+    {
+        return $this->hasMany(CriteriaScoringScaleItem::class, 'scoring_rule_id')
+            ->orderBy('ordinal');
+    }
+
     /* ================= HELPERS ================= */
 
     /**

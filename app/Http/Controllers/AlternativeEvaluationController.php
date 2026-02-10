@@ -11,6 +11,41 @@ use Illuminate\Http\Request;
 
 class AlternativeEvaluationController extends Controller
 {
+    public function index(DecisionSession $decisionSession)
+    {
+        // Guard role & authentication
+        abort_if(! auth()->check() || ! auth()->user()->hasRole('dm'), 403);
+
+        // Guard status: hanya boleh di fase alternatives
+        abort_if($decisionSession->status !== 'alternatives', 403);
+
+        $dmId = auth()->id();
+
+        // Ambil alternatif aktif
+        $alternatives = $decisionSession->alternatives()
+            ->where('is_active', true)
+            ->get();
+
+        // Ambil kriteria beserta rule penilaian
+        $criteria = $decisionSession->criteria()
+            ->with(['scoringRule', 'scoringRule.parameters'])
+            ->get();
+
+        // Ambil penilaian yang sudah ada
+        $evaluations = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
+            ->where('dm_id', $dmId)
+            ->get()
+            ->groupBy('alternative_id')
+            ->map(fn($items) => $items->keyBy('criteria_id'));
+
+        return view('alternative-evaluations.index', [
+            'decisionSession' => $decisionSession,
+            'alternatives'    => $alternatives,
+            'criteria'        => $criteria,
+            'evaluations'     => $evaluations,
+        ]);
+    }
+
     public function store(
         Request $request,
         DecisionSession $decisionSession,

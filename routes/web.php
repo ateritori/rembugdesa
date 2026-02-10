@@ -157,6 +157,12 @@ Route::middleware(['auth'])->group(function () {
     )->name('dms.index')
         ->middleware('role:dm');
 
+    Route::get(
+        '/decision-sessions/{decisionSession}/alternative-evaluations',
+        [\App\Http\Controllers\AlternativeEvaluationController::class, 'index']
+    )->name('alternative-evaluations.index')
+        ->middleware('role:dm');
+
     // DM workspace: alternative evaluations (must come after workspace, and be DM-only)
     Route::post(
         '/decision-sessions/{decisionSession}/alternative-evaluations',

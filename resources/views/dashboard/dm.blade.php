@@ -93,13 +93,13 @@
                             <div class="flex flex-col">
                                 <span class="text-[9px] font-black uppercase tracking-widest opacity-40">Status Sesi</span>
                                 <div class="mt-1">
-                                    @if ($session->status === 'active')
-                                        <span
-                                            class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase">Active</span>
-                                    @elseif($session->status === 'draft')
+                                    @if ($session->status === 'draft')
                                         <span
                                             class="px-2 py-0.5 rounded-md bg-gray-500/10 text-gray-500 text-[10px] font-black uppercase">Draft</span>
-                                    @else
+                                    @elseif (in_array($session->status, ['active', 'criteria', 'alternatives']))
+                                        <span
+                                            class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase">Active</span>
+                                    @elseif ($session->status === 'closed')
                                         <span
                                             class="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 text-[10px] font-black uppercase">Closed</span>
                                     @endif
@@ -132,14 +132,23 @@
                         </div>
                     </div>
 
-                    <div class="mt-8">
-                        @if ($session->status === 'active')
-                            <a href="{{ route('dms.index', $session->id) }}"
+                    <div
+                        class="mt-8{{ in_array($session->status, ['active', 'criteria', 'alternatives']) ? ' space-y-2' : '' }}">
+                        @if (in_array($session->status, ['active', 'criteria', 'alternatives']))
+                            <a href="{{ $session->status === 'alternatives'
+                                ? route('alternative-evaluations.index', $session->id)
+                                : route('dms.index', $session->id) }}"
                                 class="inline-flex items-center justify-center w-full px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all
-                                {{ $weight
-                                    ? 'border-2 border-primary/20 text-primary hover:bg-primary hover:text-white'
-                                    : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95' }}">
-                                {{ $weight ? 'Lihat / Perbarui Bobot' : 'Mulai Perbandingan' }}
+                                {{ $session->status === 'alternatives'
+                                    ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95'
+                                    : ($weight
+                                        ? 'border-2 border-primary/20 text-primary hover:bg-primary hover:text-white'
+                                        : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95') }}">
+                                {{ $session->status === 'alternatives'
+                                    ? 'Penilaian Alternatif'
+                                    : ($weight
+                                        ? 'Lihat / Perbarui Bobot'
+                                        : 'Mulai Perbandingan') }}
                                 <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                         d="M14 5l7 7m0 0l-7 7m7-7H3" />

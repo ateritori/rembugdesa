@@ -39,4 +39,9 @@ class Criteria extends Model
     {
         return $this->hasOne(CriteriaWeight::class);
     }
+
+    public function scoringRule()
+    {
+        return $this->hasOne(CriteriaScoringRule::class, 'criteria_id');
+    }
 }

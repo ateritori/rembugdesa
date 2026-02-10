@@ -9,6 +9,7 @@ class UtilityTransformService
 {
     /**
      * Transform raw value menjadi utility (0–1)
+     * Menggunakan definisi utility yang disimpan di criteria_scoring_parameters (JSON)
      */
     public function transform(
         CriteriaScoringRule $rule,
@@ -22,7 +23,7 @@ class UtilityTransformService
     }
 
     /* =======================================================
-     * ORDINAL
+     * ORDINAL (SCALE-BASED, VIA JSON PARAMETER)
      * =======================================================
      */
 
@@ -30,25 +31,27 @@ class UtilityTransformService
         CriteriaScoringRule $rule,
         int $value
     ): float {
-        $min = (int) $rule->getParameter('scale_min');
-        $max = (int) $rule->getParameter('scale_max');
+        // Ambil range skala
+        $range = json_decode($rule->getParameter('scale_range'), true);
+        $min   = (int) ($range['min'] ?? 0);
+        $max   = (int) ($range['max'] ?? 0);
 
         if ($value < $min || $value > $max) {
             throw new InvalidArgumentException('Ordinal value out of range');
         }
 
-        // Normalisasi ordinal → 0–1
-        $normalized = ($value - $min) / max(($max - $min), 1);
+        // Ambil utility referensi per skala
+        $utilities = json_decode($rule->getParameter('scale_utilities'), true);
 
-        return $this->applyPreference(
-            $normalized,
-            $rule->preference_type,
-            $rule->curve_param
-        );
+        if (! is_array($utilities) || ! array_key_exists($value, $utilities)) {
+            throw new InvalidArgumentException('Utility value for ordinal scale not defined');
+        }
+
+        return (float) $utilities[$value];
     }
 
     /* =======================================================
-     * NUMERIC
+     * NUMERIC (LINEAR NORMALIZATION + PREFERENCE CURVE)
      * =======================================================
      */
 
