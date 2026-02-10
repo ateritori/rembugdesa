@@ -6,9 +6,33 @@ use App\Models\DecisionSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\AHP\AhpIndividualSubmissionService;
+use App\Models\CriteriaWeight;
 
 class AhpPairwiseController extends Controller
 {
+    /**
+     * Show pairwise comparison workspace.
+     */
+    public function index(DecisionSession $decisionSession)
+    {
+        $user = Auth::user();
+
+        abort_if(! $user || ! $user->hasRole('dm'), 403);
+        abort_if(
+            ! in_array($decisionSession->status, ['active', 'criteria', 'alternatives', 'closed'], true),
+            403
+        );
+
+        $existingResult = CriteriaWeight::where('decision_session_id', $decisionSession->id)
+            ->where('dm_id', $user->id)
+            ->first();
+
+        return view('dms.weights.index', [
+            'decisionSession' => $decisionSession,
+            'existingResult'  => $existingResult,
+        ]);
+    }
+
     /**
      * Store pairwise comparison submitted by Decision Maker.
      */

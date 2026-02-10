@@ -135,20 +135,14 @@
                     <div
                         class="mt-8{{ in_array($session->status, ['active', 'criteria', 'alternatives']) ? ' space-y-2' : '' }}">
                         @if (in_array($session->status, ['active', 'criteria', 'alternatives']))
-                            <a href="{{ $session->status === 'alternatives'
-                                ? route('alternative-evaluations.index', $session->id)
-                                : route('dms.index', $session->id) }}"
+                            <a href="{{ route('dms.index', $session->id) }}"
                                 class="inline-flex items-center justify-center w-full px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all
                                 {{ $session->status === 'alternatives'
                                     ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95'
                                     : ($weight
                                         ? 'border-2 border-primary/20 text-primary hover:bg-primary hover:text-white'
                                         : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95') }}">
-                                {{ $session->status === 'alternatives'
-                                    ? 'Penilaian Alternatif'
-                                    : ($weight
-                                        ? 'Lihat / Perbarui Bobot'
-                                        : 'Mulai Perbandingan') }}
+                                Masuk Workspace
                                 <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                         d="M14 5l7 7m0 0l-7 7m7-7H3" />

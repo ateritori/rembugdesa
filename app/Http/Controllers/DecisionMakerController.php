@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DecisionSession;
+use App\Models\CriteriaWeight;
 
 class DecisionMakerController extends Controller
 {
@@ -49,6 +50,23 @@ class DecisionMakerController extends Controller
             'criterias',
             'existingPairwise',
             'criteriaWeights'
+        ));
+    }
+    public function groupWeights(DecisionSession $decisionSession)
+    {
+        abort_if(
+            ! $decisionSession->dms()->where('users.id', auth()->id())->exists(),
+            403,
+            'Anda tidak ditugaskan pada sesi ini.'
+        );
+
+        $groupResult = CriteriaWeight::where('decision_session_id', $decisionSession->id)
+            ->whereNull('dm_id')
+            ->first();
+
+        return view('dms.group-weights.index', compact(
+            'decisionSession',
+            'groupResult'
         ));
     }
 }

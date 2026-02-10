@@ -158,6 +158,12 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:dm');
 
     Route::get(
+        '/decision-sessions/{decisionSession}/dms/group-weights',
+        [DecisionMakerController::class, 'groupWeights']
+    )->name('dms.group-weights.index')
+        ->middleware('role:dm');
+
+    Route::get(
         '/decision-sessions/{decisionSession}/alternative-evaluations',
         [\App\Http\Controllers\AlternativeEvaluationController::class, 'index']
     )->name('alternative-evaluations.index')
@@ -170,6 +176,12 @@ Route::middleware(['auth'])->group(function () {
     )->name('alternative-evaluations.store')
         ->middleware('role:dm');
 
+    Route::get(
+        '/decision-sessions/{decisionSession}/pairwise',
+        [AhpPairwiseController::class, 'index']
+    )->name('decision-sessions.pairwise.index')
+        ->middleware('role:dm');
+
     Route::post(
         '/decision-sessions/{decisionSession}/pairwise',
         [AhpPairwiseController::class, 'store']
@@ -180,7 +192,7 @@ Route::middleware(['auth'])->group(function () {
         '/decision-sessions/{decisionSession}/result',
         [DecisionResultController::class, 'show']
     )->name('decision-sessions.result')
-        ->middleware('role:admin');
+        ->middleware('role:admin|dm');
 });
 
 

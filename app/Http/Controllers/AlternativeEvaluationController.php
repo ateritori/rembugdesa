@@ -33,7 +33,11 @@ class AlternativeEvaluationController extends Controller
             ->groupBy('alternative_id')
             ->map(fn($items) => $items->keyBy('criteria_id'));
 
-        return view('alternative-evaluations.index', [
+        $view = auth()->user()->hasRole('dm')
+            ? 'dms.alternative-evaluations.index'
+            : 'alternative-evaluations.index';
+
+        return view($view, [
             'decisionSession' => $decisionSession,
             'alternatives'    => $alternatives,
             'criteria'        => $criteria,

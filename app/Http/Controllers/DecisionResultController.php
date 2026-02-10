@@ -43,7 +43,11 @@ class DecisionResultController extends Controller
             ];
         }
 
-        return view('decision-sessions.result', [
+        $view = auth()->check() && auth()->user()->hasRole('dm')
+            ? 'dms.summary.index'
+            : 'decision-sessions.result';
+
+        return view($view, [
             'decisionSession' => $decisionSession,
             'rows'            => $rows,
         ]);
