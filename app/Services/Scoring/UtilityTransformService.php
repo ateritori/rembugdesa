@@ -16,9 +16,11 @@ class UtilityTransformService
         float|int $rawValue
     ): float {
         return match ($rule->input_type) {
-            'ordinal' => $this->transformOrdinal($rule, (int) $rawValue),
-            'numeric' => $this->transformNumeric($rule, (float) $rawValue),
-            default   => throw new InvalidArgumentException('Unsupported input type'),
+            'scale', 'ordinal' => $this->transformOrdinal($rule, (int) $rawValue),
+            'numeric'          => $this->transformNumeric($rule, (float) $rawValue),
+            default            => throw new InvalidArgumentException(
+                'Unsupported input type: ' . $rule->input_type
+            ),
         };
     }
 
@@ -31,23 +33,50 @@ class UtilityTransformService
         CriteriaScoringRule $rule,
         int $value
     ): float {
-        // Ambil range skala
-        $range = json_decode($rule->getParameter('scale_range'), true);
-        $min   = (int) ($range['min'] ?? 0);
-        $max   = (int) ($range['max'] ?? 0);
+        // 1) Ambil range skala (opsional, hanya untuk guard ringan)
+        $rangeParam = $rule->getParameter('scale_range');
+        $range = is_string($rangeParam)
+            ? json_decode($rangeParam, true)
+            : (is_array($rangeParam) ? $rangeParam : []);
 
-        if ($value < $min || $value > $max) {
-            throw new InvalidArgumentException('Ordinal value out of range');
+        if (isset($range['min'], $range['max'])) {
+            if ($value < (int) $range['min'] || $value > (int) $range['max']) {
+                throw new InvalidArgumentException('Ordinal value out of range');
+            }
         }
 
-        // Ambil utility referensi per skala
-        $utilities = json_decode($rule->getParameter('scale_utilities'), true);
+        // 2) Ambil utilities (WAJIB ADA)
+        $utilitiesParam = $rule->getParameter('scale_utilities');
+        $utilitiesRaw = is_string($utilitiesParam)
+            ? json_decode($utilitiesParam, true)
+            : (is_array($utilitiesParam) ? $utilitiesParam : null);
 
-        if (! is_array($utilities) || ! array_key_exists($value, $utilities)) {
-            throw new InvalidArgumentException('Utility value for ordinal scale not defined');
+        if (! is_array($utilitiesRaw) || empty($utilitiesRaw)) {
+            // Fail-safe: utilities belum didefinisikan → default utility minimum
+            return 0.0;
         }
 
-        return (float) $utilities[$value];
+        // 3) Normalisasi key & value utilities
+        //    - key -> string
+        //    - value -> float
+        $utilities = [];
+        foreach ($utilitiesRaw as $k => $v) {
+            $utilities[(string) $k] = (float) $v;
+        }
+
+        // 4) Ambil utility berdasarkan ordinal
+        $key = (string) $value;
+
+        // Fallback: jika key tidak ada, tapi hanya satu utility (misalnya skala 1)
+        if (! array_key_exists($key, $utilities)) {
+            if (count($utilities) === 1) {
+                return (float) array_values($utilities)[0];
+            }
+
+            return 0.0;
+        }
+
+        return $utilities[$key];
     }
 
     /* =======================================================

@@ -6,6 +6,30 @@
 
     @include('decision-sessions.partials.nav')
 
+    {{-- NOTIFICATION --}}
+    @if (session('success'))
+        <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-xl">
+            <p class="text-sm font-bold">{{ session('success') }}</p>
+        </div>
+    @endif
+
+    @if (session('warning'))
+        <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-xl">
+            <p class="text-sm font-bold">{{ session('warning') }}</p>
+        </div>
+    @endif
+
+    @if ($errors->any())
+        <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl">
+            <p class="text-sm font-bold mb-1">Penilaian belum lengkap:</p>
+            <ul class="list-disc list-inside text-xs space-y-1">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('alternative-evaluations.store', $decisionSession->id) }}">
         @csrf
 
@@ -64,6 +88,7 @@
                                                             class="flex items-center gap-2 cursor-pointer group text-xs text-gray-600 hover:text-app">
                                                             <input type="radio"
                                                                 name="evaluations[{{ $a->id }}][{{ $c->id }}]"
+                                                                {{ $loop->first ? 'required' : '' }}
                                                                 value="{{ $value }}" @checked(optional($evaluation)->raw_value == $value)
                                                                 class="w-4 h-4 text-app border-gray-300">
                                                             {{ $label }}
@@ -130,7 +155,8 @@
                                                     {{-- Kita buat inputnya terlihat dan besar agar mudah diklik jempol --}}
                                                     <input type="radio"
                                                         name="evaluations[{{ $a->id }}][{{ $c->id }}]"
-                                                        value="{{ $value }}" @checked(optional($evaluation)->raw_value == $value)
+                                                        {{ $loop->first ? 'required' : '' }} value="{{ $value }}"
+                                                        @checked(optional($evaluation)->raw_value == $value)
                                                         class="w-6 h-6 text-app border-gray-300 focus:ring-app">
 
                                                     <span
