@@ -9,13 +9,13 @@ use InvalidArgumentException;
 class SmartRankingService
 {
     /**
-     * Hitung skor SMART per alternatif
+     * Hitung skor SMART per alternatif untuk SATU DM
      *
      * @return array [alternative_id => score]
      */
-    public function calculate(int $decisionSessionId): array
+    public function calculate(int $decisionSessionId, int $dmId): array
     {
-        // Ambil bobot kriteria kelompok
+        // Ambil bobot kelompok
         $groupWeight = CriteriaWeight::where('decision_session_id', $decisionSessionId)
             ->whereNull('dm_id')
             ->first();
@@ -24,24 +24,25 @@ class SmartRankingService
             throw new InvalidArgumentException('Bobot kriteria kelompok belum tersedia.');
         }
 
-        $weights = $groupWeight->weights; // [criteria_id => weight]
+        $weights = $groupWeight->weights;
 
-        // Ambil seluruh utilitas penilaian alternatif
+        // 🔥 FILTER DM (INI KUNCI)
         $evaluations = AlternativeEvaluation::where('decision_session_id', $decisionSessionId)
+            ->where('dm_id', $dmId)
             ->get();
 
         if ($evaluations->isEmpty()) {
-            throw new InvalidArgumentException('Data penilaian alternatif belum tersedia.');
+            throw new InvalidArgumentException('Penilaian DM belum tersedia.');
         }
 
         $scores = [];
 
         foreach ($evaluations as $eval) {
-            $altId = $eval->alternative_id;
+            $altId  = $eval->alternative_id;
             $critId = $eval->criteria_id;
 
             if (! isset($weights[$critId])) {
-                continue; // safety
+                continue;
             }
 
             $scores[$altId] ??= 0;

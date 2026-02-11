@@ -3,18 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\AlternativeEvaluation;
-use App\Models\Criteria;
 use App\Models\CriteriaScoringRule;
 use App\Models\DecisionSession;
 use App\Services\Scoring\UtilityTransformService;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 
 class AlternativeEvaluationController extends Controller
 {
+    /**
+     * Form penilaian alternatif (DM)
+     */
     public function index(DecisionSession $decisionSession)
     {
         abort_if(! auth()->check() || ! auth()->user()->hasRole('dm'), 403);
+
+        // Penilaian hanya boleh saat tahap alternatives
         abort_if($decisionSession->status !== 'alternatives', 403);
 
         $dmId = auth()->id();
@@ -27,17 +31,14 @@ class AlternativeEvaluationController extends Controller
             ->with(['scoringRule', 'scoringRule.parameters'])
             ->get();
 
+        // Ambil penilaian DM (jika sudah pernah mengisi)
         $evaluations = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
             ->where('dm_id', $dmId)
             ->get()
             ->groupBy('alternative_id')
             ->map(fn($items) => $items->keyBy('criteria_id'));
 
-        $view = auth()->user()->hasRole('dm')
-            ? 'dms.alternative-evaluations.index'
-            : 'alternative-evaluations.index';
-
-        return view($view, [
+        return view('dms.alternative-evaluations.index', [
             'decisionSession' => $decisionSession,
             'alternatives'    => $alternatives,
             'criteria'        => $criteria,
@@ -45,6 +46,9 @@ class AlternativeEvaluationController extends Controller
         ]);
     }
 
+    /**
+     * Simpan penilaian alternatif (DM)
+     */
     public function store(
         Request $request,
         DecisionSession $decisionSession,
@@ -58,9 +62,9 @@ class AlternativeEvaluationController extends Controller
 
         $validated = $request->validate(
             [
-                'evaluations' => ['required', 'array', 'min:1'],
-                'evaluations.*' => ['array', 'min:1'],
-                'evaluations.*.*' => ['required', 'numeric'],
+                'evaluations'       => ['required', 'array', 'min:1'],
+                'evaluations.*'     => ['array', 'min:1'],
+                'evaluations.*.*'   => ['required', 'numeric'],
             ],
             [
                 'evaluations.required' => 'Penilaian belum diisi.',
@@ -73,6 +77,7 @@ class AlternativeEvaluationController extends Controller
         foreach ($validated['evaluations'] as $alternativeId => $criteriaValues) {
             foreach ($criteriaValues as $criteriaId => $rawValue) {
 
+                // Ambil scoring rule (global atau khusus sesi)
                 $rule = CriteriaScoringRule::where('criteria_id', $criteriaId)
                     ->where(function ($q) use ($decisionSession) {
                         $q->whereNull('decision_session_id')
@@ -80,6 +85,7 @@ class AlternativeEvaluationController extends Controller
                     })
                     ->firstOrFail();
 
+                // Transform ke utility 0–1
                 $utilityValue = $utilityService->transform($rule, $rawValue);
 
                 AlternativeEvaluation::updateOrCreate(
@@ -97,10 +103,8 @@ class AlternativeEvaluationController extends Controller
             }
         }
 
-        if (empty($validated['evaluations'])) {
-            return back()->with('warning', 'Tidak ada penilaian yang disimpan.');
-        }
-
-        return back()->with('success', 'Semua penilaian alternatif berhasil disimpan.');
+        return redirect()
+            ->route('decision-sessions.summary', $decisionSession->id)
+            ->with('success', 'Penilaian berhasil disimpan.');
     }
 }
