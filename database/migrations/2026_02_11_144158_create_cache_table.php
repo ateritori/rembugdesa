@@ -11,12 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('criteria', function (Blueprint $table) {
-            $table->id();
-            $table->string('code')->unique(); // C1, C2, ...
-            $table->string('name');
-            $table->enum('type', ['benefit', 'cost']);
-            $table->timestamps();
+        Schema::create('cache', function (Blueprint $table) {
+            $table->string('key')->primary();
+            $table->mediumText('value');
+            $table->integer('expiration')->index();
         });
     }
 
@@ -25,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('criteria');
+        Schema::dropIfExists('cache');
     }
 };

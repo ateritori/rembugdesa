@@ -6,28 +6,26 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::create('criteria', function (Blueprint $table) {
-            $table->id();
-
-            $table->foreignId('decision_session_id')
-                ->constrained()
-                ->cascadeOnDelete();
-
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('decision_session_id')->index('criteria_decision_session_id_foreign');
             $table->string('name');
-
             $table->enum('type', ['benefit', 'cost']);
-
             $table->boolean('is_active')->default(true);
-
             $table->integer('order')->default(0);
-
             $table->timestamps();
             $table->softDeletes();
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::dropIfExists('criteria');

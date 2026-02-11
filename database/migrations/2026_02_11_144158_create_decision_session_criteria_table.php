@@ -4,23 +4,26 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::create('decision_session_criteria', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('decision_session_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->foreignId('criteria_id')
-                ->constrained('criteria')
-                ->cascadeOnDelete();
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('decision_session_id');
+            $table->unsignedBigInteger('criteria_id')->index('decision_session_criteria_criteria_id_foreign');
             $table->timestamps();
 
             $table->unique(['decision_session_id', 'criteria_id']);
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::dropIfExists('decision_session_criteria');

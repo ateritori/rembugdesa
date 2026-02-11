@@ -6,26 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::create('decision_session_dm', function (Blueprint $table) {
-            $table->id();
-
-            $table->foreignId('decision_session_id')
-                ->constrained()
-                ->cascadeOnDelete();
-
-            $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete();
-
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('decision_session_id');
+            $table->unsignedBigInteger('user_id')->index('decision_session_dm_user_id_foreign');
             $table->timestamps();
 
-            // satu DM tidak boleh di-assign dua kali ke sesi yang sama
             $table->unique(['decision_session_id', 'user_id']);
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::dropIfExists('decision_session_dm');
