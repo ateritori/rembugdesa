@@ -11,20 +11,34 @@ class SuperAdminSeeder extends Seeder
 {
     public function run(): void
     {
-        $role = Role::firstOrCreate([
-            'name' => 'superadmin',
-        ]);
+        // Roles
+        $superadminRole = Role::firstOrCreate(['name' => 'superadmin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
 
-        $user = User::firstOrCreate(
-            ['email' => 'superadmin@desa.id'],
+        // Super Admin
+        $superadmin = User::firstOrCreate(
+            ['email' => 'superadmin@wonosarigk.id'],
             [
-                'name' => 'superadmin',
-                'password' => Hash::make('admin234'),
+                'name' => 'Super Admin',
+                'password' => Hash::make('wildundan'),
             ]
         );
 
-        if (! $user->hasRole($role)) {
-            $user->assignRole($role);
+        if (! $superadmin->hasRole($superadminRole)) {
+            $superadmin->assignRole($superadminRole);
+        }
+
+        // Admin
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@wonosarigk.id'],
+            [
+                'name' => 'Admin Keputusan',
+                'password' => Hash::make('wildundan'),
+            ]
+        );
+
+        if (! $admin->hasRole($adminRole)) {
+            $admin->assignRole($adminRole);
         }
     }
 }
