@@ -10,6 +10,10 @@ class DecisionMakerController extends Controller
     public function index(DecisionSession $decisionSession)
     {
         abort_if(
+            $decisionSession->status === 'draft',
+            403
+        );
+        abort_if(
             ! $decisionSession->dms()->where('users.id', auth()->id())->exists(),
             403,
             'Anda tidak ditugaskan pada sesi ini.'

@@ -42,8 +42,10 @@
     @endif
 
     <form method="POST" action="{{ route('decision-sessions.pairwise.store', $decisionSession->id) }}"
-        x-data="crState()" x-init="$nextTick(() => { isDirty = {{ count($existingPairwise) > 0 ? 'true' : 'false' }};
-            recalculate(); })" @pairwise-changed.window="recalculate()">
+        x-data="crState()" x-init="$nextTick(() => {
+            isDirty = {{ count($existingPairwise) > 0 ? 'true' : 'false' }};
+            recalculate();
+        })" @pairwise-changed.window="recalculate()">
         @csrf
 
         <input type="hidden" name="debug_frontend" :value="JSON.stringify(pairs)">

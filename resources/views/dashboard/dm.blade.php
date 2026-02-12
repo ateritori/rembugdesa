@@ -76,6 +76,9 @@
                 @php
                     $weight = $session->criteriaWeights->where('dm_id', auth()->id())->first();
                 @endphp
+                @php
+                    $dmActivePhases = ['configured', 'scoring', 'aggregated', 'final'];
+                @endphp
 
                 <div
                     class="adaptive-card p-6 flex flex-col justify-between group hover:shadow-2xl hover:shadow-primary/5 transition-all">
@@ -93,15 +96,35 @@
                             <div class="flex flex-col">
                                 <span class="text-[9px] font-black uppercase tracking-widest opacity-40">Status Sesi</span>
                                 <div class="mt-1">
-                                    @if ($session->status === 'draft')
+                                    @php
+                                        $statusMap = [
+                                            'draft' => ['label' => 'Draft', 'class' => 'bg-gray-500/10 text-gray-500'],
+                                            'configured' => [
+                                                'label' => 'Configured',
+                                                'class' => 'bg-blue-500/10 text-blue-500',
+                                            ],
+                                            'scoring' => [
+                                                'label' => 'Scoring',
+                                                'class' => 'bg-amber-500/10 text-amber-500',
+                                            ],
+                                            'aggregated' => [
+                                                'label' => 'Aggregated',
+                                                'class' => 'bg-indigo-500/10 text-indigo-500',
+                                            ],
+                                            'final' => [
+                                                'label' => 'Final',
+                                                'class' => 'bg-emerald-500/10 text-emerald-500',
+                                            ],
+                                        ];
+
+                                        $status = $statusMap[$session->status] ?? null;
+                                    @endphp
+
+                                    @if ($status)
                                         <span
-                                            class="px-2 py-0.5 rounded-md bg-gray-500/10 text-gray-500 text-[10px] font-black uppercase">Draft</span>
-                                    @elseif (in_array($session->status, ['active', 'criteria', 'alternatives']))
-                                        <span
-                                            class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase">Active</span>
-                                    @elseif ($session->status === 'closed')
-                                        <span
-                                            class="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 text-[10px] font-black uppercase">Closed</span>
+                                            class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase {{ $status['class'] }}">
+                                            {{ $status['label'] }}
+                                        </span>
                                     @endif
                                 </div>
                             </div>
@@ -132,16 +155,15 @@
                         </div>
                     </div>
 
-                    <div
-                        class="mt-8{{ in_array($session->status, ['active', 'criteria', 'alternatives']) ? ' space-y-2' : '' }}">
-                        @if (in_array($session->status, ['active', 'criteria', 'alternatives']))
-                            <a href="{{ route('dms.index', $session->id) }}"
-                                class="inline-flex items-center justify-center w-full px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all
-                                {{ $session->status === 'alternatives'
-                                    ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95'
-                                    : ($weight
-                                        ? 'border-2 border-primary/20 text-primary hover:bg-primary hover:text-white'
-                                        : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95') }}">
+                    <div class="mt-8{{ in_array($session->status, $dmActivePhases) ? ' space-y-2' : '' }}">
+                        @if (in_array($session->status, $dmActivePhases))
+                            <a href="{{ !$weight
+                                ? route('decision-sessions.pairwise.index', $session->id)
+                                : ($session->status === 'scoring' && !$session->alternativeEvaluations->where('dm_id', auth()->id())->count()
+                                    ? route('alternative-evaluations.index', $session->id)
+                                    : route('dms.index', $session->id)) }}"
+                                class="inline-flex items-center justify-center w-full px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest
+bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
                                 Masuk Workspace
                                 <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"

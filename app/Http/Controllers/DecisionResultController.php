@@ -16,8 +16,8 @@ class DecisionResultController extends Controller
         SmartRankingService $smartService,
         BordaRankingService $bordaService
     ) {
-        // Only closed sessions can show results
-        abort_if($decisionSession->status !== 'closed', 403);
+        // Only final sessions can show results
+        abort_if($decisionSession->status !== 'final', 403);
 
         // Calculate SMART scores
         $smartScores = $smartService->calculate($decisionSession->id);

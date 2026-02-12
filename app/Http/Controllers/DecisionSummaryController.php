@@ -13,6 +13,8 @@ class DecisionSummaryController extends Controller
     ) {
         abort_if(! auth()->check() || ! auth()->user()->hasRole('dm'), 403);
 
+        abort_if(! in_array($decisionSession->status, ['aggregated', 'final'], true), 403);
+
         $smartScores = $smartService->calculate(
             $decisionSession->id,
             auth()->id()

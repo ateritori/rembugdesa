@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DecisionSession;
 use App\Models\User;
+use App\Models\Criteria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
@@ -78,6 +79,7 @@ class DecisionSessionController extends Controller
 
     public function activate(DecisionSession $decisionSession)
     {
+        // Konfigurasi hanya boleh dilakukan dari draft
         abort_if($decisionSession->status !== 'draft', 403);
 
         // Validasi kesiapan data sebelum aktif
@@ -93,7 +95,27 @@ class DecisionSessionController extends Controller
             return back()->withErrors('Minimal 1 decision maker diperlukan.');
         }
 
-        $decisionSession->update(['status' => 'active']);
+        // Validasi kelengkapan aturan scoring setiap kriteria aktif
+        $activeCriteria = $decisionSession->criteria()
+            ->where('is_active', true)
+            ->with(['scoringRule.parameters'])
+            ->get();
+
+        $criteriaScoringComplete = $activeCriteria->every(function ($criteria) {
+            if (!$criteria->scoringRule) {
+                return false;
+            }
+
+            return $criteria->scoringRule->isComplete();
+        });
+
+        if (!$criteriaScoringComplete) {
+            return back()->withErrors(
+                'Aturan scoring kriteria belum lengkap. Lengkapi semua kriteria sebelum membuka sesi.'
+            );
+        }
+
+        $decisionSession->update(['status' => 'configured']);
 
         return back()->with('success', 'Sesi berhasil diaktifkan.');
     }
@@ -101,9 +123,9 @@ class DecisionSessionController extends Controller
     public function close(DecisionSession $decisionSession)
     {
         // Pastikan statusnya memang sudah aktif sebelum bisa ditutup
-        abort_if($decisionSession->status !== 'active' && $decisionSession->status !== 'alternatives', 403);
+        abort_if($decisionSession->status !== 'aggregated', 403);
 
-        $decisionSession->update(['status' => 'closed']);
+        $decisionSession->update(['status' => 'final']);
 
         return redirect()
             ->route('decision-sessions.index')
@@ -148,8 +170,8 @@ class DecisionSessionController extends Controller
 
     public function storeAssignedDms(Request $request, DecisionSession $decisionSession)
     {
-        // Proteksi: tidak boleh ubah DM jika session sudah ditutup
-        abort_if($decisionSession->status === 'closed', 403, 'Tidak bisa mengubah DM pada sesi yang sudah tutup.');
+        // Proteksi: tidak boleh ubah DM jika session sudah dikunci
+        abort_if(in_array($decisionSession->status, ['aggregated', 'final']), 403, 'Tidak bisa mengubah DM pada sesi yang sudah dikunci.');
 
         $request->validate([
             'dm_ids' => 'nullable|array',

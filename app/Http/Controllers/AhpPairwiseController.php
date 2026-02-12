@@ -16,20 +16,43 @@ class AhpPairwiseController extends Controller
     public function index(DecisionSession $decisionSession)
     {
         $user = Auth::user();
-
         abort_if(! $user || ! $user->hasRole('dm'), 403);
-        abort_if(
-            ! in_array($decisionSession->status, ['active', 'criteria', 'alternatives', 'closed'], true),
-            403
-        );
 
-        $existingResult = CriteriaWeight::where('decision_session_id', $decisionSession->id)
+        // Ambil kriteria aktif untuk session
+        $criterias = $decisionSession->criterias()
+            ->where('is_active', true)
+            ->get();
+
+        // Ambil seluruh pairwise DM (jika ada)
+        $existingPairwise = CriteriaWeight::where('decision_session_id', $decisionSession->id)
             ->where('dm_id', $user->id)
-            ->first();
+            ->get()
+            ->mapWithKeys(function ($item) {
+                $key = min($item->criteria_a_id, $item->criteria_b_id)
+                    . '-' .
+                    max($item->criteria_a_id, $item->criteria_b_id);
+                return [$key => $item];
+            });
 
-        return view('dms.weights.index', [
-            'decisionSession' => $decisionSession,
-            'existingResult'  => $existingResult,
+        // Hitung kelengkapan pairwise
+        $criteriaCount = $criterias->count();
+        $requiredPairs = $criteriaCount > 1
+            ? ($criteriaCount * ($criteriaCount - 1)) / 2
+            : 0;
+
+        $hasCompletedPairwise = $requiredPairs > 0
+            && $existingPairwise->count() >= $requiredPairs;
+
+        // Editable hanya saat configured dan belum lengkap
+        $pairwiseReadOnly = $decisionSession->status !== 'configured' || $hasCompletedPairwise;
+
+        return view('dms.index', [
+            'decisionSession'      => $decisionSession,
+            'criterias'            => $criterias,
+            'existingPairwise'     => $existingPairwise,
+            'hasCompletedPairwise' => $hasCompletedPairwise,
+            'pairwiseReadOnly'     => $pairwiseReadOnly,
+            'activeTab'            => 'pairwise',
         ]);
     }
 
@@ -44,7 +67,7 @@ class AhpPairwiseController extends Controller
         $user = Auth::user();
 
         abort_if(! $user || ! $user->hasRole('dm'), 403);
-        abort_if($decisionSession->status !== 'active', 403);
+        abort_if($decisionSession->status !== 'configured', 403);
 
         $frontendPairs = json_decode($request->input('debug_frontend'), true);
 

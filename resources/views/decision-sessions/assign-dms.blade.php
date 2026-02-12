@@ -9,6 +9,7 @@
 
     <div class="animate-in fade-in slide-in-from-bottom-4 w-full px-4 py-6 duration-700" x-data="{
         selected: {{ json_encode($assignedDmIds ?? []) }},
+        search: '',
         toggleDm(id) {
             const index = this.selected.indexOf(id);
             if (index > -1) {
@@ -51,14 +52,30 @@
                 class="space-y-6">
                 @csrf
 
+                <div class="flex items-center justify-between gap-4">
+                    <div class="relative w-full max-w-sm">
+                        <input type="text" x-model.debounce.300ms="search" placeholder="Cari DM..."
+                            class="w-full rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 pr-10 text-xs font-bold uppercase tracking-widest text-slate-600 placeholder-slate-400 focus:border-primary focus:outline-none">
+                        <svg class="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                        </svg>
+                    </div>
+                </div>
+
                 {{-- GRID DM: 4 Kolom di Desktop Besar supaya Padat --}}
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     @forelse ($dms as $dm)
-                        <div @click="{{ $decisionSession->status === 'draft' ? "toggleDm($dm->id)" : '' }}"
+                        <div x-show="search === ''
+                                || '{{ strtolower($dm->name) }}'.includes(search.toLowerCase())
+                                || '{{ strtolower($dm->email) }}'.includes(search.toLowerCase())"
+                            x-transition.opacity
+                            @click="{{ $decisionSession->status === 'draft' ? "toggleDm($dm->id)" : '' }}"
                             :class="selected.includes({{ $dm->id }}) ?
                                 'border-primary bg-primary/5 ring-4 ring-primary/5 shadow-md scale-[1.02]' :
                                 'bg-white border-slate-200 hover:border-slate-400 shadow-sm'"
-                            class="{{ $decisionSession->status !== 'draft' ? 'opacity-70 grayscale-[0.5] pointer-events-none' : '' }} group relative flex cursor-pointer select-none flex-col gap-4 rounded-3xl border-2 p-6 transition-all duration-300">
+                            class="{{ $decisionSession->status !== 'draft' ? 'opacity-70 grayscale-[0.5] pointer-events-none' : '' }} group relative flex cursor-pointer select-none flex-col gap-3 rounded-2xl border-2 p-4 transition-all duration-300">
 
                             {{-- Hidden Checkbox --}}
                             <input type="checkbox" name="dm_ids[]" value="{{ $dm->id }}" class="hidden"
@@ -68,8 +85,8 @@
                             <div class="flex w-full items-start justify-between">
                                 <div :class="selected.includes({{ $dm->id }}) ? 'bg-primary text-white shadow-primary/30' :
                                     'bg-slate-100 text-slate-400'"
-                                    class="flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg transition-all">
-                                    <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    class="flex h-10 w-10 items-center justify-center rounded-xl shadow transition-all">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                     </svg>
@@ -89,17 +106,20 @@
 
                             {{-- Info User --}}
                             <div class="mt-2 min-w-0">
+                                <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                    D{{ $loop->iteration }}
+                                </p>
                                 <h3 :class="selected.includes({{ $dm->id }}) ? 'text-primary' : 'adaptive-text-main'"
-                                    class="truncate text-base font-black uppercase tracking-tighter transition-colors">
+                                    class="truncate text-sm font-black uppercase tracking-tight transition-colors">
                                     {{ $dm->name }}
                                 </h3>
-                                <p class="mt-1 truncate text-[11px] font-bold uppercase tracking-widest adaptive-text-sub">
+                                <p class="mt-1 truncate text-[10px] font-bold uppercase tracking-wider adaptive-text-sub">
                                     {{ $dm->email }}
                                 </p>
                             </div>
 
                             {{-- Decorative Bottom Line --}}
-                            <div class="absolute bottom-0 left-0 h-1 transition-all"
+                            <div class="absolute bottom-0 left-0 h-0.5 transition-all"
                                 :class="selected.includes({{ $dm->id }}) ? 'w-full bg-primary' :
                                     'w-0 bg-slate-200 group-hover:w-1/2'">
                             </div>

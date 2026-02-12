@@ -15,7 +15,7 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->string('name');
             $table->year('year');
-            $table->enum('status', ['draft', 'active', 'criteria', 'alternatives', 'closed'])->default('draft');
+            $table->enum('status', ['draft', 'configured', 'scoring', 'aggregated', 'final'])->default('draft');
             $table->unsignedBigInteger('created_by')->index('decision_sessions_created_by_foreign');
             $table->timestamps();
             $table->softDeletes();

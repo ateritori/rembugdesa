@@ -25,6 +25,11 @@ class DecisionSession extends Model
         return $this->hasMany(Criteria::class);
     }
 
+    public function criterias()
+    {
+        return $this->criteria();
+    }
+
     public function alternatives()
     {
         return $this->hasMany(Alternative::class)

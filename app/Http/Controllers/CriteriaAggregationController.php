@@ -17,15 +17,15 @@ class CriteriaAggregationController extends Controller
     ): RedirectResponse {
         abort_if(! auth()->user()->hasRole('admin'), 403);
 
-        // Only allowed when session is active
-        abort_if($decisionSession->status !== 'active', 403);
+        // Aggregasi kriteria hanya boleh saat scoring
+        abort_if($decisionSession->status !== 'scoring', 403);
 
         // Run group aggregation
         $service->aggregate($decisionSession->id);
 
-        // Move session to alternative evaluation phase
+        // Pindah ke fase agregasi
         $decisionSession->update([
-            'status' => 'alternatives',
+            'status' => 'aggregated',
         ]);
 
         return redirect()

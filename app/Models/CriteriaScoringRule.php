@@ -49,4 +49,39 @@ class CriteriaScoringRule extends Model
 
         return $param ? $param->param_value : $default;
     }
+
+    /**
+     * Menentukan apakah aturan scoring kriteria sudah lengkap dan siap digunakan.
+     */
+    public function isComplete(): bool
+    {
+        // input dasar wajib ada
+        if (!$this->input_type || !$this->preference_type) {
+            return false;
+        }
+
+        // parameter wajib
+        $range     = $this->getParameter('scale_range');
+        $utilities = $this->getParameter('scale_utilities');
+        $semantics = $this->getParameter('scale_semantics');
+
+        if (empty($range) || empty($utilities) || empty($semantics)) {
+            return false;
+        }
+
+        // validasi minimal isi range
+        if (
+            !isset($range['min'], $range['max']) ||
+            $range['min'] >= $range['max']
+        ) {
+            return false;
+        }
+
+        // utilities dan semantics harus seimbang
+        if (count($utilities) !== count($semantics)) {
+            return false;
+        }
+
+        return true;
+    }
 }

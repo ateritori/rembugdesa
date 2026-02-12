@@ -3,44 +3,54 @@
 namespace App\Http\Controllers;
 
 use App\Models\DecisionSession;
-use Illuminate\Http\Request;
+use App\Models\CriteriaWeight;
 
-class DecisionControlController extends Controller
+class AhpPairwiseController extends Controller
 {
     public function index(DecisionSession $decisionSession)
     {
-        // 1. Ambil data dasar via relasi
-        $activeCriteriaCount = $decisionSession->criteria()->where('is_active', true)->count();
-        $activeAlternativesCount = $decisionSession->alternatives()->where('is_active', true)->count();
+        $user = auth()->user();
+        abort_if(! $user, 403);
 
-        // 2. Hitung jumlah pasangan (pairs) yang WAJIB diisi
-        $requiredCriteriaPairs = $activeCriteriaCount > 1
+        // Ambil kriteria aktif untuk session ini
+        $criterias = $decisionSession->criterias()->where('is_active', true)->get();
+
+        // Ambil hasil pairwise DM (jika ada)
+        $existingPairwise = CriteriaWeight::where('decision_session_id', $decisionSession->id)
+            ->where('dm_id', $user->id)
+            ->get()
+            ->mapWithKeys(function ($item) {
+                $key = min($item->criteria_a_id, $item->criteria_b_id)
+                    . '-' .
+                    max($item->criteria_a_id, $item->criteria_b_id);
+
+                return [$key => $item];
+            });
+
+        // Flag status untuk kebutuhan workspace & nav
+        $status = $decisionSession->status;
+
+        // Apakah DM sudah menyelesaikan seluruh perbandingan kriteria
+        $activeCriteriaCount = $criterias->count();
+        $requiredPairs = $activeCriteriaCount > 1
             ? ($activeCriteriaCount * ($activeCriteriaCount - 1)) / 2
             : 0;
 
-        // 3. Ambil DM dan batasi hitungan relasi pairwise hanya untuk SESSION_ID ini
-        $assignedDms = $decisionSession->dms()->withCount([
-            'criteriaPairwise' => function ($query) use ($decisionSession) {
-                $query->where('decision_session_id', $decisionSession->id);
-            }
-            // Tambahkan alternativesPairwise jika modelnya sudah siap
-        ])->get();
+        $hasCompletedPairwise = $requiredPairs > 0
+            && $existingPairwise->count() >= $requiredPairs;
 
-        $assignedDmCount = $assignedDms->count();
+        // Mode read-only jika:
+        // - status bukan configured
+        // - atau pairwise sudah lengkap
+        $pairwiseReadOnly = $status !== 'configured' || $hasCompletedPairwise;
 
-        // 4. Hitung berapa banyak DM yang jumlah pengisiannya >= syarat wajib
-        $dmPairwiseDone = $assignedDms->filter(function ($dm) use ($requiredCriteriaPairs) {
-            return $requiredCriteriaPairs > 0 && $dm->criteria_pairwise_count >= $requiredCriteriaPairs;
-        })->count();
-
-        return view('control.index', compact(
-            'decisionSession',
-            'activeCriteriaCount',
-            'activeAlternativesCount',
-            'assignedDmCount',
-            'assignedDms',
-            'dmPairwiseDone',
-            'requiredCriteriaPairs'
-        ));
+        return view('dms.index', [
+            'decisionSession'     => $decisionSession,
+            'criterias'           => $criterias,
+            'existingPairwise'    => $existingPairwise,
+            'hasCompletedPairwise' => $hasCompletedPairwise,
+            'pairwiseReadOnly'    => $pairwiseReadOnly,
+            'activeTab'           => 'pairwise',
+        ]);
     }
 }

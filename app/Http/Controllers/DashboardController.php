@@ -31,8 +31,8 @@ class DashboardController extends Controller
 
             $totalSessions = DecisionSession::count();
             $draftSessions = DecisionSession::where('status', 'draft')->count();
-            $activeSessions = DecisionSession::where('status', 'active')->count();
-            $closedSessions = DecisionSession::where('status', 'closed')->count();
+            $activeSessions = DecisionSession::where('status', 'scoring')->count();
+            $closedSessions = DecisionSession::where('status', 'final')->count();
 
             $latestSessions = DecisionSession::latest()
                 ->take(5)
@@ -53,7 +53,7 @@ class DashboardController extends Controller
                 ->with(['criteria', 'criteriaWeights'])
                 ->get();
 
-            $activeSessions = $assignedSessions->where('status', 'active');
+            $activeSessions = $assignedSessions->where('status', '!=', 'draft');
 
             $pendingTaskCount = $activeSessions->filter(function ($session) use ($user) {
                 return ! $session->criteriaWeights

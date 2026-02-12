@@ -4,9 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DecisionSessionController;
-use App\Http\Controllers\DecisionControlController;
 use App\Http\Controllers\DecisionMakerController;
-use App\Http\Controllers\DecisionSummaryController; // ✅ DITAMBAHKAN
+use App\Http\Controllers\DecisionSummaryController;
 use App\Http\Controllers\DecisionResultController;
 use App\Http\Controllers\CriteriaController;
 use App\Http\Controllers\CriteriaAggregationController;
@@ -119,8 +118,6 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->name('alternatives.destroy');
 
     // Control & Aggregation
-    Route::get('/decision-sessions/{decisionSession}/control', [DecisionControlController::class, 'index'])
-        ->name('control.index');
 
     Route::patch('/decision-sessions/{decisionSession}/lock-criteria', [CriteriaAggregationController::class, 'lock'])
         ->name('decision-sessions.lock-criteria');
@@ -155,6 +152,12 @@ Route::middleware(['auth', 'role:dm'])->group(function () {
         '/decision-sessions/{decisionSession}/pairwise',
         [AhpPairwiseController::class, 'store']
     )->name('decision-sessions.pairwise.store');
+
+    // Bobot Individu (read-only hasil pairwise DM)
+    Route::get(
+        '/decision-sessions/{decisionSession}/dms/weights',
+        [DecisionMakerController::class, 'weights']
+    )->name('dms.weights.index');
 
     // Bobot Kelompok
     Route::get(
