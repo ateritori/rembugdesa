@@ -11,11 +11,14 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Roles
-        $superadminRole = Role::firstOrCreate(['name' => 'superadmin']);
-        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        // 1. Definisikan semua Role yang dibutuhkan
+        $roles = ['superadmin', 'admin', 'dm'];
 
-        // Super Admin
+        foreach ($roles as $roleName) {
+            Role::firstOrCreate(['name' => $roleName]);
+        }
+
+        // 2. Buat User Super Admin
         $superadmin = User::firstOrCreate(
             ['email' => 'superadmin@wonosarigk.id'],
             [
@@ -23,12 +26,9 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('wildundan'),
             ]
         );
+        $superadmin->assignRole('superadmin');
 
-        if (! $superadmin->hasRole($superadminRole)) {
-            $superadmin->assignRole($superadminRole);
-        }
-
-        // Admin
+        // 3. Buat User Admin
         $admin = User::firstOrCreate(
             ['email' => 'admin@wonosarigk.id'],
             [
@@ -36,9 +36,16 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('wildundan'),
             ]
         );
+        $admin->assignRole('admin');
 
-        if (! $admin->hasRole($adminRole)) {
-            $admin->assignRole($adminRole);
-        }
+        // 4. Buat User DM (Decision Maker)
+        $dm = User::firstOrCreate(
+            ['email' => 'dm@wonosarigk.id'],
+            [
+                'name' => 'Decision Maker',
+                'password' => Hash::make('wildundan'),
+            ]
+        );
+        $dm->assignRole('dm');
     }
 }
