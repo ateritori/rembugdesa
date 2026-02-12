@@ -31,9 +31,9 @@
 
                 <a href="{{ $item['url'] }}"
                     class="relative px-6 py-4 text-sm font-black transition-all duration-300 group
-                {{ $isActive ? 'nav-tab-active' : 'adaptive-text-sub hover:adaptive-text-main opacity-60 hover:opacity-100' }}">
+                {{ $isActive ? 'nav-tab-active adaptive-text-main' : 'adaptive-text-sub hover:adaptive-text-main opacity-60 hover:opacity-100' }}">
 
-                    <span class="relative z-10 tracking-tight">{{ $item['label'] }}</span>
+                    <span class="relative z-10 tracking-tight adaptive-text-main">{{ $item['label'] }}</span>
 
                     {{-- Efek Hover Halus untuk Tab Non-Aktif --}}
                     @if (!$isActive)

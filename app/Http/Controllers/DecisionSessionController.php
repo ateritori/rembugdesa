@@ -6,6 +6,7 @@ use App\Models\DecisionSession;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\Exceptions\RoleDoesNotExist;
 
 class DecisionSessionController extends Controller
 {
@@ -125,17 +126,18 @@ class DecisionSessionController extends Controller
 
     public function assignDms(DecisionSession $decisionSession)
     {
-        /** * PERBAIKAN:
-         * Jangan gunakan abort_if($status !== 'draft') jika Admin ingin
-         * melihat daftar DM setelah session aktif. Cukup batasi pengeditan saja.
-         */
-
-        // Mengambil user dengan role 'dm'.
-        // Jika Anda tidak pakai Spatie, gunakan: User::where('role', 'dm')->get();
-        $dms = User::role('dm')->get();
+        try {
+            // Ambil user dengan role dm jika role ada
+            $dms = User::role('dm')->get();
+        } catch (RoleDoesNotExist $e) {
+            // Jika role dm belum ada sama sekali
+            $dms = collect();
+        }
 
         // Ambil ID DM yang sudah terhubung dengan session ini
-        $assignedDmIds = $decisionSession->dms()->pluck('users.id')->toArray();
+        $assignedDmIds = $decisionSession->dms()
+            ->pluck('users.id')
+            ->toArray();
 
         return view('decision-sessions.assign-dms', compact(
             'decisionSession',
@@ -146,7 +148,7 @@ class DecisionSessionController extends Controller
 
     public function storeAssignedDms(Request $request, DecisionSession $decisionSession)
     {
-        // Proteksi: Hanya boleh edit DM jika session belum ditutup
+        // Proteksi: tidak boleh ubah DM jika session sudah ditutup
         abort_if($decisionSession->status === 'closed', 403, 'Tidak bisa mengubah DM pada sesi yang sudah tutup.');
 
         $request->validate([
@@ -154,13 +156,18 @@ class DecisionSessionController extends Controller
             'dm_ids.*' => 'exists:users,id'
         ]);
 
-        // Filter hanya ID yang memang memiliki role DM untuk keamanan
-        $dmIds = User::role('dm')
-            ->whereIn('id', $request->input('dm_ids', []))
-            ->pluck('id')
-            ->toArray();
+        try {
+            // Ambil hanya user yang benar-benar punya role dm
+            $dmIds = User::role('dm')
+                ->whereIn('id', $request->input('dm_ids', []))
+                ->pluck('id')
+                ->toArray();
+        } catch (RoleDoesNotExist $e) {
+            // Jika role dm tidak ada, pastikan pivot dikosongkan
+            $dmIds = [];
+        }
 
-        // Sinkronisasi tabel pivot
+        // Sinkronisasi pivot dengan aman
         $decisionSession->dms()->sync($dmIds);
 
         return redirect()
