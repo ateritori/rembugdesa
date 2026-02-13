@@ -16,37 +16,16 @@ class AhpPairwiseController extends Controller
         $user = Auth::user();
         abort_if(! $user || ! $user->hasRole('dm'), 403);
 
-        $criterias = $decisionSession->criteria()
-            ->where('is_active', true)
-            ->orderBy('order')
-            ->get();
+        abort_if(
+            ! $decisionSession->dms()
+                ->where('users.id', auth()->id())
+                ->exists(),
+            403
+        );
 
-        $existingPairwise = CriteriaPairwise::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', $user->id)
-            ->get()
-            ->mapWithKeys(function ($item) {
-                $key = min($item->criteria_id_1, $item->criteria_id_2) . '-' .
-                    max($item->criteria_id_1, $item->criteria_id_2);
-
-                $item->direction = ($item->value >= 1) ? 'left' : 'right';
-                if ($item->value < 1) {
-                    $item->value = round(1 / $item->value);
-                }
-                return [$key => $item];
-            });
-
-        $n = $criterias->count();
-        $requiredPairs = $n > 1 ? ($n * ($n - 1)) / 2 : 0;
-        $hasCompletedPairwise = ($requiredPairs > 0 && $existingPairwise->count() >= $requiredPairs);
-        $pairwiseReadOnly = $decisionSession->status !== 'configured';
-
-        return view('dms.index', [
-            'decisionSession'      => $decisionSession,
-            'criterias'            => $criterias,
-            'existingPairwise'     => $existingPairwise,
-            'hasCompletedPairwise' => $hasCompletedPairwise,
-            'pairwiseReadOnly'     => $pairwiseReadOnly,
-            'activeTab'            => 'pairwise',
+        return redirect()->route('dms.index', [
+            $decisionSession->id,
+            'tab' => 'penilaian-kriteria'
         ]);
     }
 

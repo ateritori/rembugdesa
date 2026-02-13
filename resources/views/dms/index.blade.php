@@ -30,13 +30,20 @@
         {{-- 2. PENILAIAN KRITERIA (PAIRWISE / BOBOT) --}}
         @if ($tab === 'penilaian-kriteria')
             <div class="animate-in slide-in-from-right-5">
-                {{-- Jika sudah isi dan tidak sedang mode edit -> tampilkan hasil (Weights) --}}
-                {{-- Jika belum isi atau sedang mode edit -> tampilkan form (Pairwise) --}}
-                @if ($dmHasCompleted && !$isEditing)
-                    @include('dms.weights.dm-weights')
+
+                {{-- FASE SCORING: tampilkan Bobot Kelompok (GM) --}}
+                @if ($decisionSession->status === 'scoring')
+                    @include('dms.group-weights.index')
+
+                    {{-- FASE PAIRWISE --}}
                 @else
-                    @include('dms.pairwise.index')
+                    @if ($dmHasCompleted && !$isEditing)
+                        @include('dms.weights.dm-weights')
+                    @else
+                        @include('dms.pairwise.index')
+                    @endif
                 @endif
+
             </div>
         @endif
 

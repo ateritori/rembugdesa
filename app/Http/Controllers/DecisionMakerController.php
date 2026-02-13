@@ -27,6 +27,11 @@ class DecisionMakerController extends Controller
             'Anda tidak ditugaskan pada sesi ini.'
         );
 
+        // ===== Status Evaluasi Alternatif (GLOBAL untuk NAV) =====
+        $hasCompletedEvaluation = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
+            ->where('dm_id', auth()->id())
+            ->exists();
+
         // Data ringkasan workspace
         $baseCriteria = $decisionSession->criteria()
             ->where('is_active', true)
@@ -38,6 +43,15 @@ class DecisionMakerController extends Controller
             ->first();
 
         $dmHasCompleted = ! is_null($criteriaWeights);
+
+        // ===== Bobot Kelompok (untuk fase scoring) =====
+        $groupResult = null;
+
+        if ($decisionSession->status === 'scoring' || $decisionSession->status === 'closed') {
+            $groupResult = CriteriaWeight::where('decision_session_id', $decisionSession->id)
+                ->whereNull('dm_id')
+                ->first();
+        }
 
         // ===== Evaluasi Alternatif (hanya saat tab aktif) =====
         if (request('tab') === 'evaluasi-alternatif') {
@@ -56,12 +70,9 @@ class DecisionMakerController extends Controller
                 ->get()
                 ->groupBy('alternative_id')
                 ->map(fn($items) => $items->keyBy('criteria_id'));
-
-            $hasCompletedEvaluation = $evaluations->isNotEmpty();
         } else {
             $alternatives = collect();
             $evaluations = collect();
-            $hasCompletedEvaluation = false;
         }
 
         return view('dms.index', [
@@ -74,6 +85,7 @@ class DecisionMakerController extends Controller
             'hasCompletedEvaluation' => $hasCompletedEvaluation,
             'alternatives'    => $alternatives,
             'tab'             => request('tab', 'workspace'),
+            'groupResult'     => $groupResult,
         ]);
     }
 
@@ -102,7 +114,9 @@ class DecisionMakerController extends Controller
         $dmHasCompleted = ! is_null($criteriaWeights);
 
         $evaluations = collect();
-        $hasCompletedEvaluation = false;
+        $hasCompletedEvaluation = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
+            ->where('dm_id', auth()->id())
+            ->exists();
 
         $alternatives = collect();
 
@@ -143,7 +157,9 @@ class DecisionMakerController extends Controller
         $dmHasCompleted = ! is_null($criteriaWeights);
 
         $evaluations = collect();
-        $hasCompletedEvaluation = false;
+        $hasCompletedEvaluation = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
+            ->where('dm_id', auth()->id())
+            ->exists();
 
         $alternatives = collect();
 

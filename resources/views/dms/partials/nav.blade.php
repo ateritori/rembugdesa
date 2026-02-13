@@ -19,7 +19,11 @@
         class="{{ $currentTab === 'penilaian-kriteria'
             ? 'bg-white text-primary shadow-sm ring-1 ring-black/5'
             : 'text-slate-500 hover:text-slate-700' }} flex items-center rounded-xl px-5 py-2 text-sm font-black transition-all">
-        {{ $dmHasCompleted ? 'Bobot Individu' : 'Penilaian Pairwise' }}
+        @if ($status === 'scoring' || $status === 'closed')
+            Bobot Kriteria
+        @else
+            {{ $dmHasCompleted ? 'Bobot Individu' : 'Penilaian Pairwise' }}
+        @endif
     </a>
 
     {{-- TAB 3: PENILAIAN ALTERNATIF --}}

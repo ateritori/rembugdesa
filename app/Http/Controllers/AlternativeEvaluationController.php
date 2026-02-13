@@ -16,46 +16,18 @@ class AlternativeEvaluationController extends Controller
      */
     public function index(DecisionSession $decisionSession)
     {
-        // Guard dasar (SAMA POLA DENGAN KRITERIA)
         abort_if(! auth()->check() || ! auth()->user()->hasRole('dm'), 403);
 
         abort_if(
             ! $decisionSession->dms()
                 ->where('users.id', auth()->id())
                 ->exists(),
-            403,
-            'Anda tidak ditugaskan pada sesi ini.'
+            403
         );
 
-        // Penilaian alternatif hanya boleh saat fase SCORING
-        abort_if($decisionSession->status !== 'scoring', 403);
-
-        $dmId = auth()->id();
-
-        $alternatives = $decisionSession->alternatives()
-            ->where('is_active', true)
-            ->get();
-
-        $criteria = $decisionSession->criteria()
-            ->with(['scoringRule', 'scoringRule.parameters'])
-            ->get();
-
-        // Ambil penilaian DM (jika sudah pernah mengisi)
-        $evaluations = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', $dmId)
-            ->get()
-            ->groupBy('alternative_id')
-            ->map(fn($items) => $items->keyBy('criteria_id'));
-
-        $hasCompletedEvaluation = $evaluations->isNotEmpty();
-
-        return view('dms.index', [
-            'decisionSession'        => $decisionSession,
-            'alternatives'           => $alternatives,
-            'criteria'               => $criteria,
-            'evaluations'            => $evaluations,
-            'hasCompletedEvaluation' => $hasCompletedEvaluation,
-            'tab'                    => 'evaluasi-alternatif',
+        return redirect()->route('dms.index', [
+            $decisionSession->id,
+            'tab' => 'evaluasi-alternatif'
         ]);
     }
 
