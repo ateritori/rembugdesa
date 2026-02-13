@@ -1,16 +1,26 @@
 @extends('layouts.dashboard')
 
 @section('content')
+  @php
+    // 1. Definisikan tab aktif
+    $tab = request('tab', 'workspace');
+
+    // 2. Logic untuk switch tampilan ke mode form jika user klik tombol edit
+    $isEditing = request('edit') == 1;
+
+    // 3. PENGAMAN: Pastikan variabel ini ada, kalau dari controller gak ada, set default false
+    // Ini supaya @include partials.nav di bawah gak teriak "Undefined variable"
+    $dmHasCompleted = $dmHasCompleted ?? false;
+  @endphp
+
   {{-- Navigasi Tab --}}
-  @include('dms.partials.nav', ['activeTab' => request('tab')])
+  {{-- Kita kirim $dmHasCompleted ke dalam partial nav --}}
+  @include('dms.partials.nav', [
+      'activeTab' => $tab,
+      'dmHasCompleted' => $dmHasCompleted,
+  ])
 
   <div class="mt-6">
-    @php
-      $tab = request('tab', 'workspace');
-      // Logic untuk switch tampilan ke mode form jika user klik tombol edit
-      $isEditing = request('edit') == 1;
-    @endphp
-
     {{-- 1. WORKSPACE --}}
     @if ($tab === 'workspace')
       @include('dms.workspace.index')

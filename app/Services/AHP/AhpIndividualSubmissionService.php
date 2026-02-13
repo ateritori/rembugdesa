@@ -1,86 +1,99 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Services\AHP;
 
 use App\Models\DecisionSession;
-use App\Models\CriteriaPairwise; // Tambahkan ini
+use App\Models\CriteriaPairwise;
 use App\Models\CriteriaWeight;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use App\Services\AHP\AhpIndividualSubmissionService;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
-class AhpPairwiseController extends Controller
+class AhpIndividualSubmissionService
 {
-    public function index(DecisionSession $decisionSession)
+    public function submit(DecisionSession $session, User $user, array $cleanPairs, array $rawFallback)
     {
-        $user = Auth::user();
-        abort_if(! $user || ! $user->hasRole('dm'), 403);
+        return DB::transaction(function () use ($session, $user, $cleanPairs) {
+            // Hapus data lama
+            CriteriaPairwise::where('decision_session_id', $session->id)
+                ->where('dm_id', $user->id)
+                ->delete();
 
-        // 1. Ambil kriteria aktif
-        $criterias = $decisionSession->criteria() // Sesuaikan dengan nama relasi (criteria/criterias)
-            ->where('is_active', true)
-            ->orderBy('order')
-            ->get();
+            // Simpan pairwise baru
+            foreach ($cleanPairs as $key => $val) {
+                $ids = explode('-', $key);
+                CriteriaPairwise::create([
+                    'decision_session_id' => $session->id,
+                    'dm_id' => $user->id,
+                    'criteria_id_1' => (int)$ids[0],
+                    'criteria_id_2' => (int)$ids[1],
+                    'value' => (float)$val['a_ij'],
+                    'direction' => $val['a_ij'] >= 1 ? 'left' : 'right',
+                ]);
+            }
 
-        // 2. AMBIL DARI CriteriaPairwise (Detail slider), BUKAN CriteriaWeight
-        $existingPairwise = CriteriaPairwise::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', $user->id)
-            ->get()
-            ->mapWithKeys(function ($item) {
-                // Key harus sama dengan logic di Blade: min-max
-                $key = min($item->criteria_id_1, $item->criteria_id_2) . '-' .
-                    max($item->criteria_id_1, $item->criteria_id_2);
-                return [$key => $item];
-            });
+            $criterias = $session->criteria()->where('is_active', true)->orderBy('id')->get();
+            $n = $criterias->count();
 
-        // 3. Hitung kelengkapan
-        $criteriaCount = $criterias->count();
-        $requiredPairs = $criteriaCount > 1 ? ($criteriaCount * ($criteriaCount - 1)) / 2 : 0;
-        $hasCompletedPairwise = $requiredPairs > 0 && $existingPairwise->count() >= $requiredPairs;
+            // Bangun Matriks
+            $matrix = [];
+            $ids = $criterias->pluck('id')->toArray();
+            foreach ($ids as $i) {
+                foreach ($ids as $j) {
+                    $matrix[$i][$j] = 1.0;
+                }
+            }
 
-        // 4. LOGIKA EDIT: Izinkan edit selama status 'configured' 
-        // Meskipun sudah lengkap ($hasCompletedPairwise), DM tetap boleh ubah (edit)
-        $pairwiseReadOnly = $decisionSession->status !== 'configured';
+            foreach ($cleanPairs as $key => $val) {
+                $exploded = explode('-', $key);
+                $id1 = (int)$exploded[0];
+                $id2 = (int)$exploded[1];
+                $matrix[$id1][$id2] = (float)$val['a_ij'];
+                $matrix[$id2][$id1] = (float)$val['a_ji'];
+            }
 
-        return view('dms.index', [
-            'decisionSession'      => $decisionSession,
-            'criterias'            => $criterias,
-            'existingPairwise'     => $existingPairwise,
-            'hasCompletedPairwise' => $hasCompletedPairwise,
-            'pairwiseReadOnly'     => $pairwiseReadOnly,
-            'activeTab'            => 'pairwise',
-        ]);
-    }
+            // Jalankan Kalkulasi AHP
+            $analysis = $this->calculateAHP($matrix, $n);
 
-    public function store(
-        Request $request,
-        DecisionSession $decisionSession,
-        AhpIndividualSubmissionService $service
-    ) {
-        $user = Auth::user();
-        abort_if(! $user || ! $user->hasRole('dm'), 403);
-        abort_if($decisionSession->status !== 'configured', 403);
-
-        $frontendPairs = json_decode($request->input('debug_frontend'), true);
-
-        if (! is_array($frontendPairs)) {
-            return back()->withInput()->with('error', 'Data perbandingan tidak valid.');
-        }
-
-        try {
-            // Service akan otomatis menghapus data lama (Delete & Re-insert)
-            $result = $service->submit(
-                $decisionSession,
-                $user,
-                $frontendPairs,
-                $request->input('pairwise', [])
+            CriteriaWeight::updateOrCreate(
+                ['decision_session_id' => $session->id, 'dm_id' => $user->id],
+                ['weights' => $analysis['weights'], 'cr' => (float)$analysis['cr']]
             );
 
-            return redirect()
-                ->route('dms.weights.index', $decisionSession->id)
-                ->with('success', 'Penilaian berhasil diperbarui. CR = ' . round($result['cr'], 4));
-        } catch (\DomainException $e) {
-            return back()->withInput()->with('error', $e->getMessage());
+            return $analysis;
+        });
+    }
+
+    private function calculateAHP($matrix, $n)
+    {
+        // 1. Normalisasi & Eigenvector
+        $colSums = [];
+        foreach ($matrix as $i => $rows) {
+            foreach ($rows as $j => $val) {
+                $colSums[$j] = (float)($colSums[$j] ?? 0) + (float)$val;
+            }
         }
+
+        $weights = [];
+        foreach ($matrix as $i => $rows) {
+            $rowSum = 0;
+            foreach ($rows as $j => $val) {
+                $rowSum += ((float)$val / (float)$colSums[$j]);
+            }
+            $weights[$i] = (float)($rowSum / $n);
+        }
+
+        // 2. Lambda Max
+        $lambdaMax = 0;
+        foreach ($colSums as $id => $sum) {
+            $lambdaMax += ((float)$sum * (float)$weights[$id]);
+        }
+
+        // 3. Consistency Ratio
+        $ci = ($n > 1) ? ($lambdaMax - $n) / ($n - 1) : 0;
+        $riTable = [1 => 0, 2 => 0, 3 => 0.58, 4 => 0.9, 5 => 1.12, 6 => 1.24, 7 => 1.32, 8 => 1.41, 9 => 1.45, 10 => 1.49];
+        $ri = $riTable[$n] ?? 1.49;
+        $cr = $ri > 0 ? $ci / $ri : 0;
+
+        return ['weights' => $weights, 'cr' => (float)$cr];
     }
 }
