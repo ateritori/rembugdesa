@@ -8,6 +8,7 @@ use App\Models\Criteria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
+use App\Services\AHP\AhpGroupWeightService;
 
 class DecisionSessionController extends Controller
 {
@@ -99,16 +100,20 @@ class DecisionSessionController extends Controller
             ->with('success', 'Decision session updated.');
     }
 
-    public function activate(DecisionSession $decisionSession)
-    {
-        // 1. Definisikan alur transisi status yang valid untuk method ini
-        // draft -> configured (aktivasi awal)
-        // configured -> scoring (buka penilaian alternatif)
+    public function activate(
+        DecisionSession $decisionSession,
+        AhpGroupWeightService $ahpGroupWeightService
+    ) {
+        // 1. Valid status transition guard
         $validStatuses = ['draft', 'configured'];
 
-        abort_unless(in_array($decisionSession->status, $validStatuses), 403, 'Sesi tidak dapat diaktifkan pada tahap ini.');
+        abort_unless(
+            in_array($decisionSession->status, $validStatuses),
+            403,
+            'Sesi tidak dapat diaktifkan pada tahap ini.'
+        );
 
-        // 2. Validasi Kesiapan Data (Kriteria, Alternatif, DM)
+        // 2. Core readiness validation
         if ($decisionSession->criterias()->where('is_active', true)->count() < 2) {
             return back()->withErrors('Minimal 2 kriteria aktif diperlukan.');
         }
@@ -121,30 +126,40 @@ class DecisionSessionController extends Controller
             return back()->withErrors('Minimal 1 decision maker diperlukan.');
         }
 
-        // 3. Validasi Aturan Scoring (Opsional namun disarankan)
+        // 3. Scoring rule completeness validation
         $activeCriteria = $decisionSession->criterias()
             ->where('is_active', true)
             ->with(['scoringRule.parameters'])
             ->get();
 
-        $scoringComplete = $activeCriteria->every(fn($c) => $c->scoringRule?->isComplete());
-
-        if (!$scoringComplete) {
+        if (!$activeCriteria->every(fn($c) => $c->scoringRule?->isComplete())) {
             return back()->withErrors('Aturan scoring kriteria belum lengkap.');
         }
 
-        // 4. Logika Transisi Status berdasarkan Enum Anda
-        // Jika draft -> configured
-        // Jika configured -> scoring (Ini yang Anda tuju sekarang)
-        $nextStatus = ($decisionSession->status === 'draft') ? 'configured' : 'scoring';
+        // 4. PATCH: aggregate AHP group weights exactly once
+        if ($decisionSession->status === 'configured') {
+            try {
+                $ahpGroupWeightService->aggregate($decisionSession);
+            } catch (\Throwable $e) {
+                return back()->withErrors(
+                    'Agregasi bobot kriteria gagal: ' . $e->getMessage()
+                );
+            }
+        }
+
+        // 5. Status transition
+        $nextStatus = ($decisionSession->status === 'draft')
+            ? 'configured'
+            : 'scoring';
 
         $decisionSession->update(['status' => $nextStatus]);
 
-        $message = ($nextStatus === 'scoring')
-            ? 'Penilaian alternatif (scoring) telah dibuka.'
-            : 'Sesi telah berhasil dikonfigurasi.';
-
-        return back()->with('success', $message);
+        return back()->with(
+            'success',
+            $nextStatus === 'scoring'
+                ? 'Penilaian alternatif telah dibuka.'
+                : 'Sesi berhasil dikonfigurasi.'
+        );
     }
 
     public function close(DecisionSession $decisionSession)

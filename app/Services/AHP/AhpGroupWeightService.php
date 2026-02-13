@@ -2,6 +2,7 @@
 
 namespace App\Services\AHP;
 
+use App\Models\DecisionSession;
 use App\Models\CriteriaWeight;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -11,9 +12,9 @@ class AhpGroupWeightService
     /**
      * Agregasi bobot kriteria kelompok menggunakan Geometric Mean
      */
-    public function aggregate(int $decisionSessionId): array
+    public function aggregate(DecisionSession $decisionSession): array
     {
-        $individualWeights = CriteriaWeight::where('decision_session_id', $decisionSessionId)
+        $individualWeights = CriteriaWeight::where('decision_session_id', $decisionSession->id)
             ->whereNotNull('dm_id')
             ->get();
 
@@ -69,17 +70,17 @@ class AhpGroupWeightService
             $groupWeights[$criteriaId] = $value / $total;
         }
 
-        DB::transaction(function () use ($decisionSessionId, $groupWeights) {
-            CriteriaWeight::where('decision_session_id', $decisionSessionId)
-                ->whereNull('dm_id')
-                ->delete();
-
-            CriteriaWeight::create([
-                'decision_session_id' => $decisionSessionId,
-                'dm_id' => null,
-                'weights' => $groupWeights,
-                'cr' => null,
-            ]);
+        DB::transaction(function () use ($decisionSession, $groupWeights) {
+            CriteriaWeight::updateOrCreate(
+                [
+                    'decision_session_id' => $decisionSession->id,
+                    'dm_id' => null,
+                ],
+                [
+                    'weights' => $groupWeights,
+                    'cr' => null,
+                ]
+            );
         });
 
         return $groupWeights;
