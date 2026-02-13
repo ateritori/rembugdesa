@@ -32,4 +32,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(CriteriaPairwise::class, 'dm_id');
     }
+
+    /**
+     * Relasi ke hasil penilaian alternatif yang dilakukan oleh User ini (sebagai DM).
+     */
+    public function alternativeEvaluations()
+    {
+        return $this->hasMany(AlternativeEvaluation::class, 'dm_id');
+    }
 }

@@ -32,10 +32,20 @@ class DecisionSessionController extends Controller
      */
     public function control(DecisionSession $decisionSession)
     {
-        // Load relasi agar view control bisa menampilkan data kriteria & alternatif
-        $decisionSession->load(['criterias', 'alternatives', 'dms']);
+        $decisionSession->load(['dms', 'alternatives', 'criterias']);
 
-        return view('control.index', compact('decisionSession'));
+        // 1. Total DM yang ditugaskan
+        $assignedDmCount = $decisionSession->dms()->count();
+
+        // 2. Hitung berapa DM yang sudah melengkapi semua penilaian alternatif
+        // Asumsi: Kita cek di tabel/relasi alternative_evaluations
+        $dmEvaluationsDone = $decisionSession->dms()
+            ->whereHas('alternativeEvaluations', function ($query) use ($decisionSession) {
+                $query->where('decision_session_id', $decisionSession->id);
+            }, '=', $decisionSession->alternatives()->count() * $decisionSession->criterias()->count())
+            ->count();
+
+        return view('control.index', compact('decisionSession', 'assignedDmCount', 'dmEvaluationsDone'));
     }
 
     public function create()
@@ -91,10 +101,14 @@ class DecisionSessionController extends Controller
 
     public function activate(DecisionSession $decisionSession)
     {
-        // Konfigurasi hanya boleh dilakukan dari draft
-        abort_if($decisionSession->status !== 'draft', 403);
+        // 1. Definisikan alur transisi status yang valid untuk method ini
+        // draft -> configured (aktivasi awal)
+        // configured -> scoring (buka penilaian alternatif)
+        $validStatuses = ['draft', 'configured'];
 
-        // Validasi kesiapan data sebelum aktif (Pastikan relasi jamak sesuai Model)
+        abort_unless(in_array($decisionSession->status, $validStatuses), 403, 'Sesi tidak dapat diaktifkan pada tahap ini.');
+
+        // 2. Validasi Kesiapan Data (Kriteria, Alternatif, DM)
         if ($decisionSession->criterias()->where('is_active', true)->count() < 2) {
             return back()->withErrors('Minimal 2 kriteria aktif diperlukan.');
         }
@@ -107,29 +121,30 @@ class DecisionSessionController extends Controller
             return back()->withErrors('Minimal 1 decision maker diperlukan.');
         }
 
-        // Validasi kelengkapan aturan scoring setiap kriteria aktif
+        // 3. Validasi Aturan Scoring (Opsional namun disarankan)
         $activeCriteria = $decisionSession->criterias()
             ->where('is_active', true)
             ->with(['scoringRule.parameters'])
             ->get();
 
-        $criteriaScoringComplete = $activeCriteria->every(function ($criteria) {
-            if (!$criteria->scoringRule) {
-                return false;
-            }
+        $scoringComplete = $activeCriteria->every(fn($c) => $c->scoringRule?->isComplete());
 
-            return $criteria->scoringRule->isComplete();
-        });
-
-        if (!$criteriaScoringComplete) {
-            return back()->withErrors(
-                'Aturan scoring kriteria belum lengkap. Lengkapi semua kriteria sebelum membuka sesi.'
-            );
+        if (!$scoringComplete) {
+            return back()->withErrors('Aturan scoring kriteria belum lengkap.');
         }
 
-        $decisionSession->update(['status' => 'configured']);
+        // 4. Logika Transisi Status berdasarkan Enum Anda
+        // Jika draft -> configured
+        // Jika configured -> scoring (Ini yang Anda tuju sekarang)
+        $nextStatus = ($decisionSession->status === 'draft') ? 'configured' : 'scoring';
 
-        return back()->with('success', 'Sesi berhasil diaktifkan.');
+        $decisionSession->update(['status' => $nextStatus]);
+
+        $message = ($nextStatus === 'scoring')
+            ? 'Penilaian alternatif (scoring) telah dibuka.'
+            : 'Sesi telah berhasil dikonfigurasi.';
+
+        return back()->with('success', $message);
     }
 
     public function close(DecisionSession $decisionSession)

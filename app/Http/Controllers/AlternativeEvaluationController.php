@@ -16,10 +16,19 @@ class AlternativeEvaluationController extends Controller
      */
     public function index(DecisionSession $decisionSession)
     {
+        // Guard dasar (SAMA POLA DENGAN KRITERIA)
         abort_if(! auth()->check() || ! auth()->user()->hasRole('dm'), 403);
 
-        // Penilaian hanya boleh saat tahap alternatives
-        abort_if($decisionSession->status !== 'alternatives', 403);
+        abort_if(
+            ! $decisionSession->dms()
+                ->where('users.id', auth()->id())
+                ->exists(),
+            403,
+            'Anda tidak ditugaskan pada sesi ini.'
+        );
+
+        // Penilaian alternatif hanya boleh saat fase SCORING
+        abort_if($decisionSession->status !== 'scoring', 403);
 
         $dmId = auth()->id();
 
@@ -43,19 +52,30 @@ class AlternativeEvaluationController extends Controller
             'alternatives'    => $alternatives,
             'criteria'        => $criteria,
             'evaluations'     => $evaluations,
+            'activeTab'       => 'evaluasi-alternatif',
         ]);
     }
 
     /**
-     * Simpan penilaian alternatif (DM)
+     * Simpan / update penilaian alternatif (DM)
      */
     public function store(
         Request $request,
         DecisionSession $decisionSession,
         UtilityTransformService $utilityService
     ): RedirectResponse {
+        // Guard dasar
         abort_if(! auth()->check() || ! auth()->user()->hasRole('dm'), 403);
-        abort_if($decisionSession->status !== 'alternatives', 403);
+
+        abort_if(
+            ! $decisionSession->dms()
+                ->where('users.id', auth()->id())
+                ->exists(),
+            403
+        );
+
+        // KONSISTEN DENGAN index()
+        abort_if($decisionSession->status !== 'scoring', 403);
 
         $dmId = auth()->id();
         abort_if(! $dmId, 403);
@@ -67,10 +87,10 @@ class AlternativeEvaluationController extends Controller
                 'evaluations.*.*'   => ['required', 'numeric'],
             ],
             [
-                'evaluations.required' => 'Penilaian belum diisi.',
-                'evaluations.min'      => 'Minimal satu alternatif harus dinilai.',
-                'evaluations.*.*.required' => 'Semua kriteria harus diberi penilaian.',
-                'evaluations.*.*.numeric'  => 'Nilai penilaian tidak valid.',
+                'evaluations.required'      => 'Penilaian belum diisi.',
+                'evaluations.min'           => 'Minimal satu alternatif harus dinilai.',
+                'evaluations.*.*.required'  => 'Semua kriteria harus diberi penilaian.',
+                'evaluations.*.*.numeric'   => 'Nilai penilaian tidak valid.',
             ]
         );
 
@@ -105,6 +125,6 @@ class AlternativeEvaluationController extends Controller
 
         return redirect()
             ->route('decision-sessions.summary', $decisionSession->id)
-            ->with('success', 'Penilaian berhasil disimpan.');
+            ->with('success', 'Penilaian alternatif berhasil disimpan.');
     }
 }
