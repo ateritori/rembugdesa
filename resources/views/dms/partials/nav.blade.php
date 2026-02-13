@@ -1,71 +1,37 @@
 @php
     $status = $decisionSession->status ?? null;
+    $currentTab = $activeTab ?? 'workspace';
 @endphp
 
-<nav class="mb-8 flex w-fit flex-wrap gap-2 rounded-2xl border border-gray-200 bg-gray-100/50 p-1.5">
-    {{-- 1. Workspace: selalu muncul --}}
+<nav
+    class="mb-8 flex w-fit flex-wrap gap-2 rounded-2xl border border-slate-200 bg-slate-100/50 p-1.5 shadow-sm font-sans">
+
+    {{-- TAB 1: WORKSPACE (INDEX) --}}
     <a href="{{ route('dms.index', $decisionSession->id) }}"
-        class="{{ request()->routeIs('dms.index')
-            ? 'bg-white text-app shadow-sm ring-1 ring-black/5'
-            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50' }} flex items-center rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200">
+        class="{{ $currentTab === 'workspace' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700' }} flex items-center rounded-xl px-5 py-2 text-sm font-black transition-all">
         Workspace
     </a>
 
-    {{-- 2. Perbandingan Kriteria: hanya jika status = configured --}}
-    @if ($status === 'configured')
-        <a href="{{ route('decision-sessions.pairwise.index', $decisionSession->id) }}"
-            class="{{ ($activeTab ?? null) === 'pairwise'
-                ? 'bg-white text-app shadow-sm ring-1 ring-black/5'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-white/50' }} flex items-center rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200">
-            Perbandingan Kriteria
+    {{-- TAB 2: PENILAIAN KRITERIA (DINAMIS) --}}
+    {{-- Label ganti otomatis di Navigasi sesuai progres --}}
+    <a href="{{ route('dms.index', $decisionSession->id) }}?tab=penilaian-kriteria"
+        class="{{ $currentTab === 'penilaian-kriteria' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700' }} flex items-center rounded-xl px-5 py-2 text-sm font-black transition-all">
+        {{ $dmHasCompleted ? 'Bobot Individu' : 'Penilaian Pairwise' }}
+    </a>
+
+    {{-- TAB 3: PENILAIAN ALTERNATIF (DINAMIS) --}}
+    @if ($status === 'scoring' || $status === 'closed')
+        <a href="{{ route('dms.index', $decisionSession->id) }}?tab=evaluasi-alternatif"
+            class="{{ $currentTab === 'evaluasi-alternatif' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700' }} flex items-center rounded-xl px-5 py-2 text-sm font-black transition-all">
+            {{ $decisionSession->dmEvaluationFinished ?? false ? 'Hasil Penilaian' : 'Penilaian Alternatif' }}
         </a>
     @endif
 
-    {{-- 3. Bobot Individu: muncul jika DM sudah menyelesaikan pairwise (read only) --}}
-    @if (($hasCompletedPairwise ?? false) === true)
-        <a href="{{ route('dms.weights.index', $decisionSession->id) }}"
-            class="{{ request()->routeIs('dms.weights.*')
-                ? 'bg-white text-app shadow-sm ring-1 ring-black/5'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-white/50' }} flex items-center rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200">
-            Bobot Individu
-        </a>
-    @endif
-
-    {{-- 4. Bobot Kelompok: hanya jika status = scoring --}}
-    @if ($status === 'scoring')
-        <a href="{{ route('dms.group-weights.index', $decisionSession->id) }}"
-            class="{{ request()->routeIs('dms.group-weights.*')
-                ? 'bg-white text-app shadow-sm ring-1 ring-black/5'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-white/50' }} flex items-center rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200">
-            Bobot Kelompok
-        </a>
-    @endif
-
-    {{-- 5. Penilaian Alternatif: hanya jika status = scoring --}}
-    @if ($status === 'scoring')
-        <a href="{{ route('alternative-evaluations.index', $decisionSession->id) }}"
-            class="{{ request()->routeIs('alternative-evaluations.*')
-                ? 'bg-white text-app shadow-sm ring-1 ring-black/5'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-white/50' }} flex items-center rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200">
-            Penilaian Alternatif
-        </a>
-    @endif
-
-    {{-- 6. Ranking Alternatif: muncul jika penilaian alternatif DM selesai --}}
-    @if (($decisionSession->dmEvaluationFinished ?? false) === true)
-        <a href="{{ route('decision-sessions.summary', $decisionSession->id) }}"
-            class="text-gray-500 hover:text-gray-700 hover:bg-white/50 flex items-center rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200">
-            Ranking Alternatif
-        </a>
-    @endif
-
-    {{-- 7. Hasil: hanya jika status = closed --}}
+    {{-- TAB 4: HASIL AKHIR --}}
     @if ($status === 'closed')
-        <a href="{{ route('decision-sessions.summary', $decisionSession->id) }}"
-            class="{{ request()->routeIs('decision-sessions.summary')
-                ? 'bg-white text-app shadow-sm ring-1 ring-black/5'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-white/50' }} flex items-center rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200">
-            Hasil
+        <a href="{{ route('dms.index', $decisionSession->id) }}?tab=hasil-akhir"
+            class="{{ $currentTab === 'hasil-akhir' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700' }} flex items-center rounded-xl px-5 py-2 text-sm font-black transition-all">
+            Hasil Akhir
         </a>
     @endif
 </nav>

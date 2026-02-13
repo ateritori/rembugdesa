@@ -50,7 +50,6 @@
                         <span
                             class="text-4xl font-black text-app group-hover:text-primary transition-colors">{{ $card['value'] }}</span>
                     </div>
-                    {{-- Icon Background --}}
                     <div
                         class="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-10 group-hover:scale-110 transition-all duration-700">
                         <svg class="w-24 h-24 text-app" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,7 +57,6 @@
                             </path>
                         </svg>
                     </div>
-                    {{-- Accent Line --}}
                     <div class="absolute top-0 left-0 w-1 h-full {{ $card['bg'] }} opacity-50"></div>
                 </div>
             @endforeach
@@ -73,9 +71,6 @@
         {{-- SESSION CARDS --}}
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             @forelse ($assignedSessions as $session)
-                @php
-                    $weight = $session->criteriaWeights->where('dm_id', auth()->id())->first();
-                @endphp
                 @php
                     $dmActivePhases = ['configured', 'scoring', 'aggregated', 'final'];
                 @endphp
@@ -116,10 +111,8 @@
                                                 'class' => 'bg-emerald-500/10 text-emerald-500',
                                             ],
                                         ];
-
                                         $status = $statusMap[$session->status] ?? null;
                                     @endphp
-
                                     @if ($status)
                                         <span
                                             class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase {{ $status['class'] }}">
@@ -128,43 +121,56 @@
                                     @endif
                                 </div>
                             </div>
-                            @if ($weight)
+                            @if ($session->dmHasCompleted)
                                 <div class="flex flex-col border-l border-app/50 pl-4">
                                     <span class="text-[9px] font-black uppercase tracking-widest opacity-40">Konsistensi
-                                        (CR)
+                                        (CR)</span>
+                                    <span class="mt-1 text-xs font-black text-primary">
+                                        {{ number_format($session->criteriaWeights->where('dm_id', auth()->id())->first()->cr ?? 0, 4) }}
                                     </span>
-                                    <span
-                                        class="mt-1 text-xs font-black text-primary">{{ number_format($weight->cr, 4) }}</span>
                                 </div>
                             @endif
                         </div>
 
                         <div class="flex items-center gap-2">
-                            @if ($weight)
+                            @if ($session->dmHasCompleted)
                                 <div class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]">
                                 </div>
                                 <p class="text-[11px] text-emerald-500 font-black uppercase tracking-tighter">Penilaian
-                                    Selesai</p>
+                                    Kriteria Selesai</p>
                             @else
                                 <div
                                     class="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]">
                                 </div>
-                                <p class="text-[11px] text-amber-500 font-black uppercase tracking-tighter">Menunggu Aksi
-                                </p>
+                                <p class="text-[11px] text-amber-500 font-black uppercase tracking-tighter">Perlu Isi
+                                    Perbandingan Kriteria</p>
                             @endif
                         </div>
                     </div>
 
-                    <div class="mt-8{{ in_array($session->status, $dmActivePhases) ? ' space-y-2' : '' }}">
+                    <div class="mt-8">
                         @if (in_array($session->status, $dmActivePhases))
-                            <a href="{{ !$weight
-                                ? route('decision-sessions.pairwise.index', $session->id)
-                                : ($session->status === 'scoring' && !$session->alternativeEvaluations->where('dm_id', auth()->id())->count()
-                                    ? route('alternative-evaluations.index', $session->id)
-                                    : route('dms.index', $session->id)) }}"
+                            @php
+                                // LOGIKA REDIRECT TAB OTOMATIS
+                                if (!$session->dmHasCompleted) {
+                                    $targetTab = 'penilaian-kriteria';
+                                    $btnLabel = 'Mulai Penilaian Kriteria';
+                                } elseif (
+                                    $session->status === 'scoring' &&
+                                    !($session->dmEvaluationFinished ?? false)
+                                ) {
+                                    $targetTab = 'evaluasi-alternatif';
+                                    $btnLabel = 'Mulai Penilaian Alternatif';
+                                } else {
+                                    $targetTab = 'workspace';
+                                    $btnLabel = 'Buka Workspace';
+                                }
+                            @endphp
+
+                            <a href="{{ route('dms.index', ['decisionSession' => $session->id, 'tab' => $targetTab]) }}"
                                 class="inline-flex items-center justify-center w-full px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest
-bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
-                                Masuk Workspace
+                                bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+                                {{ $btnLabel }}
                                 <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                         d="M14 5l7 7m0 0l-7 7m7-7H3" />

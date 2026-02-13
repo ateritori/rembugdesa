@@ -53,13 +53,17 @@ class DashboardController extends Controller
                 ->with(['criteria', 'criteriaWeights'])
                 ->get();
 
+            $assignedSessions->each(function ($session) use ($user) {
+                $session->dmHasCompleted = $session->criteriaWeights
+                    ->where('dm_id', $user->id)
+                    ->isNotEmpty();
+            });
+
             $activeSessions = $assignedSessions->where('status', '!=', 'draft');
 
-            $pendingTaskCount = $activeSessions->filter(function ($session) use ($user) {
-                return ! $session->criteriaWeights
-                    ->where('dm_id', $user->id)
-                    ->count();
-            })->count();
+            $pendingTaskCount = $activeSessions
+                ->where('dmHasCompleted', false)
+                ->count();
 
             return view('dashboard.dm', [
                 'assignedCount'     => $assignedSessions->count(),

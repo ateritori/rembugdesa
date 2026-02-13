@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: mysql
--- Generation Time: Feb 12, 2026 at 04:15 PM
+-- Generation Time: Feb 13, 2026 at 12:39 AM
 -- Server version: 8.0.45
 -- PHP Version: 8.3.26
 
@@ -85,16 +85,6 @@ CREATE TABLE `cache` (
   `expiration` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `cache`
---
-
-INSERT INTO `cache` (`key`, `value`, `expiration`) VALUES
-('rembug-desa-cache-admin@desa.id|127.0.0.1', 'i:1;', 1770908410),
-('rembug-desa-cache-admin@desa.id|127.0.0.1:timer', 'i:1770908410;', 1770908410),
-('rembug-desa-cache-ateritori@gmail.com|127.0.0.1', 'i:1;', 1770860393),
-('rembug-desa-cache-ateritori@gmail.com|127.0.0.1:timer', 'i:1770860393;', 1770860393);
-
 -- --------------------------------------------------------
 
 --
@@ -153,6 +143,32 @@ CREATE TABLE `criteria_pairwise` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `criteria_pairwise`
+--
+
+INSERT INTO `criteria_pairwise` (`id`, `decision_session_id`, `dm_id`, `criteria_id_1`, `criteria_id_2`, `value`, `direction`, `created_at`, `updated_at`) VALUES
+(1, 1, 4, 1, 2, 1, 'left', '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(2, 1, 4, 1, 3, 1, 'left', '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(3, 1, 4, 1, 4, 4, 'left', '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(4, 1, 4, 1, 5, 3, 'right', '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(5, 1, 4, 2, 3, 4, 'left', '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(6, 1, 4, 2, 4, 4, 'left', '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(7, 1, 4, 2, 5, 3, 'right', '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(8, 1, 4, 3, 4, 2, 'left', '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(9, 1, 4, 3, 5, 3, 'right', '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(10, 1, 4, 4, 5, 3, 'right', '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(11, 1, 5, 1, 2, 3, 'left', '2026-02-12 22:55:34', '2026-02-12 22:55:34'),
+(12, 1, 5, 1, 3, 2, 'left', '2026-02-12 22:55:34', '2026-02-12 22:55:34'),
+(13, 1, 5, 1, 4, 4, 'left', '2026-02-12 22:55:34', '2026-02-12 22:55:34'),
+(14, 1, 5, 1, 5, 4, 'left', '2026-02-12 22:55:34', '2026-02-12 22:55:34'),
+(15, 1, 5, 2, 3, 4, 'right', '2026-02-12 22:55:34', '2026-02-12 22:55:34'),
+(16, 1, 5, 2, 4, 1, 'left', '2026-02-12 22:55:34', '2026-02-12 22:55:34'),
+(17, 1, 5, 2, 5, 1, 'left', '2026-02-12 22:55:34', '2026-02-12 22:55:34'),
+(18, 1, 5, 3, 4, 3, 'left', '2026-02-12 22:55:34', '2026-02-12 22:55:34'),
+(19, 1, 5, 3, 5, 3, 'left', '2026-02-12 22:55:34', '2026-02-12 22:55:34'),
+(20, 1, 5, 4, 5, 1, 'left', '2026-02-12 22:55:34', '2026-02-12 22:55:34');
 
 -- --------------------------------------------------------
 
@@ -234,6 +250,14 @@ CREATE TABLE `criteria_weights` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `criteria_weights`
+--
+
+INSERT INTO `criteria_weights` (`id`, `decision_session_id`, `dm_id`, `weights`, `cr`, `created_at`, `updated_at`) VALUES
+(1, 1, 4, '{\"1\": 0.17327141660998818, \"2\": 0.2374455413329063, \"3\": 0.11501136356018218, \"4\": 0.06757637623901917, \"5\": 0.4066953022579043}', 0.0840, '2026-02-12 22:45:27', '2026-02-12 22:45:27'),
+(2, 1, 5, '{\"1\": 0.4107791143803977, \"2\": 0.09990470739175332, \"3\": 0.2933694104465703, \"4\": 0.09797338389063928, \"5\": 0.09797338389063928}', 0.0147, '2026-02-12 22:55:34', '2026-02-12 22:55:34');
 
 -- --------------------------------------------------------
 
@@ -514,7 +538,7 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
-('e9ldaZZ2SbQKlDKC0NSP992TGoA94Wt2QJ3qznjl', 2, '127.0.0.1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoibW9vQ0RMNkVOeDFhb1ZYd3hta2cwc2g3NzM3dG5zcjJRVzY4NVgxayI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9kYXNoYm9hcmQiO3M6NToicm91dGUiO3M6OToiZGFzaGJvYXJkIjt9czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6Mjt9', 1770912941);
+('lt5q5pNz6OqLlcMlcEpcewFLPaqH5TZxYH1AfdyG', 4, '127.0.0.1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoiZTJsa0lGRno1ekJmaWVrdUdGQlQ2a0NNNG5aZHpJSlc0OVJYSVZZcyI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9kYXNoYm9hcmQiO3M6NToicm91dGUiO3M6OToiZGFzaGJvYXJkIjt9czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6NDt9', 1770943180);
 
 -- --------------------------------------------------------
 
@@ -759,7 +783,7 @@ ALTER TABLE `criteria`
 -- AUTO_INCREMENT for table `criteria_pairwise`
 --
 ALTER TABLE `criteria_pairwise`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `criteria_scoring_parameters`
@@ -777,7 +801,7 @@ ALTER TABLE `criteria_scoring_rules`
 -- AUTO_INCREMENT for table `criteria_weights`
 --
 ALTER TABLE `criteria_weights`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `decision_sessions`

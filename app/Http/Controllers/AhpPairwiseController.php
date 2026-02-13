@@ -72,7 +72,9 @@ class AhpPairwiseController extends Controller
         $frontendPairs = json_decode($request->input('debug_frontend'), true);
 
         if (! is_array($frontendPairs)) {
-            return back()->withErrors('Data frontend tidak valid.');
+            return back()
+                ->withInput()
+                ->with('error', 'Data frontend tidak valid.');
         }
 
         try {
@@ -85,12 +87,11 @@ class AhpPairwiseController extends Controller
         } catch (\DomainException $e) {
             return back()
                 ->withInput()
-                ->withErrors($e->getMessage());
+                ->with('error', $e->getMessage());
         }
 
         return redirect()
-            ->route('dms.index', $decisionSession->id)
-            ->with('tab', 'weights')
+            ->route('dms.weights.index', $decisionSession->id)
             ->with(
                 'success',
                 'Penilaian berhasil disimpan. CR = ' . round($result['cr'], 4)

@@ -45,16 +45,30 @@ class DecisionMakerController extends Controller
             ->where('dm_id', auth()->id())
             ->first();
 
+        $dmHasCompleted = ! is_null($criteriaWeights);
+
         // Alias for legacy views expecting $criterias
         $criterias = $criteria;
+
+        // Workspace is the default tab (hard reset entry point)
+        if (request()->boolean('reset')) {
+            // explicit reset from dashboard
+        }
+        $activeTab = null;
 
         return view('dms.index', compact(
             'decisionSession',
             'criteria',
             'criterias',
             'existingPairwise',
-            'criteriaWeights'
+            'criteriaWeights',
+            'dmHasCompleted',
+            'activeTab'
         ));
+    }
+    public function weights(DecisionSession $decisionSession)
+    {
+        return redirect()->route('dms.index', $decisionSession->id);
     }
     public function groupWeights(DecisionSession $decisionSession)
     {
@@ -68,9 +82,22 @@ class DecisionMakerController extends Controller
             ->whereNull('dm_id')
             ->first();
 
-        return view('dms.group-weights.index', compact(
+        $criteriaWeights = CriteriaWeight::where(
+            'decision_session_id',
+            $decisionSession->id
+        )
+            ->where('dm_id', auth()->id())
+            ->first();
+
+        $dmHasCompleted = ! is_null($criteriaWeights);
+
+        $activeTab = 'group-weights';
+
+        return view('dms.index', compact(
             'decisionSession',
-            'groupResult'
+            'groupResult',
+            'dmHasCompleted',
+            'activeTab'
         ));
     }
 }
