@@ -47,12 +47,15 @@ class AlternativeEvaluationController extends Controller
             ->groupBy('alternative_id')
             ->map(fn($items) => $items->keyBy('criteria_id'));
 
-        return view('dms.alternative-evaluations.index', [
-            'decisionSession' => $decisionSession,
-            'alternatives'    => $alternatives,
-            'criteria'        => $criteria,
-            'evaluations'     => $evaluations,
-            'activeTab'       => 'evaluasi-alternatif',
+        $hasCompletedEvaluation = $evaluations->isNotEmpty();
+
+        return view('dms.index', [
+            'decisionSession'        => $decisionSession,
+            'alternatives'           => $alternatives,
+            'criteria'               => $criteria,
+            'evaluations'            => $evaluations,
+            'hasCompletedEvaluation' => $hasCompletedEvaluation,
+            'tab'                    => 'evaluasi-alternatif',
         ]);
     }
 
@@ -124,7 +127,7 @@ class AlternativeEvaluationController extends Controller
         }
 
         return redirect()
-            ->route('decision-sessions.summary', $decisionSession->id)
+            ->route('dms.index', $decisionSession->id)
             ->with('success', 'Penilaian alternatif berhasil disimpan.');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DecisionSession;
 use App\Models\CriteriaWeight;
 use App\Models\CriteriaPairwise;
+use App\Models\AlternativeEvaluation;
 use Illuminate\Http\Request;
 
 class DecisionMakerController extends Controller
@@ -27,7 +28,7 @@ class DecisionMakerController extends Controller
         );
 
         // Data ringkasan workspace
-        $criteria = $decisionSession->criteria()
+        $baseCriteria = $decisionSession->criteria()
             ->where('is_active', true)
             ->orderBy('order')
             ->get();
@@ -38,13 +39,41 @@ class DecisionMakerController extends Controller
 
         $dmHasCompleted = ! is_null($criteriaWeights);
 
+        // ===== Evaluasi Alternatif (hanya saat tab aktif) =====
+        if (request('tab') === 'evaluasi-alternatif') {
+            $alternatives = $decisionSession->alternatives()
+                ->where('is_active', true)
+                ->get();
+
+            $criteria = $decisionSession->criteria()
+                ->with(['scoringRule', 'scoringRule.parameters'])
+                ->where('is_active', true)
+                ->orderBy('order')
+                ->get();
+
+            $evaluations = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
+                ->where('dm_id', auth()->id())
+                ->get()
+                ->groupBy('alternative_id')
+                ->map(fn($items) => $items->keyBy('criteria_id'));
+
+            $hasCompletedEvaluation = $evaluations->isNotEmpty();
+        } else {
+            $alternatives = collect();
+            $evaluations = collect();
+            $hasCompletedEvaluation = false;
+        }
+
         return view('dms.index', [
             'decisionSession' => $decisionSession,
-            'criteria'        => $criteria,
-            'criterias'       => $criteria, // jaga kompatibilitas view lama
+            'criteria'        => (request('tab') === 'evaluasi-alternatif') ? $criteria : $baseCriteria,
+            'criterias'       => (request('tab') === 'evaluasi-alternatif') ? $criteria : $baseCriteria, // jaga kompatibilitas view lama
             'criteriaWeights' => $criteriaWeights,
             'dmHasCompleted'  => $dmHasCompleted,
-            'activeTab'       => 'workspace',
+            'evaluations'            => $evaluations,
+            'hasCompletedEvaluation' => $hasCompletedEvaluation,
+            'alternatives'    => $alternatives,
+            'tab'             => request('tab', 'workspace'),
         ]);
     }
 
@@ -72,13 +101,21 @@ class DecisionMakerController extends Controller
 
         $dmHasCompleted = ! is_null($criteriaWeights);
 
+        $evaluations = collect();
+        $hasCompletedEvaluation = false;
+
+        $alternatives = collect();
+
         return view('dms.index', [
             'decisionSession' => $decisionSession,
             'criteria'        => $criteria,
             'criterias'       => $criteria,
             'criteriaWeights' => $criteriaWeights,
             'dmHasCompleted'  => $dmHasCompleted,
-            'activeTab'       => 'weights',
+            'evaluations'            => $evaluations,
+            'hasCompletedEvaluation' => $hasCompletedEvaluation,
+            'alternatives'    => $alternatives,
+            'tab'             => request('tab', 'workspace'),
         ]);
     }
 
@@ -105,11 +142,19 @@ class DecisionMakerController extends Controller
 
         $dmHasCompleted = ! is_null($criteriaWeights);
 
+        $evaluations = collect();
+        $hasCompletedEvaluation = false;
+
+        $alternatives = collect();
+
         return view('dms.index', [
             'decisionSession' => $decisionSession,
             'groupResult'     => $groupResult,
             'dmHasCompleted'  => $dmHasCompleted,
-            'activeTab'       => 'group-weights',
+            'evaluations'            => $evaluations,
+            'hasCompletedEvaluation' => $hasCompletedEvaluation,
+            'alternatives'    => $alternatives,
+            'tab'             => request('tab', 'workspace'),
         ]);
     }
 }
