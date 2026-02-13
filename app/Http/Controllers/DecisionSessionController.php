@@ -26,6 +26,18 @@ class DecisionSessionController extends Controller
         return view('decision-sessions.index', compact('sessions'));
     }
 
+    /**
+     * Sesuai dengan Route::get('/.../control', [DecisionSessionController::class, 'control'])
+     * Mengarah ke folder: resources/views/control/index.blade.php
+     */
+    public function control(DecisionSession $decisionSession)
+    {
+        // Load relasi agar view control bisa menampilkan data kriteria & alternatif
+        $decisionSession->load(['criterias', 'alternatives', 'dms']);
+
+        return view('control.index', compact('decisionSession'));
+    }
+
     public function create()
     {
         return view('decision-sessions.create');
@@ -82,8 +94,8 @@ class DecisionSessionController extends Controller
         // Konfigurasi hanya boleh dilakukan dari draft
         abort_if($decisionSession->status !== 'draft', 403);
 
-        // Validasi kesiapan data sebelum aktif
-        if ($decisionSession->criteria()->where('is_active', true)->count() < 2) {
+        // Validasi kesiapan data sebelum aktif (Pastikan relasi jamak sesuai Model)
+        if ($decisionSession->criterias()->where('is_active', true)->count() < 2) {
             return back()->withErrors('Minimal 2 kriteria aktif diperlukan.');
         }
 
@@ -96,7 +108,7 @@ class DecisionSessionController extends Controller
         }
 
         // Validasi kelengkapan aturan scoring setiap kriteria aktif
-        $activeCriteria = $decisionSession->criteria()
+        $activeCriteria = $decisionSession->criterias()
             ->where('is_active', true)
             ->with(['scoringRule.parameters'])
             ->get();
@@ -134,7 +146,7 @@ class DecisionSessionController extends Controller
 
     public function destroy(DecisionSession $decisionSession)
     {
-        // Hanya izinkan hapus jika masih draft atau sesuai kebijakan Anda
+        // Hanya izinkan hapus jika masih draft
         abort_if($decisionSession->status !== 'draft', 403, 'Session yang sudah berjalan tidak bisa dihapus.');
 
         $decisionSession->delete();
@@ -144,7 +156,7 @@ class DecisionSessionController extends Controller
             ->with('success', 'Decision session deleted.');
     }
 
-    // ================= PENUGASAN DM (BAGIAN YANG BERMASALAH SEBELUMNYA) =================
+    // ================= PENUGASAN DM =================
 
     public function assignDms(DecisionSession $decisionSession)
     {

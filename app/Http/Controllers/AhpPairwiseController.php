@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\DecisionSession;
+use App\Models\CriteriaPairwise;
+use App\Models\CriteriaWeight;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\AHP\AhpIndividualSubmissionService;
-use App\Models\CriteriaWeight;
 
 class AhpPairwiseController extends Controller
 {
@@ -18,41 +19,45 @@ class AhpPairwiseController extends Controller
         $user = Auth::user();
         abort_if(! $user || ! $user->hasRole('dm'), 403);
 
-        // Ambil kriteria aktif untuk session
-        $criterias = $decisionSession->criterias()
+        // 1. Ambil kriteria aktif
+        $criterias = $decisionSession->criteria()
             ->where('is_active', true)
+            ->orderBy('order')
             ->get();
 
-        // Ambil seluruh pairwise DM (jika ada)
-        $existingPairwise = CriteriaWeight::where('decision_session_id', $decisionSession->id)
+        // 2. Ambil detail pairwise untuk repopulate slider
+        $existingPairwise = CriteriaPairwise::where('decision_session_id', $decisionSession->id)
             ->where('dm_id', $user->id)
             ->get()
             ->mapWithKeys(function ($item) {
-                $key = min($item->criteria_a_id, $item->criteria_b_id)
-                    . '-' .
-                    max($item->criteria_a_id, $item->criteria_b_id);
+                $key = min($item->criteria_id_1, $item->criteria_id_2) . '-' .
+                    max($item->criteria_id_1, $item->criteria_id_2);
                 return [$key => $item];
             });
 
-        // Hitung kelengkapan pairwise
+        // 3. Ambil hasil bobot (untuk tampilan progress bar/output)
+        $criteriaWeights = CriteriaWeight::where('decision_session_id', $decisionSession->id)
+            ->where('dm_id', $user->id)
+            ->first();
+
+        // 4. Hitung kelengkapan
         $criteriaCount = $criterias->count();
-        $requiredPairs = $criteriaCount > 1
-            ? ($criteriaCount * ($criteriaCount - 1)) / 2
-            : 0;
+        $requiredPairs = $criteriaCount > 1 ? ($criteriaCount * ($criteriaCount - 1)) / 2 : 0;
 
-        $hasCompletedPairwise = $requiredPairs > 0
-            && $existingPairwise->count() >= $requiredPairs;
+        // SESUAIKAN DISINI: Ganti nama variabel agar cocok dengan Blade Anda
+        $dmHasCompleted = $requiredPairs > 0 && $existingPairwise->count() >= $requiredPairs;
 
-        // Editable hanya saat configured dan belum lengkap
-        $pairwiseReadOnly = $decisionSession->status !== 'configured' || $hasCompletedPairwise;
+        // 5. Logika Readonly
+        $pairwiseReadOnly = $decisionSession->status !== 'configured';
 
         return view('dms.index', [
-            'decisionSession'      => $decisionSession,
-            'criterias'            => $criterias,
-            'existingPairwise'     => $existingPairwise,
-            'hasCompletedPairwise' => $hasCompletedPairwise,
-            'pairwiseReadOnly'     => $pairwiseReadOnly,
-            'activeTab'            => 'pairwise',
+            'decisionSession'   => $decisionSession,
+            'criterias'         => $criterias,
+            'existingPairwise'  => $existingPairwise,
+            'criteriaWeights'   => $criteriaWeights, // Dibutuhkan oleh view output bobot
+            'dmHasCompleted'    => $dmHasCompleted,  // Nama variabel disesuaikan untuk Blade
+            'pairwiseReadOnly'  => $pairwiseReadOnly,
+            'activeTab'         => 'pairwise',
         ]);
     }
 

@@ -1,123 +1,86 @@
 <?php
 
-namespace App\Services\AHP;
+namespace App\Http\Controllers;
 
 use App\Models\DecisionSession;
-use App\Models\CriteriaPairwise;
+use App\Models\CriteriaPairwise; // Tambahkan ini
 use App\Models\CriteriaWeight;
-use App\Models\User;
-use App\Services\AHP\AhpService;
-use DomainException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Services\AHP\AhpIndividualSubmissionService;
 
-class AhpIndividualSubmissionService
+class AhpPairwiseController extends Controller
 {
-    public function submit(
-        DecisionSession $decisionSession,
-        User $dm,
-        array $frontendPairs,
-        array $pairwiseInput
-    ): array {
-        // Ambil kriteria aktif
-        $criterias = $decisionSession->criteria()
+    public function index(DecisionSession $decisionSession)
+    {
+        $user = Auth::user();
+        abort_if(! $user || ! $user->hasRole('dm'), 403);
+
+        // 1. Ambil kriteria aktif
+        $criterias = $decisionSession->criteria() // Sesuaikan dengan nama relasi (criteria/criterias)
             ->where('is_active', true)
             ->orderBy('order')
             ->get();
 
-        if ($criterias->count() < 2) {
-            throw new DomainException('Kriteria tidak mencukupi.');
-        }
+        // 2. AMBIL DARI CriteriaPairwise (Detail slider), BUKAN CriteriaWeight
+        $existingPairwise = CriteriaPairwise::where('decision_session_id', $decisionSession->id)
+            ->where('dm_id', $user->id)
+            ->get()
+            ->mapWithKeys(function ($item) {
+                // Key harus sama dengan logic di Blade: min-max
+                $key = min($item->criteria_id_1, $item->criteria_id_2) . '-' .
+                    max($item->criteria_id_1, $item->criteria_id_2);
+                return [$key => $item];
+            });
 
-        // Mapping ID → index
-        $ids = $criterias->pluck('id')->toArray();
-        $idToIndex = array_flip($ids);
-        $n = count($ids);
+        // 3. Hitung kelengkapan
+        $criteriaCount = $criterias->count();
+        $requiredPairs = $criteriaCount > 1 ? ($criteriaCount * ($criteriaCount - 1)) / 2 : 0;
+        $hasCompletedPairwise = $requiredPairs > 0 && $existingPairwise->count() >= $requiredPairs;
 
-        // Bangun matriks numerik
-        $matrix = array_fill(0, $n, array_fill(0, $n, 1.0));
+        // 4. LOGIKA EDIT: Izinkan edit selama status 'configured' 
+        // Meskipun sudah lengkap ($hasCompletedPairwise), DM tetap boleh ubah (edit)
+        $pairwiseReadOnly = $decisionSession->status !== 'configured';
 
-        foreach ($frontendPairs as $key => $pair) {
-            [$id1, $id2] = array_map('intval', explode('-', $key));
-
-            if (! isset($idToIndex[$id1], $idToIndex[$id2])) {
-                continue;
-            }
-
-            $i = $idToIndex[$id1];
-            $j = $idToIndex[$id2];
-
-            $matrix[$i][$j] = (float) $pair['a_ij'];
-            $matrix[$j][$i] = (float) $pair['a_ji'];
-        }
-
-        // Hitung AHP
-        $ahp = app(AhpService::class)->calculate($matrix);
-
-        if (! isset($ahp['cr']) || $ahp['cr'] >= 0.10) {
-            throw new DomainException(
-                'Consistency Ratio (CR) = ' .
-                    round($ahp['cr'] ?? 0, 4) .
-                    '. Data hanya dapat disimpan jika CR < 0.10.'
-            );
-        }
-
-        // Reset data lama
-        CriteriaPairwise::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', $dm->id)
-            ->delete();
-
-        CriteriaWeight::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', $dm->id)
-            ->delete();
-
-        // Simpan pairwise
-        $processed = [];
-
-        foreach ($pairwiseInput as $c1 => $rows) {
-            foreach ($rows as $c2 => $data) {
-                $id1 = (int) $c1;
-                $id2 = (int) $c2;
-
-                if ($id1 === $id2) {
-                    continue;
-                }
-
-                $key = min($id1, $id2) . '-' . max($id1, $id2);
-                if (isset($processed[$key])) {
-                    continue;
-                }
-                $processed[$key] = true;
-
-                $valIJ = (float) $data['a_ij'];
-                $direction = ($valIJ >= 1) ? 'left' : 'right';
-                $saveValue = ($valIJ >= 1) ? $valIJ : (1 / $valIJ);
-
-                CriteriaPairwise::create([
-                    'decision_session_id' => $decisionSession->id,
-                    'dm_id'               => $dm->id,
-                    'criteria_id_1'       => min($id1, $id2),
-                    'criteria_id_2'       => max($id1, $id2),
-                    'value'               => $saveValue,
-                    'direction'           => $direction,
-                ]);
-            }
-        }
-
-        // Mapping bobot ke ID kriteria
-        $weights = [];
-        foreach ($ids as $index => $id) {
-            $weights[$id] = $ahp['weights'][$index];
-        }
-
-        CriteriaWeight::create([
-            'decision_session_id' => $decisionSession->id,
-            'dm_id'               => $dm->id,
-            'weights'             => $weights,
-            'cr'                  => $ahp['cr'],
+        return view('dms.index', [
+            'decisionSession'      => $decisionSession,
+            'criterias'            => $criterias,
+            'existingPairwise'     => $existingPairwise,
+            'hasCompletedPairwise' => $hasCompletedPairwise,
+            'pairwiseReadOnly'     => $pairwiseReadOnly,
+            'activeTab'            => 'pairwise',
         ]);
+    }
 
-        return [
-            'cr' => $ahp['cr'],
-            'weights' => $weights,
-        ];
+    public function store(
+        Request $request,
+        DecisionSession $decisionSession,
+        AhpIndividualSubmissionService $service
+    ) {
+        $user = Auth::user();
+        abort_if(! $user || ! $user->hasRole('dm'), 403);
+        abort_if($decisionSession->status !== 'configured', 403);
+
+        $frontendPairs = json_decode($request->input('debug_frontend'), true);
+
+        if (! is_array($frontendPairs)) {
+            return back()->withInput()->with('error', 'Data perbandingan tidak valid.');
+        }
+
+        try {
+            // Service akan otomatis menghapus data lama (Delete & Re-insert)
+            $result = $service->submit(
+                $decisionSession,
+                $user,
+                $frontendPairs,
+                $request->input('pairwise', [])
+            );
+
+            return redirect()
+                ->route('dms.weights.index', $decisionSession->id)
+                ->with('success', 'Penilaian berhasil diperbarui. CR = ' . round($result['cr'], 4));
+        } catch (\DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
     }
 }

@@ -78,6 +78,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/decision-sessions/{decisionSession}', [DecisionSessionController::class, 'destroy'])
         ->name('decision-sessions.destroy');
 
+    // Control Center (Halaman Kelola untuk Sesi yang sudah Aktif)
+    Route::get('/decision-sessions/{decisionSession}/control', [DecisionSessionController::class, 'control'])
+        ->name('control.index');
+
     // Criteria
     Route::get('/decision-sessions/{decisionSession}/criteria', [CriteriaController::class, 'index'])
         ->name('criteria.index');
@@ -118,7 +122,6 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->name('alternatives.destroy');
 
     // Control & Aggregation
-
     Route::patch('/decision-sessions/{decisionSession}/lock-criteria', [CriteriaAggregationController::class, 'lock'])
         ->name('decision-sessions.lock-criteria');
 
@@ -165,10 +168,6 @@ Route::middleware(['auth', 'role:dm'])->group(function () {
         [DecisionMakerController::class, 'groupWeights']
     )->name('dms.group-weights.index');
 
-    // ===============================
-    // PENILAIAN ALTERNATIF (CREATE + EDIT)
-    // ===============================
-
     // Form penilaian (create / edit)
     Route::get(
         '/decision-sessions/{decisionSession}/alternative-evaluations',
@@ -181,9 +180,7 @@ Route::middleware(['auth', 'role:dm'])->group(function () {
         [AlternativeEvaluationController::class, 'store']
     )->name('alternative-evaluations.store');
 
-    // ===============================
-    // RINGKASAN HASIL (SMART – sementara)
-    // ===============================
+    // Ringkasan Hasil
     Route::get(
         '/decision-sessions/{decisionSession}/summary',
         [DecisionSummaryController::class, 'show']
