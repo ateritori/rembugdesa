@@ -89,9 +89,10 @@ class AhpPairwiseController extends Controller
             $statusLabel = $cr <= 0.1 ? "KONSISTEN" : "TIDAK KONSISTEN";
             $msg = "Penilaian berhasil disimpan! Status: {$statusLabel} (CR: " . number_format($cr, 4) . ")";
 
-            return redirect()
-                ->route('dms.weights.index', $decisionSession->id)
-                ->with('success', $msg);
+            return redirect()->route('dms.index', [
+                'decisionSession' => $decisionSession->id,
+                'tab' => 'bobot-kriteria',
+            ])->with('success', $msg);
         } catch (\Exception $e) {
             return back()->withInput()->with('error', 'Gagal memproses data: ' . $e->getMessage());
         }
