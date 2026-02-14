@@ -99,7 +99,10 @@ class AlternativeEvaluationController extends Controller
         }
 
         return redirect()
-            ->route('dms.index', $decisionSession->id)
+            ->route('dms.index', [
+                'decisionSession' => $decisionSession->id,
+                'tab' => 'evaluasi-alternatif',
+            ])
             ->with('success', 'Penilaian alternatif berhasil disimpan.');
     }
 }

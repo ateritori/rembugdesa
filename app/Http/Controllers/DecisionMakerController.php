@@ -7,6 +7,7 @@ use App\Models\CriteriaWeight;
 use App\Models\CriteriaPairwise;
 use App\Models\AlternativeEvaluation;
 use Illuminate\Http\Request;
+use App\Services\SMART\SmartRankingService;
 
 class DecisionMakerController extends Controller
 {
@@ -14,8 +15,10 @@ class DecisionMakerController extends Controller
      * Workspace utama Decision Maker
      * HANYA ringkasan & navigasi
      */
-    public function index(DecisionSession $decisionSession)
-    {
+    public function index(
+        DecisionSession $decisionSession,
+        SmartRankingService $smartRankingService
+    ) {
         // Guard dasar (SAMA POLA DENGAN KRITERIA)
         abort_if($decisionSession->status === 'draft', 403);
 
@@ -31,6 +34,8 @@ class DecisionMakerController extends Controller
         $hasCompletedEvaluation = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
             ->where('dm_id', auth()->id())
             ->exists();
+
+        $hasEvaluations = $hasCompletedEvaluation;
 
         // Data ringkasan workspace
         $baseCriteria = $decisionSession->criteria()
@@ -70,9 +75,24 @@ class DecisionMakerController extends Controller
                 ->get()
                 ->groupBy('alternative_id')
                 ->map(fn($items) => $items->keyBy('criteria_id'));
+
+            $smartScores = $smartRankingService->calculate(
+                $decisionSession,
+                auth()->user()
+            );
+
+            $hasSmartResult = ! empty($smartScores);
+
+            $smartContext = [
+                'dm_id'   => auth()->id(),
+                'dm_name' => auth()->user()->name,
+            ];
         } else {
             $alternatives = collect();
             $evaluations = collect();
+            $smartScores = [];
+            $hasSmartResult = false;
+            $smartContext = null;
         }
 
         return view('dms.index', [
@@ -83,9 +103,13 @@ class DecisionMakerController extends Controller
             'dmHasCompleted'  => $dmHasCompleted,
             'evaluations'            => $evaluations,
             'hasCompletedEvaluation' => $hasCompletedEvaluation,
+            'hasEvaluations'          => $hasEvaluations,
+            'hasSmartResult'          => $hasSmartResult,
             'alternatives'    => $alternatives,
             'tab'             => request('tab', 'workspace'),
             'groupResult'     => $groupResult,
+            'smartScores'  => $smartScores,
+            'smartContext' => $smartContext,
         ]);
     }
 
