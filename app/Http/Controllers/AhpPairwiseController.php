@@ -7,25 +7,45 @@ use App\Models\CriteriaPairwise;
 use App\Models\CriteriaWeight;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Services\AHP\AhpIndividualSubmissionService;
 
 class AhpPairwiseController extends Controller
 {
-    public function index(DecisionSession $decisionSession)
+    public function index(Request $request, DecisionSession $decisionSession)
     {
         $user = Auth::user();
-        abort_if(! $user || ! $user->hasRole('dm'), 403);
+        abort_if(!$user || !$user->hasRole('dm'), 403, 'Akses ditolak.');
 
-        abort_if(
-            ! $decisionSession->dms()
-                ->where('users.id', auth()->id())
-                ->exists(),
-            403
-        );
+        $isParticipant = $decisionSession->dms()->where('users.id', $user->id)->exists();
+        abort_if(!$isParticipant, 403, 'Anda tidak terdaftar dalam sesi ini.');
 
-        return redirect()->route('dms.index', [
-            $decisionSession->id,
-            'tab' => 'penilaian-kriteria'
+        // Ambil data untuk Alpine State
+        $rawPairwise = CriteriaPairwise::where('decision_session_id', $decisionSession->id)
+            ->where('dm_id', $user->id)
+            ->get();
+
+        $existingPairwise = [];
+        foreach ($rawPairwise as $p) {
+            $key = min($p->criteria_id_1, $p->criteria_id_2) . '-' . max($p->criteria_id_1, $p->criteria_id_2);
+            $pos = ($p->direction === 'left') ? (10 - $p->value) : (9 + $p->value);
+
+            $existingPairwise[$key] = [
+                'id_i' => (int) $p->criteria_id_1,
+                'id_j' => (int) $p->criteria_id_2,
+                'pos'  => $pos
+            ];
+        }
+
+        return view('dms.index', [
+            'decisionSession'   => $decisionSession,
+            'criterias'         => $decisionSession->criteria()->where('is_active', true)->orderBy('order')->get(),
+            'existingPairwise'  => $existingPairwise,
+            'criteriaWeights'   => CriteriaWeight::where('decision_session_id', $decisionSession->id)->where('dm_id', $user->id)->first(),
+            'groupResult'       => CriteriaWeight::where('decision_session_id', $decisionSession->id)->whereNull('dm_id')->first(),
+            'tab'               => 'penilaian-kriteria',
+            'isEditing'         => $request->get('edit') == 1 || !CriteriaWeight::where('decision_session_id', $decisionSession->id)->where('dm_id', $user->id)->exists(),
         ]);
     }
 
@@ -34,67 +54,32 @@ class AhpPairwiseController extends Controller
         $user = Auth::user();
         abort_if(!$user || !$user->hasRole('dm'), 403);
 
-        if ($decisionSession->status !== 'configured') {
-            return back()->with('error', 'Akses ditolak. Sesi penilaian saat ini sedang dikunci atau sudah diproses.');
+        if (!in_array($decisionSession->status, ['configured', 'scoring'])) {
+            return back()->with('error', 'Sesi penilaian sudah dikunci.');
         }
 
-        $frontendPairs = json_decode($request->input('debug_frontend'), true);
-
-        if (empty($frontendPairs) || !is_array($frontendPairs)) {
-            return back()->withInput()->with('error', 'Data perbandingan tidak ditemukan. Silakan isi form kembali.');
-        }
-
-        $cleanPairs = [];
-        foreach ($frontendPairs as $key => $values) {
-            $cleanPairs[$key] = [
-                'a_ij' => (float) ($values['a_ij'] ?? 1.0),
-                'a_ji' => (float) ($values['a_ji'] ?? 1.0),
-            ];
-        }
+        $request->validate([
+            'pairwise'       => 'required|array',
+            'cr_value'       => 'required|numeric',
+            'final_weights'  => 'required|json',
+        ]);
 
         try {
-            // 1. Jalankan service untuk menyimpan detail pairwise (tetap perlu untuk integritas data)
-            $result = $service->submit(
+            // Panggil Service untuk urusan Database & Kalkulasi
+            // Semua logic penyimpanan criteria_pairwise ada di dalam sini
+            $service->submit(
                 $decisionSession,
                 $user,
-                $cleanPairs,
-                $request->input('pairwise', [])
+                $request->input('pairwise')
             );
-
-            /**
-             * PERBAIKAN: Timpa hasil hitungan Service dengan hasil hitungan REAL-TIME JS
-             * Kita ambil cr_value dan final_weights yang dikirim dari input hidden Blade
-             */
-            $crFromJs = $request->input('cr_value');
-            $weightsFromJs = json_decode($request->input('final_weights'), true);
-
-            if ($crFromJs !== null && !empty($weightsFromJs)) {
-                // Update tabel criteria_weights dengan angka pasti dari Frontend
-                CriteriaWeight::updateOrCreate(
-                    [
-                        'decision_session_id' => $decisionSession->id,
-                        'dm_id' => $user->id,
-                    ],
-                    [
-                        'weights' => $weightsFromJs,
-                        'cr' => (float) $crFromJs,
-                    ]
-                );
-                $cr = (float) $crFromJs;
-            } else {
-                // Fallback jika input hidden gagal terkirim (cadangan)
-                $cr = (float) $result['cr'];
-            }
-
-            $statusLabel = $cr <= 0.1 ? "KONSISTEN" : "TIDAK KONSISTEN";
-            $msg = "Penilaian berhasil disimpan! Status: {$statusLabel} (CR: " . number_format($cr, 4) . ")";
 
             return redirect()->route('dms.index', [
                 'decisionSession' => $decisionSession->id,
-                'tab' => 'bobot-kriteria',
-            ])->with('success', $msg);
+                'tab'             => 'penilaian-kriteria',
+            ])->with('success', 'Penilaian berhasil disimpan!');
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Gagal memproses data: ' . $e->getMessage());
+            Log::error('AHP Store Error: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
         }
     }
 }

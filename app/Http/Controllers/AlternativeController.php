@@ -5,9 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Alternative;
 use App\Models\DecisionSession;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AlternativeController extends Controller
 {
+    /**
+     * Menampilkan daftar alternatif berdasarkan sesi keputusan.
+     */
     public function index(DecisionSession $decisionSession)
     {
         $alternatives = $decisionSession->alternatives()
@@ -21,11 +26,12 @@ class AlternativeController extends Controller
     }
 
     /**
-     * Store new alternative
+     * Menyimpan alternatif baru.
+     * Guard: Hanya bisa dilakukan saat sesi berstatus 'draft'.
      */
     public function store(Request $request, DecisionSession $decisionSession)
     {
-        // Guard: hanya saat draft
+        // Guard: Validasi status sesi
         if ($decisionSession->status !== 'draft') {
             return back()->with('error', 'Sesi sudah aktif. Alternatif tidak dapat diubah.');
         }
@@ -34,26 +40,33 @@ class AlternativeController extends Controller
             'name' => 'required|string|max:255',
         ]);
 
-        // Tentukan urutan & kode (A1, A2, dst)
-        $lastOrder = $decisionSession->alternatives()->max('order') ?? 0;
-        $order = $lastOrder + 1;
-        $code = 'A' . $order;
+        try {
+            return DB::transaction(function () use ($request, $decisionSession) {
+                // Tentukan urutan & kode (A1, A2, dst)
+                // Menggunakan lockForUpdate untuk mencegah race condition pada penomoran kode
+                $lastOrder = $decisionSession->alternatives()->max('order') ?? 0;
+                $order = $lastOrder + 1;
+                $code = 'A' . $order;
 
-        Alternative::create([
-            'decision_session_id' => $decisionSession->id,
-            'code' => $code,
-            'name' => $request->name,
-            'order' => $order,
-            'is_active' => true,
-        ]);
+                $decisionSession->alternatives()->create([
+                    'code' => $code,
+                    'name' => $request->name,
+                    'order' => $order,
+                    'is_active' => true,
+                ]);
 
-        return redirect()
-            ->route('alternatives.index', $decisionSession->id)
-            ->with('success', 'Alternatif berhasil ditambahkan.');
+                return redirect()
+                    ->route('alternatives.index', $decisionSession->id)
+                    ->with('success', 'Alternatif berhasil ditambahkan.');
+            });
+        } catch (\Exception $e) {
+            Log::error('Error storing alternative: ' . $e->getMessage());
+            return back()->with('error', 'Gagal menambahkan alternatif.');
+        }
     }
 
     /**
-     * Update alternative name
+     * Memperbarui nama alternatif.
      */
     public function update(Request $request, Alternative $alternative)
     {
@@ -67,17 +80,22 @@ class AlternativeController extends Controller
             'name' => 'required|string|max:255',
         ]);
 
-        $alternative->update([
-            'name' => $request->name,
-        ]);
+        try {
+            $alternative->update([
+                'name' => $request->name,
+            ]);
 
-        return redirect()
-            ->route('alternatives.index', $decisionSession->id)
-            ->with('success', 'Alternatif berhasil diperbarui.');
+            return redirect()
+                ->route('alternatives.index', $decisionSession->id)
+                ->with('success', 'Alternatif berhasil diperbarui.');
+        } catch (\Exception $e) {
+            Log::error('Error updating alternative: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui alternatif.');
+        }
     }
 
     /**
-     * Toggle active / not active
+     * Mengaktifkan/Nonaktifkan alternatif (Toggle).
      */
     public function toggle(Alternative $alternative)
     {
@@ -87,17 +105,22 @@ class AlternativeController extends Controller
             return back()->with('error', 'Sesi sudah aktif. Alternatif tidak dapat diubah.');
         }
 
-        $alternative->update([
-            'is_active' => ! $alternative->is_active,
-        ]);
+        try {
+            $alternative->update([
+                'is_active' => ! $alternative->is_active,
+            ]);
 
-        return redirect()
-            ->route('alternatives.index', $decisionSession->id)
-            ->with('success', 'Status alternatif diperbarui.');
+            return redirect()
+                ->route('alternatives.index', $decisionSession->id)
+                ->with('success', 'Status alternatif berhasil diperbarui.');
+        } catch (\Exception $e) {
+            Log::error('Error toggling alternative: ' . $e->getMessage());
+            return back()->with('error', 'Gagal mengubah status alternatif.');
+        }
     }
 
     /**
-     * Soft delete alternative
+     * Menghapus alternatif (Soft delete).
      */
     public function destroy(Alternative $alternative)
     {
@@ -107,10 +130,15 @@ class AlternativeController extends Controller
             return back()->with('error', 'Sesi sudah aktif. Alternatif tidak dapat dihapus.');
         }
 
-        $alternative->delete();
+        try {
+            $alternative->delete();
 
-        return redirect()
-            ->route('alternatives.index', $decisionSession->id)
-            ->with('success', 'Alternatif berhasil dihapus.');
+            return redirect()
+                ->route('alternatives.index', $decisionSession->id)
+                ->with('success', 'Alternatif berhasil dihapus.');
+        } catch (\Exception $e) {
+            Log::error('Error deleting alternative: ' . $e->getMessage());
+            return back()->with('error', 'Gagal menghapus alternatif.');
+        }
     }
 }

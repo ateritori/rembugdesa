@@ -72,7 +72,58 @@
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             @forelse ($assignedSessions as $session)
                 @php
-                    $dmActivePhases = ['configured', 'scoring', 'closed'];
+                    // Ambil CR untuk DM saat ini
+                    $dmWeight = $session->criteriaWeights->where('dm_id', auth()->id())->first();
+                    $crValue = $dmWeight ? $dmWeight->cr : null;
+                    $isConsistent = $crValue !== null && $crValue <= 0.1;
+
+                    // RESET VARIABEL UNTUK TIAP LOOP
+                    $url = '#';
+                    $btnLabel = 'Buka Workspace';
+                    $statusMessage = '';
+                    $statusColor = 'text-gray-500';
+                    $isLocked = false;
+
+                    /** * LOGIKA FIX: CEK STATUS GLOBAL DULU, BARU CEK PROGRESS DM
+                     */
+
+                    // 1. JIKA CLOSED (PRIORITAS UTAMA)
+                    if ($session->status === 'closed') {
+                        $url = route('dms.index', [$session->id, 'tab' => 'hasil-akhir']);
+                        $btnLabel = 'Lihat Hasil Akhir';
+                        $statusMessage = 'Keputusan Selesai';
+                        $statusColor = 'text-emerald-500 font-bold';
+                    }
+
+                    // 2. JIKA DRAFT
+                    elseif ($session->status === 'draft') {
+                        $isLocked = true;
+                        $statusMessage = 'Menunggu Admin';
+                        $statusColor = 'text-gray-400';
+                    }
+
+                    // 3. JIKA BELUM ISI KRITERIA (PAIRWISE)
+                    elseif (!$session->dmHasCompleted) {
+                        $url = route('decision-sessions.pairwise.index', $session->id);
+                        $btnLabel = 'Mulai Penilaian Kriteria';
+                        $statusMessage = 'Perlu Perbandingan Kriteria';
+                        $statusColor = 'text-amber-500 animate-pulse';
+                    }
+
+                    // 4. JIKA SUDAH KRITERIA, TINGGAL ALTERNATIF (SCORING)
+                    elseif ($session->status === 'scoring') {
+                        if (!($session->dmEvaluationFinished ?? false)) {
+                            $url = route('alternative-evaluations.index', $session->id);
+                            $btnLabel = 'Mulai Penilaian Alternatif';
+                            $statusMessage = 'Lanjut Penilaian Alternatif';
+                            $statusColor = 'text-blue-500 animate-pulse';
+                        } else {
+                            $url = route('dms.index', $session->id);
+                            $btnLabel = 'Lihat Progress Saya';
+                            $statusMessage = 'Menunggu Hasil Final';
+                            $statusColor = 'text-emerald-500';
+                        }
+                    }
                 @endphp
 
                 <div
@@ -92,10 +143,10 @@
                                 <span class="text-[9px] font-black uppercase tracking-widest opacity-40">Status Sesi</span>
                                 <div class="mt-1">
                                     @php
-                                        $statusMap = [
+                                        $statusBadge = [
                                             'draft' => ['label' => 'Draft', 'class' => 'bg-gray-500/10 text-gray-500'],
                                             'configured' => [
-                                                'label' => 'Configured',
+                                                'label' => 'Ready',
                                                 'class' => 'bg-blue-500/10 text-blue-500',
                                             ],
                                             'scoring' => [
@@ -107,82 +158,42 @@
                                                 'class' => 'bg-emerald-500/10 text-emerald-500',
                                             ],
                                         ];
-                                        $status = $statusMap[$session->status] ?? null;
+                                        $currentBadge = $statusBadge[$session->status] ?? [
+                                            'label' => $session->status,
+                                            'class' => 'bg-gray-500/10 text-gray-500',
+                                        ];
                                     @endphp
-                                    @if ($status)
-                                        <span
-                                            class="{{ $status['class'] }} rounded-md px-2 py-0.5 text-[10px] font-black uppercase">
-                                            {{ $status['label'] }}
-                                        </span>
-                                    @endif
+                                    <span
+                                        class="{{ $currentBadge['class'] }} rounded-md px-2 py-0.5 text-[10px] font-black uppercase">
+                                        {{ $currentBadge['label'] }}
+                                    </span>
                                 </div>
                             </div>
+
+                            {{-- Hanya tampilkan CR jika sudah isi kriteria --}}
                             @if ($session->dmHasCompleted)
                                 <div class="border-app/50 flex flex-col border-l pl-4">
                                     <span class="text-[9px] font-black uppercase tracking-widest opacity-40">Konsistensi
                                         (CR)
                                     </span>
-                                    <span class="text-primary mt-1 text-xs font-black">
-                                        {{ number_format($session->criteriaWeights->where('dm_id', auth()->id())->first()->cr ?? 0, 4) }}
+                                    <span
+                                        class="mt-1 text-xs font-black {{ $isConsistent ? 'text-primary' : 'text-red-500' }}">
+                                        {{ number_format($crValue ?? 0, 4) }}
                                     </span>
                                 </div>
                             @endif
                         </div>
 
                         <div class="flex items-center gap-2">
-                            @if ($session->status === 'configured')
-                                <div
-                                    class="h-2 w-2 animate-pulse rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]">
-                                </div>
-                                <p class="text-[11px] font-black uppercase tracking-tighter text-amber-500">
-                                    Menunggu Penilaian Kriteria
-                                </p>
-                            @elseif ($session->status === 'scoring')
-                                @if ($session->dmHasCompleted)
-                                    <div class="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]">
-                                    </div>
-                                    <p class="text-[11px] font-black uppercase tracking-tighter text-blue-500">
-                                        Menunggu Penilaian Alternatif
-                                    </p>
-                                @else
-                                    <div
-                                        class="h-2 w-2 animate-pulse rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]">
-                                    </div>
-                                    <p class="text-[11px] font-black uppercase tracking-tighter text-amber-500">
-                                        Perlu Isi Perbandingan Kriteria
-                                    </p>
-                                @endif
-                            @elseif ($session->status === 'closed')
-                                <div class="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]">
-                                </div>
-                                <p class="text-[11px] font-black uppercase tracking-tighter text-emerald-500">
-                                    Keputusan Telah Ditutup
-                                </p>
-                            @endif
+                            <div class="h-2 w-2 rounded-full bg-current {{ $statusColor }}"></div>
+                            <p class="text-[11px] font-black uppercase tracking-tighter {{ $statusColor }}">
+                                {{ $statusMessage }}
+                            </p>
                         </div>
                     </div>
 
                     <div class="mt-8">
-                        @if (in_array($session->status, $dmActivePhases))
-                            @php
-                                if (!$session->dmHasCompleted) {
-                                    $url = route('decision-sessions.pairwise.index', $session->id);
-                                    $btnLabel = 'Mulai Penilaian Kriteria';
-                                } elseif (
-                                    $session->status === 'scoring' &&
-                                    !($session->dmEvaluationFinished ?? false)
-                                ) {
-                                    $url = route('alternative-evaluations.index', $session->id);
-                                    $btnLabel = 'Mulai Penilaian Alternatif';
-                                } elseif ($session->status === 'closed') {
-                                    $url = route('dms.index', [$session->id, 'tab' => 'hasil-akhir']);
-                                    $btnLabel = 'Lihat Hasil';
-                                } else {
-                                    $url = route('dms.index', $session->id);
-                                    $btnLabel = 'Buka Workspace';
-                                }
-                            @endphp
-
+                        @if (!$isLocked)
                             <a href="{{ $url }}"
                                 class="bg-primary shadow-primary/20 inline-flex w-full items-center justify-center rounded-xl px-4 py-3.5 text-[11px] font-black uppercase tracking-widest text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95">
                                 {{ $btnLabel }}
@@ -193,7 +204,7 @@
                             </a>
                         @else
                             <div
-                                class="bg-app/40 border-app w-full rounded-xl border px-4 py-3.5 text-center text-[10px] font-black uppercase tracking-widest opacity-50">
+                                class="bg-app/10 border-app/20 w-full rounded-xl border px-4 py-3.5 text-center text-[10px] font-black uppercase tracking-widest opacity-50">
                                 Akses Terkunci
                             </div>
                         @endif
@@ -201,13 +212,6 @@
                 </div>
             @empty
                 <div class="adaptive-card col-span-full rounded-3xl border-dashed py-24 text-center">
-                    <div class="bg-app/50 text-app mb-4 inline-flex rounded-full p-4 opacity-20">
-                        <svg class="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                                stroke-width="2" stroke-linecap="round" />
-                        </svg>
-                    </div>
                     <p class="text-app text-sm font-black uppercase tracking-[0.2em] opacity-30">Belum ada sesi ditugaskan
                     </p>
                 </div>

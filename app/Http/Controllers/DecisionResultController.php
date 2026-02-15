@@ -4,48 +4,53 @@ namespace App\Http\Controllers;
 
 use App\Models\DecisionSession;
 use App\Services\SMART\SmartRankingService;
-use App\Services\Borda\BordaRankingService;
+use App\Services\BORDA\BordaRankingService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DecisionResultController extends Controller
 {
     /**
-     * Display final decision result.
+     * Menampilkan hasil akhir keputusan.
      */
     public function show(
         DecisionSession $decisionSession,
         SmartRankingService $smartService,
         BordaRankingService $bordaService
     ) {
-        // Only final sessions can show results
-        abort_if($decisionSession->status !== 'final', 403);
+        // 1. Guard
+        abort_if($decisionSession->status !== 'final', 403, 'Hasil belum tersedia.');
 
-        // Calculate SMART scores
-        $smartScores = $smartService->calculate($decisionSession->id);
+        /**
+         * 2. Menangani Error P1006
+         * Karena Service mewajibkan type App\Models\User, kita kirimkan Auth::user().
+         * Pastikan middleware 'auth' sudah terpasang agar Auth::user() tidak null.
+         */
+        $user = Auth::user();
+        $smartScores = $smartService->calculate($decisionSession, $user);
 
-        // Calculate Borda scores and final ranking
+        // 3. Kalkulasi Borda & Ranking
         $bordaScores = $bordaService->calculate($smartScores);
         $finalRanking = $bordaService->ranking($bordaScores);
 
-        // Load alternatives
+        // 4. Data Alternatif
         $alternatives = $decisionSession->alternatives()
             ->whereIn('id', array_keys($finalRanking))
             ->get()
             ->keyBy('id');
 
-        // Prepare rows for view
+        // 5. Transformasi untuk View
         $rows = [];
         foreach ($finalRanking as $altId => $rank) {
             $rows[] = [
                 'rank'        => $rank,
                 'alternative' => $alternatives[$altId]->name ?? '-',
-                'smart'       => round($smartScores[$altId], 6),
-                'borda'       => $bordaScores[$altId],
+                'smart'       => isset($smartScores[$altId]) ? round($smartScores[$altId], 6) : 0,
+                'borda'       => $bordaScores[$altId] ?? 0,
             ];
         }
 
-        $view = auth()->check() && auth()->user()->hasRole('dm')
-            ? 'dms.summary.index'
-            : 'decision-sessions.result';
+        $view = $user->hasRole('dm') ? 'dms.summary.index' : 'decision-sessions.result';
 
         return view($view, [
             'decisionSession' => $decisionSession,
