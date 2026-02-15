@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\DecisionSession;
 use App\Models\User;
-use App\Models\Criteria;
 use App\Models\BordaResult;
+use App\Models\SmartResultDm;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,13 +13,10 @@ use Spatie\Permission\Exceptions\RoleDoesNotExist;
 use App\Services\AHP\AhpGroupWeightService;
 use App\Services\Result\DecisionResultService;
 use App\Services\SAW\SawRankingService;
+use App\Services\Borda\BordaRankingService;
 
 class DecisionSessionController extends Controller
 {
-    /**
-     * Middleware sudah didefinisikan di Route,
-     * namun tetap bagus sebagai proteksi lapis kedua.
-     */
     public function __construct()
     {
         $this->middleware(['auth', 'role:admin'])
@@ -32,55 +29,36 @@ class DecisionSessionController extends Controller
         return view('decision-sessions.index', compact('sessions'));
     }
 
-    /**
-     * Sesuai dengan Route::get('/.../control', [DecisionSessionController::class, 'control'])
-     * Mengarah ke folder: resources/views/control/index.blade.php
-     */
     public function control(Request $request, DecisionSession $decisionSession)
     {
         $decisionSession->load(['dms', 'alternatives', 'criterias']);
 
-        // ===== DATA DASHBOARD (TETAP) =====
+        // ===== DATA DASHBOARD UTAMA =====
         $assignedDmCount = $decisionSession->dms()->count();
 
+        // Cek DM yang sudah menyelesaikan seluruh matriks penilaian
+        $totalExpectation = $decisionSession->alternatives()->count() * $decisionSession->criterias()->count();
         $dmEvaluationsDone = $decisionSession->dms()
             ->whereHas('alternativeEvaluations', function ($query) use ($decisionSession) {
                 $query->where('decision_session_id', $decisionSession->id);
-            }, '=', $decisionSession->alternatives()->count() * $decisionSession->criterias()->count())
+            }, '>=', $totalExpectation)
             ->count();
 
-        // ===== TAB DATA (BARU, READ ONLY) =====
+        // ===== LOGIKA TAB (HASIL & ANALISIS) =====
         $tab = $request->query('tab');
-
-        $borda = collect();      // untuk Hasil Akhir & Analisis
-        $sawBorda = collect();   // placeholder aman (Analisis)
+        $borda = collect();
+        $sawBorda = collect();
 
         if ($decisionSession->status === 'closed') {
+            $resultService = app(DecisionResultService::class);
 
-            // TAB HASIL AKHIR
-            if ($tab === 'hasil-akhir') {
-                $borda = BordaResult::where('decision_session_id', $decisionSession->id)
-                    ->with('alternative')
-                    ->orderBy('final_rank')
-                    ->get();
+            if ($tab === 'hasil-akhir' || $tab === 'analisis') {
+                $borda = $resultService->borda($decisionSession);
             }
 
-            // TAB ANALISIS
             if ($tab === 'analisis') {
-                // AHP + SMART + BORDA (hasil final yang sudah dipersist)
-                $borda = BordaResult::where('decision_session_id', $decisionSession->id)
-                    ->with('alternative')
-                    ->orderBy('final_rank')
-                    ->get();
-
-                // AHP + SAW + BORDA (benchmark, ON THE FLY)
-                $resultService = app(DecisionResultService::class);
-                $sawService    = app(SawRankingService::class);
-
-                $sawBorda = $resultService->sawBordaBenchmark(
-                    $decisionSession,
-                    $sawService
-                );
+                $sawService = app(SawRankingService::class);
+                $sawBorda = $resultService->sawBordaBenchmark($decisionSession, $sawService);
             }
         }
 
@@ -119,9 +97,7 @@ class DecisionSessionController extends Controller
 
     public function edit(DecisionSession $decisionSession)
     {
-        // Edit detail session hanya boleh saat draft
         abort_if($decisionSession->status !== 'draft', 403, 'Hanya session berstatus draft yang bisa diubah.');
-
         return view('decision-sessions.edit', compact('decisionSession'));
     }
 
@@ -144,20 +120,11 @@ class DecisionSessionController extends Controller
             ->with('success', 'Decision session updated.');
     }
 
-    public function activate(
-        DecisionSession $decisionSession,
-        AhpGroupWeightService $ahpGroupWeightService
-    ) {
-        // 1. Valid status transition guard
+    public function activate(DecisionSession $decisionSession, AhpGroupWeightService $ahpGroupWeightService)
+    {
         $validStatuses = ['draft', 'configured'];
+        abort_unless(in_array($decisionSession->status, $validStatuses), 403);
 
-        abort_unless(
-            in_array($decisionSession->status, $validStatuses),
-            403,
-            'Sesi tidak dapat diaktifkan pada tahap ini.'
-        );
-
-        // 2. Core readiness validation
         if ($decisionSession->criterias()->where('is_active', true)->count() < 2) {
             return back()->withErrors('Minimal 2 kriteria aktif diperlukan.');
         }
@@ -170,7 +137,6 @@ class DecisionSessionController extends Controller
             return back()->withErrors('Minimal 1 decision maker diperlukan.');
         }
 
-        // 3. Scoring rule completeness validation
         $activeCriteria = $decisionSession->criterias()
             ->where('is_active', true)
             ->with(['scoringRule.parameters'])
@@ -180,100 +146,56 @@ class DecisionSessionController extends Controller
             return back()->withErrors('Aturan scoring kriteria belum lengkap.');
         }
 
-        // 4. PATCH: aggregate AHP group weights exactly once
         if ($decisionSession->status === 'configured') {
             try {
                 $ahpGroupWeightService->aggregate($decisionSession);
             } catch (\Throwable $e) {
-                return back()->withErrors(
-                    'Agregasi bobot kriteria gagal: ' . $e->getMessage()
-                );
+                return back()->withErrors('Agregasi bobot kriteria gagal: ' . $e->getMessage());
             }
         }
 
-        // 5. Status transition
-        $nextStatus = ($decisionSession->status === 'draft')
-            ? 'configured'
-            : 'scoring';
-
+        $nextStatus = ($decisionSession->status === 'draft') ? 'configured' : 'scoring';
         $decisionSession->update(['status' => $nextStatus]);
 
-        return back()->with(
-            'success',
-            $nextStatus === 'scoring'
-                ? 'Penilaian alternatif telah dibuka.'
-                : 'Sesi berhasil dikonfigurasi.'
-        );
+        return back()->with('success', $nextStatus === 'scoring' ? 'Penilaian terbuka.' : 'Sesi terkonfigurasi.');
     }
 
-    public function close(
-        DecisionSession $decisionSession,
-        \App\Services\Borda\BordaRankingService $bordaRankingService
-    ) {
-        // 1. Status guard: hanya boleh ditutup dari tahap scoring
-        abort_if(
-            ! in_array($decisionSession->status, ['scoring']),
-            403,
-            'Sesi belum siap ditutup.'
-        );
+    public function close(DecisionSession $decisionSession, BordaRankingService $bordaRankingService)
+    {
+        abort_if($decisionSession->status !== 'scoring', 403, 'Sesi belum siap ditutup.');
 
-        // 2. Pastikan semua DM sudah punya hasil SMART
         $dmCount = $decisionSession->dms()->count();
-
-        $smartDmCount = \App\Models\SmartResultDm::where('decision_session_id', $decisionSession->id)
+        $smartDmCount = SmartResultDm::where('decision_session_id', $decisionSession->id)
             ->distinct('dm_id')
             ->count('dm_id');
 
-        abort_if(
-            $dmCount !== $smartDmCount,
-            403,
-            'Masih ada DM yang belum menyelesaikan penilaian.'
-        );
+        abort_if($dmCount !== $smartDmCount, 403, 'Masih ada DM yang belum menyelesaikan penilaian.');
 
-        // 3. Hitung & simpan Borda + kunci sesi (atomic)
-        \Illuminate\Support\Facades\DB::transaction(function () use (
-            $decisionSession,
-            $bordaRankingService
-        ) {
+        DB::transaction(function () use ($decisionSession, $bordaRankingService) {
             $bordaRankingService->calculateAndPersist($decisionSession);
             $decisionSession->update(['status' => 'closed']);
         });
 
-        return redirect()
-            ->route('decision-sessions.index')
-            ->with('success', 'Sesi berhasil difinalisasi dan dikunci.');
+        return redirect()->route('decision-sessions.index')->with('success', 'Sesi ditutup.');
     }
 
     public function result(DecisionSession $decisionSession)
     {
-        // Guard: hasil hanya boleh dilihat jika sesi sudah final
-        abort_if(
-            $decisionSession->status !== 'closed',
-            403,
-            'Hasil hanya tersedia setelah sesi difinalisasi.'
-        );
+        abort_if($decisionSession->status !== 'closed', 403);
 
         $results = BordaResult::where('decision_session_id', $decisionSession->id)
             ->with('alternative')
             ->orderBy('final_rank')
             ->get();
 
-        return view('decision-sessions.result', compact(
-            'decisionSession',
-            'results'
-        ));
+        return view('decision-sessions.result', compact('decisionSession', 'results'));
     }
 
     public function destroy(DecisionSession $decisionSession)
     {
-        // Hanya izinkan hapus jika masih draft
-        abort_if($decisionSession->status !== 'draft', 403, 'Session yang sudah berjalan tidak bisa dihapus.');
-
+        abort_if($decisionSession->status !== 'draft', 403, 'Hanya draft yang bisa dihapus.');
         $decisionSession->delete();
-
-        return redirect()
-            ->route('decision-sessions.index')
-            ->with('success', 'Decision session deleted.');
+        return redirect()->route('decision-sessions.index')->with('success', 'Deleted.');
     }
 
     // ================= PENUGASAN DM =================
@@ -281,29 +203,19 @@ class DecisionSessionController extends Controller
     public function assignDms(DecisionSession $decisionSession)
     {
         try {
-            // Ambil user dengan role dm jika role ada
             $dms = User::role('dm')->get();
         } catch (RoleDoesNotExist $e) {
-            // Jika role dm belum ada sama sekali
             $dms = collect();
         }
 
-        // Ambil ID DM yang sudah terhubung dengan session ini
-        $assignedDmIds = $decisionSession->dms()
-            ->pluck('users.id')
-            ->toArray();
+        $assignedDmIds = $decisionSession->dms()->pluck('users.id')->toArray();
 
-        return view('decision-sessions.assign-dms', compact(
-            'decisionSession',
-            'dms',
-            'assignedDmIds'
-        ));
+        return view('decision-sessions.assign-dms', compact('decisionSession', 'dms', 'assignedDmIds'));
     }
 
     public function storeAssignedDms(Request $request, DecisionSession $decisionSession)
     {
-        // Proteksi: tidak boleh ubah DM jika session sudah dikunci
-        abort_if(in_array($decisionSession->status, ['closed']), 403, 'Tidak bisa mengubah DM pada sesi yang sudah dikunci.');
+        abort_if(in_array($decisionSession->status, ['closed']), 403);
 
         $request->validate([
             'dm_ids' => 'nullable|array',
@@ -311,21 +223,15 @@ class DecisionSessionController extends Controller
         ]);
 
         try {
-            // Ambil hanya user yang benar-benar punya role dm
-            $dmIds = User::role('dm')
-                ->whereIn('id', $request->input('dm_ids', []))
-                ->pluck('id')
-                ->toArray();
+            $dmIds = User::role('dm')->whereIn('id', $request->input('dm_ids', []))->pluck('id')->toArray();
         } catch (RoleDoesNotExist $e) {
-            // Jika role dm tidak ada, pastikan pivot dikosongkan
             $dmIds = [];
         }
 
-        // Sinkronisasi pivot dengan aman
         $decisionSession->dms()->sync($dmIds);
 
         return redirect()
             ->route('decision-sessions.assign-dms', $decisionSession->id)
-            ->with('success', 'Daftar Decision Maker berhasil diperbarui.');
+            ->with('success', 'Daftar DM diperbarui.');
     }
 }

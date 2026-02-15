@@ -2,90 +2,65 @@
 
 namespace App\Services\SMART;
 
-use App\Models\DecisionSession;
-use App\Models\User;
-use App\Models\AlternativeEvaluation;
-use App\Models\CriteriaWeight;
-use App\Models\SmartResultDm;
+use App\Models\{DecisionSession, User, AlternativeEvaluation, CriteriaWeight, SmartResultDm};
 use InvalidArgumentException;
 
 class SmartRankingService
 {
-    /**
-     * Hitung SMART per DM.
-     * Opsional: simpan atau update ke tabel smart_results_dm.
-     *
-     * @return array [alternative_id => ['score' => float, 'rank' => int]]
-     */
-    public function calculate(
-        DecisionSession $session,
-        User $dm,
-        bool $persist = false
-    ): array {
-        // 1. Ambil bobot kriteria kelompok
-        $groupWeight = CriteriaWeight::where('decision_session_id', $session->id)
-            ->whereNull('dm_id')
-            ->first();
-
-        if (! $groupWeight) {
+    public function calculate(DecisionSession $session, User $dm, bool $persist = false): array
+    {
+        $groupWeight = CriteriaWeight::where('decision_session_id', $session->id)->whereNull('dm_id')->first();
+        if (!$groupWeight || empty($groupWeight->weights)) {
             throw new InvalidArgumentException('Bobot kriteria kelompok belum tersedia.');
         }
 
-        $weights = $groupWeight->weights;
+        $rawWeights = $groupWeight->weights;
+        $totalRawWeight = array_sum($rawWeights);
+        if ($totalRawWeight <= 0) throw new InvalidArgumentException('Total bobot nol.');
 
-        // 2. Ambil penilaian DM
+        // Normalisasi Bobot
+        $normalizedWeights = [];
+        foreach ($rawWeights as $critId => $val) {
+            $normalizedWeights[$critId] = (float) $val / $totalRawWeight;
+        }
+
         $evaluations = AlternativeEvaluation::where('decision_session_id', $session->id)
-            ->where('dm_id', $dm->id)
-            ->get();
+            ->where('dm_id', $dm->id)->get();
 
-        if ($evaluations->isEmpty()) {
-            return [];
-        }
+        if ($evaluations->isEmpty()) return [];
 
-        // 3. Hitung skor SMART
         $scores = [];
-
         foreach ($evaluations as $eval) {
-            $altId  = $eval->alternative_id;
+            $altId = $eval->alternative_id;
             $critId = $eval->criteria_id;
+            if (!isset($normalizedWeights[$critId])) continue;
 
-            if (! isset($weights[$critId])) {
-                continue;
-            }
-
-            $scores[$altId] ??= 0;
-            $scores[$altId] +=
-                $weights[$critId] * (float) $eval->utility_value;
+            $scores[$altId] = ($scores[$altId] ?? 0) + ($normalizedWeights[$critId] * (float) $eval->utility_value);
         }
 
-        // 4. Ranking
         arsort($scores);
-
         $ranked = [];
+        $upsertData = [];
         $rank = 1;
 
         foreach ($scores as $altId => $score) {
-            $ranked[$altId] = [
-                'score' => round($score, 6),
-                'rank'  => $rank++,
-            ];
+            $finalScore = round($score, 6);
+            $ranked[$altId] = ['score' => $finalScore, 'rank' => $rank];
+            if ($persist) {
+                $upsertData[] = [
+                    'decision_session_id' => $session->id,
+                    'dm_id' => $dm->id,
+                    'alternative_id' => $altId,
+                    'smart_score' => $finalScore,
+                    'rank_dm' => $rank,
+                    'updated_at' => now(),
+                ];
+            }
+            $rank++;
         }
 
-        // 5. Persist (opsional)
-        if ($persist) {
-            foreach ($ranked as $altId => $data) {
-                SmartResultDm::updateOrCreate(
-                    [
-                        'decision_session_id' => $session->id,
-                        'dm_id'               => $dm->id,
-                        'alternative_id'      => $altId,
-                    ],
-                    [
-                        'smart_score' => $data['score'],
-                        'rank_dm'     => $data['rank'],
-                    ]
-                );
-            }
+        if ($persist && !empty($upsertData)) {
+            SmartResultDm::upsert($upsertData, ['decision_session_id', 'dm_id', 'alternative_id'], ['smart_score', 'rank_dm', 'updated_at']);
         }
 
         return $ranked;

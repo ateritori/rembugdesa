@@ -4,227 +4,105 @@ namespace App\Http\Controllers;
 
 use App\Models\DecisionSession;
 use App\Models\CriteriaWeight;
-use App\Models\CriteriaPairwise;
 use App\Models\AlternativeEvaluation;
-use Illuminate\Http\Request;
+use App\Models\SmartResultDm;
 use App\Services\SMART\SmartRankingService;
 use App\Services\Result\DecisionResultService;
-use App\Models\SmartResultDm;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Exception;
 
 class DecisionMakerController extends Controller
 {
-    /**
-     * Workspace utama Decision Maker
-     * HANYA ringkasan & navigasi
-     */
-    public function index(
-        DecisionSession $decisionSession,
-        SmartRankingService $smartRankingService
-    ) {
-        // Guard dasar (SAMA POLA DENGAN KRITERIA)
-        abort_if($decisionSession->status === 'draft', 403);
-
-        abort_if(
-            ! $decisionSession->dms()
-                ->where('users.id', auth()->id())
-                ->exists(),
-            403,
-            'Anda tidak ditugaskan pada sesi ini.'
-        );
-
-        // ===== Status Evaluasi Alternatif (GLOBAL untuk NAV) =====
-        $hasCompletedEvaluation = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', auth()->id())
-            ->exists();
-
-        $hasEvaluations = $hasCompletedEvaluation;
-
-        // Data ringkasan workspace
-        $baseCriteria = $decisionSession->criteria()
-            ->where('is_active', true)
-            ->orderBy('order')
-            ->get();
-
-        $criteriaWeights = CriteriaWeight::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', auth()->id())
-            ->first();
-
-        $dmHasCompleted = ! is_null($criteriaWeights);
-
-        // ===== Bobot Kelompok (untuk fase scoring) =====
-        $groupResult = null;
-
-        if ($decisionSession->status === 'scoring' || $decisionSession->status === 'closed') {
-            $groupResult = CriteriaWeight::where('decision_session_id', $decisionSession->id)
-                ->whereNull('dm_id')
-                ->first();
-        }
-
-        // ===== Hasil Akhir (READ ONLY, hanya saat CLOSED) =====
-        $resultContribution = null;
-
-        if (
-            request('tab') === 'hasil-akhir'
-            && $decisionSession->status === 'closed'
-        ) {
-            $resultService = app(DecisionResultService::class);
-
-            $resultContribution = $resultService->dmContribution(
-                $decisionSession,
-                auth()->user()
-            );
-        }
-
-        // ===== Evaluasi Alternatif (hanya saat tab aktif) =====
-        if (request('tab') === 'evaluasi-alternatif') {
-            $alternatives = $decisionSession->alternatives()
-                ->where('is_active', true)
-                ->get();
-
-            $criteria = $decisionSession->criteria()
-                ->with(['scoringRule', 'scoringRule.parameters'])
-                ->where('is_active', true)
-                ->orderBy('order')
-                ->get();
-
-            $evaluations = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
-                ->where('dm_id', auth()->id())
-                ->get()
-                ->groupBy('alternative_id')
-                ->map(fn($items) => $items->keyBy('criteria_id'));
-
-            $lastEvaluationUpdate = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
-                ->where('dm_id', auth()->id())
-                ->max('updated_at');
-
-            $lastSmartUpdate = SmartResultDm::where('decision_session_id', $decisionSession->id)
-                ->where('dm_id', auth()->id())
-                ->max('updated_at');
-
-            $shouldPersist = is_null($lastSmartUpdate)
-                || ($lastEvaluationUpdate && $lastEvaluationUpdate > $lastSmartUpdate);
-
-            $smartScores = $smartRankingService->calculate(
-                $decisionSession,
-                auth()->user(),
-                $shouldPersist
-            );
-
-            $hasSmartResult = ! empty($smartScores);
-
-            $smartContext = [
-                'dm_id'   => auth()->id(),
-                'dm_name' => auth()->user()->name,
-            ];
-        } else {
-            $alternatives = collect();
-            $evaluations = collect();
-            $smartScores = [];
-            $hasSmartResult = false;
-            $smartContext = null;
-        }
-
-        return view('dms.index', [
-            'decisionSession' => $decisionSession,
-            'criteria'        => (request('tab') === 'evaluasi-alternatif') ? $criteria : $baseCriteria,
-            'criterias'       => (request('tab') === 'evaluasi-alternatif') ? $criteria : $baseCriteria, // jaga kompatibilitas view lama
-            'criteriaWeights' => $criteriaWeights,
-            'dmHasCompleted'  => $dmHasCompleted,
-            'evaluations'            => $evaluations,
-            'hasCompletedEvaluation' => $hasCompletedEvaluation,
-            'hasEvaluations'          => $hasEvaluations,
-            'hasSmartResult'          => $hasSmartResult,
-            'alternatives'    => $alternatives,
-            'tab'             => request('tab', 'workspace'),
-            'groupResult'     => $groupResult,
-            'smartScores'  => $smartScores,
-            'smartContext' => $smartContext,
-            'resultContribution' => $resultContribution,
-        ]);
+    public function index(DecisionSession $decisionSession, SmartRankingService $smartRankingService)
+    {
+        return $this->renderWorkspace($decisionSession, $smartRankingService);
     }
 
-    /**
-     * Hasil bobot individu DM
-     * READ ONLY
-     */
     public function weights(DecisionSession $decisionSession)
     {
-        abort_if(
-            ! $decisionSession->dms()
-                ->where('users.id', auth()->id())
-                ->exists(),
-            403
-        );
+        return $this->renderWorkspace($decisionSession);
+    }
 
-        $criteria = $decisionSession->criteria()
-            ->where('is_active', true)
-            ->orderBy('order')
-            ->get();
-
-        $criteriaWeights = CriteriaWeight::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', auth()->id())
-            ->first();
-
-        $dmHasCompleted = ! is_null($criteriaWeights);
-
-        $evaluations = collect();
-        $hasCompletedEvaluation = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', auth()->id())
-            ->exists();
-
-        $alternatives = collect();
-
-        return view('dms.index', [
-            'decisionSession' => $decisionSession,
-            'criteria'        => $criteria,
-            'criterias'       => $criteria,
-            'criteriaWeights' => $criteriaWeights,
-            'dmHasCompleted'  => $dmHasCompleted,
-            'evaluations'            => $evaluations,
-            'hasCompletedEvaluation' => $hasCompletedEvaluation,
-            'alternatives'    => $alternatives,
-            'tab'             => request('tab', 'workspace'),
-        ]);
+    public function groupWeights(DecisionSession $decisionSession)
+    {
+        return $this->renderWorkspace($decisionSession);
     }
 
     /**
-     * Hasil bobot kelompok (agregasi)
-     * READ ONLY
+     * PUSAT LOGIKA - Menjamin tidak ada fitur yang hilang dan view tidak crash.
      */
-    public function groupWeights(DecisionSession $decisionSession)
+    private function renderWorkspace(DecisionSession $decisionSession, ?SmartRankingService $smartRankingService = null)
     {
-        abort_if(
-            ! $decisionSession->dms()
-                ->where('users.id', auth()->id())
-                ->exists(),
-            403
-        );
+        // 1. Otorisasi & Guard
+        abort_if($decisionSession->status === 'draft', 403);
+        $user = Auth::user();
+        abort_if(!$decisionSession->dms()->where('users.id', $user->id)->exists(), 403, 'Anda tidak ditugaskan.');
+
+        $currentTab = request('tab', 'workspace');
+
+        // 2. Data Dasar (Selalu Ada)
+        $criteria = $decisionSession->criteria()->where('is_active', true)->orderBy('order')->get();
+        $alternatives = $decisionSession->alternatives()->where('is_active', true)->get();
 
         $groupResult = CriteriaWeight::where('decision_session_id', $decisionSession->id)
-            ->whereNull('dm_id')
-            ->first();
+            ->whereNull('dm_id')->first();
 
         $criteriaWeights = CriteriaWeight::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', auth()->id())
-            ->first();
+            ->where('dm_id', $user->id)->first();
 
-        $dmHasCompleted = ! is_null($criteriaWeights);
+        // 3. Evaluasi Alternatif
+        $evaluations = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
+            ->where('dm_id', $user->id)->get()
+            ->groupBy('alternative_id')
+            ->map(fn($items) => $items->keyBy('criteria_id'));
 
-        $evaluations = collect();
-        $hasCompletedEvaluation = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', auth()->id())
-            ->exists();
+        $hasCompletedEvaluation = $evaluations->isNotEmpty();
 
-        $alternatives = collect();
+        // 4. Kalkulasi SMART (Hanya dilakukan jika Service tersedia & tab sesuai/index)
+        $smartScores = collect();
+        $hasSmartResult = false;
 
+        if ($smartRankingService && $groupResult && $hasCompletedEvaluation) {
+            $lastEvaluationUpdate = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
+                ->where('dm_id', $user->id)->max('updated_at');
+            $lastSmartUpdate = SmartResultDm::where('decision_session_id', $decisionSession->id)
+                ->where('dm_id', $user->id)->max('updated_at');
+
+            $shouldPersist = is_null($lastSmartUpdate) || ($lastEvaluationUpdate > $lastSmartUpdate);
+
+            try {
+                $scores = $smartRankingService->calculate($decisionSession, $user, $shouldPersist);
+                $smartScores = collect($scores)->sortByDesc('score');
+                $hasSmartResult = $smartScores->isNotEmpty();
+            } catch (Exception $e) {
+                $smartScores = collect();
+            }
+        }
+
+        // 5. Kontribusi DM (Hasil Akhir)
+        $resultContribution = null;
+        if ($currentTab === 'hasil-akhir' && $decisionSession->status === 'closed') {
+            $resultContribution = app(DecisionResultService::class)->dmContribution($decisionSession, $user);
+        }
+
+        // 6. Pengiriman ke View (Sesuai variabel yang Anda butuhkan)
         return view('dms.index', [
-            'decisionSession' => $decisionSession,
-            'groupResult'     => $groupResult,
-            'dmHasCompleted'  => $dmHasCompleted,
+            'decisionSession'        => $decisionSession,
+            'criteria'               => $criteria,
+            'criterias'              => $criteria,
+            'alternatives'           => $alternatives,
             'evaluations'            => $evaluations,
+            'groupResult'            => $groupResult,
+            'smartScores'            => $smartScores,
+            'hasSmartResult'         => $hasSmartResult,
+            'dmHasCompleted'         => !is_null($criteriaWeights),
             'hasCompletedEvaluation' => $hasCompletedEvaluation,
-            'alternatives'    => $alternatives,
-            'tab'             => request('tab', 'workspace'),
+            'hasEvaluations'         => $hasCompletedEvaluation,
+            'criteriaWeights'        => $criteriaWeights,
+            'resultContribution'     => $resultContribution,
+            'tab'                    => $currentTab,
+            'smartContext'           => ['dm_name' => $user->name],
         ]);
     }
 }

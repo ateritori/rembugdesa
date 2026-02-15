@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
 class DecisionResultService
 {
     /**
-     * Hasil final kelompok (Borda)
+     * Mengambil hasil final kelompok yang sudah dihitung via Borda (Persisted)
      */
     public function borda(DecisionSession $session): Collection
     {
@@ -25,7 +25,7 @@ class DecisionResultService
     }
 
     /**
-     * Semua hasil SMART per DM (ADMIN)
+     * Semua hasil SMART per Decision Maker (Untuk Dashboard Admin)
      */
     public function smartByDm(DecisionSession $session): Collection
     {
@@ -38,12 +38,10 @@ class DecisionResultService
     }
 
     /**
-     * Hasil SMART satu DM (DM Workspace)
+     * Hasil SMART untuk satu DM spesifik (Untuk Workspace DM)
      */
-    public function smartForDm(
-        DecisionSession $session,
-        User $dm
-    ): Collection {
+    public function smartForDm(DecisionSession $session, User $dm): Collection
+    {
         return SmartResultDm::where([
             'decision_session_id' => $session->id,
             'dm_id'               => $dm->id,
@@ -53,27 +51,29 @@ class DecisionResultService
             ->get();
     }
 
-
     /**
      * Benchmark SAW + Borda (ON THE FLY, TIDAK DIPERSIST)
-     * Khusus ANALISIS
+     * Digunakan untuk analisis perbandingan metode SMART vs SAW dalam agregasi Borda
      */
     public function sawBordaBenchmark(
         DecisionSession $session,
         SawRankingService $sawService
     ): Collection {
+        // 1. Eager Load relasi untuk menghindari N+1 query dan null errors
+        $session->loadMissing(['alternatives', 'dms']);
 
-        // 1. Bobot AHP kelompok
+        // 2. Ambil bobot kelompok (AHP Global)
         $groupWeight = CriteriaWeight::where('decision_session_id', $session->id)
             ->whereNull('dm_id')
-            ->firstOrFail();
+            ->first();
+
+        if (!$groupWeight || $session->dms->isEmpty()) {
+            return collect();
+        }
 
         $weights = $groupWeight->weights;
 
-        // 2. Ambil semua DM dalam sesi
-        $dms = $session->dms;
-
-        // 3. Ambil semua evaluasi alternatif (RAW VALUE)
+        // 3. Ambil semua evaluasi mentah per DM
         $evaluations = AlternativeEvaluation::where('decision_session_id', $session->id)
             ->get()
             ->groupBy('dm_id');
@@ -82,39 +82,40 @@ class DecisionResultService
             return collect();
         }
 
-        // 4. Inisialisasi akumulator Borda
         $bordaScores = [];
-        $n = $session->alternatives()->count();
+        $n = $session->alternatives->count();
 
-        // 5. SAW + Borda PER DM
-        foreach ($dms as $dm) {
-            if (! isset($evaluations[$dm->id])) {
+        // 4. Kalkulasi SAW + Akumulasi Borda per DM
+        foreach ($session->dms as $dm) {
+            if (!isset($evaluations[$dm->id])) {
                 continue;
             }
 
-            // Matrix SAW untuk DM ini
+            // Bangun matriks keputusan untuk DM saat ini
             $matrix = [];
-
             foreach ($evaluations[$dm->id] as $e) {
                 $matrix[$e->alternative_id][$e->criteria_id] = (float) $e->raw_value;
             }
 
-            // Hitung skor SAW DM ini
+            // Hitung skor SAW menggunakan service eksternal
             $scores = $sawService->calculateFromMatrix($matrix, $weights);
 
-            // Ranking SAW
+            // Urutkan skor SAW (Descending) untuk mendapatkan rank
             arsort($scores);
 
             $rank = 1;
-            foreach ($scores as $altId => $score) {
-                // Borda klasik: (n - rank)
-                $bordaScores[$altId] ??= 0;
-                $bordaScores[$altId] += ($n - $rank);
+            foreach ($scores as $altId => $scoreValue) {
+                /**
+                 * Konsistensi Metodologi Borda:
+                 * Jika ada 5 alternatif: Rank 1 = 5 poin, Rank 2 = 4 poin, dst.
+                 * Rumus: n - (rank - 1)
+                 */
+                $bordaScores[$altId] = ($bordaScores[$altId] ?? 0) + ($n - ($rank - 1));
                 $rank++;
             }
         }
 
-        // 6. Ranking akhir hasil akumulasi Borda
+        // 5. Urutkan hasil akhir akumulasi Borda
         arsort($bordaScores);
 
         $results = collect();
@@ -133,27 +134,23 @@ class DecisionResultService
     }
 
     /**
-     * Kontribusi DM terhadap hasil akhir (DM Workspace)
+     * Membandingkan kontribusi/preferensi DM tertentu terhadap hasil akhir kelompok
      */
-    public function dmContribution(
-        DecisionSession $session,
-        User $dm
-    ): array {
+    public function dmContribution(DecisionSession $session, User $dm): Collection
+    {
         $smart = $this->smartForDm($session, $dm)->keyBy('alternative_id');
-        $borda = $this->borda($session)->keyBy('alternative_id');
+        $borda = $this->borda($session);
 
-        $result = [];
+        return $borda->map(function ($row) use ($smart) {
+            $altId = $row->alternative_id;
 
-        foreach ($borda as $altId => $row) {
-            $result[$altId] = [
+            return (object) [
                 'alternative' => $row->alternative,
                 'smart_score' => $smart[$altId]->smart_score ?? 0,
-                'smart_rank'  => $smart[$altId]->rank_dm ?? null,
+                'smart_rank'  => $smart[$altId]->rank_dm ?? '-',
                 'borda_score' => $row->borda_score,
                 'final_rank'  => $row->final_rank,
             ];
-        }
-
-        return $result;
+        });
     }
 }
