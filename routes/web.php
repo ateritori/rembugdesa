@@ -75,10 +75,6 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::patch('/decision-sessions/{decisionSession}/close', [DecisionSessionController::class, 'close'])
         ->name('decision-sessions.close');
 
-    Route::get(
-        '/decision-sessions/{decisionSession}/result',
-        [DecisionSessionController::class, 'result']
-    )->name('decision-sessions.result');
 
     Route::delete('/decision-sessions/{decisionSession}', [DecisionSessionController::class, 'destroy'])
         ->name('decision-sessions.destroy');
@@ -135,6 +131,18 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::post('/decision-sessions/{decisionSession}/assign-dms', [DecisionSessionController::class, 'storeAssignedDms'])
         ->name('decision-sessions.assign-dms.store');
+});
+
+/*
+|--------------------------------------------------------------------------
+| HASIL (admin & dm)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'role:admin|dm'])->group(function () {
+    Route::get(
+        '/decision-sessions/{decisionSession}/result',
+        [DecisionSessionController::class, 'result']
+    )->name('decision-sessions.result');
 });
 
 /*

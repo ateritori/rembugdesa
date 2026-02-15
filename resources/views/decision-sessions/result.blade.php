@@ -100,7 +100,7 @@
 
         {{-- Footer Action --}}
         <div class="flex justify-start px-2">
-            <a href="{{ route('decision-sessions.index') }}"
+            <a href="{{ url()->previous() }}"
                 class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
