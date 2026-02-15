@@ -32,7 +32,7 @@
             <div class="animate-in slide-in-from-right-5">
 
                 {{-- FASE SCORING: tampilkan Bobot Kelompok (GM) --}}
-                @if ($decisionSession->status === 'scoring')
+                @if ($decisionSession->status !== 'configured')
                     @include('dms.group-weights.index')
 
                     {{-- FASE PAIRWISE --}}

@@ -176,7 +176,12 @@ class DecisionSessionController extends Controller
             $decisionSession->update(['status' => 'closed']);
         });
 
-        return redirect()->route('decision-sessions.index')->with('success', 'Sesi ditutup.');
+        return redirect()
+            ->route('control.index', [
+                $decisionSession->id,
+                'tab' => 'analisis',
+            ])
+            ->with('success', 'Sesi ditutup dan hasil akhir ditampilkan.');
     }
 
     public function result(DecisionSession $decisionSession)

@@ -35,7 +35,14 @@ class SawRankingService
 
         $scores = $this->calculateFromMatrix($matrix, $weights, $types);
 
-        arsort($scores);
+        // Deterministic sorting: SAW score DESC, alternative_id ASC
+        $scores = collect($scores)
+            ->sortBy([
+                fn($score, $altId) => -$score,
+                fn($score, $altId) => $altId,
+            ])
+            ->values()
+            ->all();
 
         $ranked = [];
         $rank = 1;

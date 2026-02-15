@@ -38,14 +38,33 @@ class SmartRankingService
             $scores[$altId] = ($scores[$altId] ?? 0) + ($normalizedWeights[$critId] * (float) $eval->utility_value);
         }
 
-        arsort($scores);
+        // Deterministic sorting: smart_score DESC, alternative_id ASC
+        uasort($scores, function ($a, $b) use ($scores) {
+            if ($a === $b) {
+                return 0;
+            }
+            return ($a > $b) ? -1 : 1;
+        });
+
+        // Enforce secondary order by alternative_id ASC
+        $scores = collect($scores)
+            ->sortBy([
+                fn($score, $altId) => -$score,
+                fn($score, $altId) => $altId,
+            ])
+            ->all();
+
         $ranked = [];
         $upsertData = [];
         $rank = 1;
 
         foreach ($scores as $altId => $score) {
             $finalScore = round($score, 6);
-            $ranked[$altId] = ['score' => $finalScore, 'rank' => $rank];
+            $ranked[$altId] = [
+                'score' => $finalScore,
+                'rank' => $rank,
+            ];
+
             if ($persist) {
                 $upsertData[] = [
                     'decision_session_id' => $session->id,

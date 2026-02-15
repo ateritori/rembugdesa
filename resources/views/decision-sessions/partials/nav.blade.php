@@ -26,12 +26,6 @@
                     [
                         'route' => 'control.*',
                         'label' => 'Hasil Akhir',
-                        'url' => route('control.index', [$decisionSession->id, 'tab' => 'hasil-akhir']),
-                        'condition' => $decisionSession->status === 'closed',
-                    ],
-                    [
-                        'route' => 'control.*',
-                        'label' => 'Analisis',
                         'url' => route('control.index', [$decisionSession->id, 'tab' => 'analisis']),
                         'condition' => $decisionSession->status === 'closed',
                     ],
@@ -46,10 +40,8 @@
                     $isControlRoute = request()->routeIs('control.*');
 
                     if ($item['label'] === 'Kontrol Sesi') {
-                        $isActive = $isControlRoute && !in_array(request('tab'), ['hasil-akhir', 'analisis']);
+                        $isActive = $isControlRoute && request('tab') !== 'analisis';
                     } elseif ($item['label'] === 'Hasil Akhir') {
-                        $isActive = $isControlRoute && request('tab') === 'hasil-akhir';
-                    } elseif ($item['label'] === 'Analisis') {
                         $isActive = $isControlRoute && request('tab') === 'analisis';
                     } else {
                         $isActive = request()->routeIs($item['route']);

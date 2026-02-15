@@ -48,8 +48,14 @@ class DecisionMakerController extends Controller
         $groupResult = CriteriaWeight::where('decision_session_id', $decisionSession->id)
             ->whereNull('dm_id')->first();
 
-        $criteriaWeights = CriteriaWeight::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', $user->id)->first();
+        if ($decisionSession->status === 'configured') {
+            // Bobot individu (editable)
+            $criteriaWeights = CriteriaWeight::where('decision_session_id', $decisionSession->id)
+                ->where('dm_id', $user->id)->first();
+        } else {
+            // Bobot kelompok (read-only)
+            $criteriaWeights = $groupResult;
+        }
 
         // 3. Evaluasi Alternatif
         $evaluations = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
