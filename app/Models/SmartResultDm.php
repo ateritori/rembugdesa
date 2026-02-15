@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Alternative;
+use App\Models\User;
 
 class SmartResultDm extends Model
 {
@@ -15,4 +17,14 @@ class SmartResultDm extends Model
         'smart_score',
         'rank_dm',
     ];
+
+    public function alternative()
+    {
+        return $this->belongsTo(Alternative::class);
+    }
+
+    public function dm()
+    {
+        return $this->belongsTo(User::class, 'dm_id');
+    }
 }

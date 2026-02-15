@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
 use App\Services\AHP\AhpGroupWeightService;
+use App\Services\Result\DecisionResultService;
+use App\Services\SAW\SawRankingService;
 
 class DecisionSessionController extends Controller
 {
@@ -34,22 +36,61 @@ class DecisionSessionController extends Controller
      * Sesuai dengan Route::get('/.../control', [DecisionSessionController::class, 'control'])
      * Mengarah ke folder: resources/views/control/index.blade.php
      */
-    public function control(DecisionSession $decisionSession)
+    public function control(Request $request, DecisionSession $decisionSession)
     {
         $decisionSession->load(['dms', 'alternatives', 'criterias']);
 
-        // 1. Total DM yang ditugaskan
+        // ===== DATA DASHBOARD (TETAP) =====
         $assignedDmCount = $decisionSession->dms()->count();
 
-        // 2. Hitung berapa DM yang sudah melengkapi semua penilaian alternatif
-        // Asumsi: Kita cek di tabel/relasi alternative_evaluations
         $dmEvaluationsDone = $decisionSession->dms()
             ->whereHas('alternativeEvaluations', function ($query) use ($decisionSession) {
                 $query->where('decision_session_id', $decisionSession->id);
             }, '=', $decisionSession->alternatives()->count() * $decisionSession->criterias()->count())
             ->count();
 
-        return view('control.index', compact('decisionSession', 'assignedDmCount', 'dmEvaluationsDone'));
+        // ===== TAB DATA (BARU, READ ONLY) =====
+        $tab = $request->query('tab');
+
+        $borda = collect();      // untuk Hasil Akhir & Analisis
+        $sawBorda = collect();   // placeholder aman (Analisis)
+
+        if ($decisionSession->status === 'closed') {
+
+            // TAB HASIL AKHIR
+            if ($tab === 'hasil-akhir') {
+                $borda = BordaResult::where('decision_session_id', $decisionSession->id)
+                    ->with('alternative')
+                    ->orderBy('final_rank')
+                    ->get();
+            }
+
+            // TAB ANALISIS
+            if ($tab === 'analisis') {
+                // AHP + SMART + BORDA (hasil final yang sudah dipersist)
+                $borda = BordaResult::where('decision_session_id', $decisionSession->id)
+                    ->with('alternative')
+                    ->orderBy('final_rank')
+                    ->get();
+
+                // AHP + SAW + BORDA (benchmark, ON THE FLY)
+                $resultService = app(DecisionResultService::class);
+                $sawService    = app(SawRankingService::class);
+
+                $sawBorda = $resultService->sawBordaBenchmark(
+                    $decisionSession,
+                    $sawService
+                );
+            }
+        }
+
+        return view('control.index', compact(
+            'decisionSession',
+            'assignedDmCount',
+            'dmEvaluationsDone',
+            'borda',
+            'sawBorda'
+        ));
     }
 
     public function create()

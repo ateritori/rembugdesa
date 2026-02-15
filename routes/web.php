@@ -193,7 +193,7 @@ Route::middleware(['auth', 'role:dm'])->group(function () {
         [AlternativeEvaluationController::class, 'store']
     )->name('alternative-evaluations.store');
 
-    // Ringkasan Hasil
+    // Ringkasan Hasil (legacy, digantikan Tab Hasil Akhir di workspace DM)
     Route::get(
         '/decision-sessions/{decisionSession}/summary',
         [DecisionSummaryController::class, 'show']

@@ -175,7 +175,7 @@
                                     $url = route('alternative-evaluations.index', $session->id);
                                     $btnLabel = 'Mulai Penilaian Alternatif';
                                 } elseif ($session->status === 'closed') {
-                                    $url = route('decision-sessions.result', $session->id);
+                                    $url = route('dms.index', [$session->id, 'tab' => 'hasil-akhir']);
                                     $btnLabel = 'Lihat Hasil';
                                 } else {
                                     $url = route('dms.index', $session->id);

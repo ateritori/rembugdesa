@@ -23,6 +23,18 @@
                         'label' => 'Kontrol Sesi',
                         'url' => route('control.index', $decisionSession->id),
                     ],
+                    [
+                        'route' => 'control.*',
+                        'label' => 'Hasil Akhir',
+                        'url' => route('control.index', [$decisionSession->id, 'tab' => 'hasil-akhir']),
+                        'condition' => $decisionSession->status === 'closed',
+                    ],
+                    [
+                        'route' => 'control.*',
+                        'label' => 'Analisis',
+                        'url' => route('control.index', [$decisionSession->id, 'tab' => 'analisis']),
+                        'condition' => $decisionSession->status === 'closed',
+                    ],
                 ];
             @endphp
 
@@ -30,7 +42,19 @@
                 @if (isset($item['condition']) && !$item['condition'])
                     @continue
                 @endif
-                @php $isActive = request()->routeIs($item['route']); @endphp
+                @php
+                    $isControlRoute = request()->routeIs('control.*');
+
+                    if ($item['label'] === 'Kontrol Sesi') {
+                        $isActive = $isControlRoute && !in_array(request('tab'), ['hasil-akhir', 'analisis']);
+                    } elseif ($item['label'] === 'Hasil Akhir') {
+                        $isActive = $isControlRoute && request('tab') === 'hasil-akhir';
+                    } elseif ($item['label'] === 'Analisis') {
+                        $isActive = $isControlRoute && request('tab') === 'analisis';
+                    } else {
+                        $isActive = request()->routeIs($item['route']);
+                    }
+                @endphp
 
                 <a href="{{ $item['url'] }}"
                     class="relative px-6 py-4 text-sm font-black transition-all duration-300 group

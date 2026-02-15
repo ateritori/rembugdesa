@@ -63,7 +63,7 @@
         {{-- 4. HASIL AKHIR --}}
         @if ($tab === 'hasil-akhir')
             <div class="animate-in slide-in-from-bottom-5">
-                @include('dms.summary.index')
+                @include('dms.partials.result')
             </div>
         @endif
     </div>

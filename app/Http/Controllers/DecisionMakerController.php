@@ -8,6 +8,7 @@ use App\Models\CriteriaPairwise;
 use App\Models\AlternativeEvaluation;
 use Illuminate\Http\Request;
 use App\Services\SMART\SmartRankingService;
+use App\Services\Result\DecisionResultService;
 use App\Models\SmartResultDm;
 
 class DecisionMakerController extends Controller
@@ -57,6 +58,21 @@ class DecisionMakerController extends Controller
             $groupResult = CriteriaWeight::where('decision_session_id', $decisionSession->id)
                 ->whereNull('dm_id')
                 ->first();
+        }
+
+        // ===== Hasil Akhir (READ ONLY, hanya saat CLOSED) =====
+        $resultContribution = null;
+
+        if (
+            request('tab') === 'hasil-akhir'
+            && $decisionSession->status === 'closed'
+        ) {
+            $resultService = app(DecisionResultService::class);
+
+            $resultContribution = $resultService->dmContribution(
+                $decisionSession,
+                auth()->user()
+            );
         }
 
         // ===== Evaluasi Alternatif (hanya saat tab aktif) =====
@@ -123,6 +139,7 @@ class DecisionMakerController extends Controller
             'groupResult'     => $groupResult,
             'smartScores'  => $smartScores,
             'smartContext' => $smartContext,
+            'resultContribution' => $resultContribution,
         ]);
     }
 

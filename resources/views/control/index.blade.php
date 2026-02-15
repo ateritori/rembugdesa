@@ -9,7 +9,6 @@
       // Hitung Data Dasar
       $activeCriteriaCount = $decisionSession->criterias->where('is_active', true)->count();
       $activeAlternativesCount = $decisionSession->alternatives->where('is_active', true)->count();
-      $assignedDmCount = $decisionSession->dms->count();
 
       // Hitung Progres (Cek data di DB via relasi)
       $dmPairwiseDone = $decisionSession->dms->filter(function($dm) use ($decisionSession) {
@@ -31,6 +30,7 @@
   {{-- TAB NAVIGASI SESI --}}
   @include('decision-sessions.partials.nav')
 
+  @if (!in_array(request('tab'), ['hasil-akhir', 'analisis']))
   <div class="animate-in fade-in slide-in-from-bottom-4 w-full px-4 py-8 duration-700">
     <div class="w-full space-y-10">
 
@@ -157,4 +157,22 @@
       </div>
     </div>
   </div>
+  @endif
+  {{-- =========================
+       TAB CONTENT: HASIL AKHIR
+       ========================= --}}
+  @if (request('tab') === 'hasil-akhir' && $decisionSession->status === 'closed')
+      <div class="mt-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          @include('control.result')
+      </div>
+  @endif
+  {{-- =========================
+       TAB CONTENT: ANALISIS
+       ========================= --}}
+  @if (request('tab') === 'analisis' && $decisionSession->status === 'closed')
+      <div class="mt-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          @include('control.analysis')
+      </div>
+  @endif
+</div>
 @endsection

@@ -38,8 +38,8 @@
 
     {{-- TAB 4: HASIL AKHIR --}}
     @if ($status === 'closed')
-        <a href="{{ route('decision-sessions.summary', $decisionSession->id) }}"
-            class="{{ $currentTab === 'summary'
+        <a href="{{ route('dms.index', [$decisionSession->id, 'tab' => 'hasil-akhir']) }}"
+            class="{{ $currentTab === 'hasil-akhir'
                 ? 'bg-white text-primary shadow-sm ring-1 ring-black/5'
                 : 'text-slate-500 hover:text-slate-700' }} flex items-center rounded-xl px-5 py-2 text-sm font-black transition-all">
             Hasil Akhir
