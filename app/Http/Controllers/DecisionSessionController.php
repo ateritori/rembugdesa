@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\DecisionSession;
 use App\Models\User;
 use App\Models\Criteria;
+use App\Models\BordaResult;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
@@ -162,16 +164,62 @@ class DecisionSessionController extends Controller
         );
     }
 
-    public function close(DecisionSession $decisionSession)
-    {
-        // Pastikan statusnya memang sudah aktif sebelum bisa ditutup
-        abort_if($decisionSession->status !== 'aggregated', 403);
+    public function close(
+        DecisionSession $decisionSession,
+        \App\Services\Borda\BordaRankingService $bordaRankingService
+    ) {
+        // 1. Status guard: hanya boleh ditutup dari tahap scoring
+        abort_if(
+            ! in_array($decisionSession->status, ['scoring']),
+            403,
+            'Sesi belum siap ditutup.'
+        );
 
-        $decisionSession->update(['status' => 'final']);
+        // 2. Pastikan semua DM sudah punya hasil SMART
+        $dmCount = $decisionSession->dms()->count();
+
+        $smartDmCount = \App\Models\SmartResultDm::where('decision_session_id', $decisionSession->id)
+            ->distinct('dm_id')
+            ->count('dm_id');
+
+        abort_if(
+            $dmCount !== $smartDmCount,
+            403,
+            'Masih ada DM yang belum menyelesaikan penilaian.'
+        );
+
+        // 3. Hitung & simpan Borda + kunci sesi (atomic)
+        \Illuminate\Support\Facades\DB::transaction(function () use (
+            $decisionSession,
+            $bordaRankingService
+        ) {
+            $bordaRankingService->calculateAndPersist($decisionSession);
+            $decisionSession->update(['status' => 'closed']);
+        });
 
         return redirect()
             ->route('decision-sessions.index')
-            ->with('success', 'Sesi berhasil ditutup.');
+            ->with('success', 'Sesi berhasil difinalisasi dan dikunci.');
+    }
+
+    public function result(DecisionSession $decisionSession)
+    {
+        // Guard: hasil hanya boleh dilihat jika sesi sudah final
+        abort_if(
+            $decisionSession->status !== 'closed',
+            403,
+            'Hasil hanya tersedia setelah sesi difinalisasi.'
+        );
+
+        $results = BordaResult::where('decision_session_id', $decisionSession->id)
+            ->with('alternative')
+            ->orderBy('final_rank')
+            ->get();
+
+        return view('decision-sessions.result', compact(
+            'decisionSession',
+            'results'
+        ));
     }
 
     public function destroy(DecisionSession $decisionSession)
@@ -213,7 +261,7 @@ class DecisionSessionController extends Controller
     public function storeAssignedDms(Request $request, DecisionSession $decisionSession)
     {
         // Proteksi: tidak boleh ubah DM jika session sudah dikunci
-        abort_if(in_array($decisionSession->status, ['aggregated', 'final']), 403, 'Tidak bisa mengubah DM pada sesi yang sudah dikunci.');
+        abort_if(in_array($decisionSession->status, ['closed']), 403, 'Tidak bisa mengubah DM pada sesi yang sudah dikunci.');
 
         $request->validate([
             'dm_ids' => 'nullable|array',

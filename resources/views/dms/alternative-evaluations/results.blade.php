@@ -74,7 +74,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @foreach ($smartScores->sortDesc() as $altId => $score)
+                        @foreach ($smartScores->sortByDesc('score') as $altId => $data)
                             @php
                                 $alt = $alternatives->firstWhere('id', $altId);
                                 $rankColor = match ($rank) {
@@ -101,7 +101,7 @@
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <span class="font-mono font-black text-primary text-base">
-                                            {{ number_format($score, 4) }}
+                                            {{ number_format($data['score'], 4) }}
                                         </span>
                                     </td>
                                 </tr>

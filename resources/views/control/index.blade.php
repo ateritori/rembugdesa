@@ -142,24 +142,15 @@
           ])
         @endif
 
-        {{-- STATUS AGGREGATED --}}
-        @if ($decisionSession->status === 'aggregated')
-          @include('control.partials.action-card', [
-              'border' => 'border-emerald-100', 'badgeBg' => 'bg-emerald-50', 'badgeText' => 'text-emerald-600',
-              'phase' => 'Phase 04: Aggregated', 'title' => 'Hasil Teragregasi',
-              'description' => 'Sistem telah menyelesaikan perhitungan.',
-              'right_path' => 'control.partials.buttons.finalize',
-              'canActivate' => true
-          ])
-        @endif
-
-        {{-- STATUS FINAL --}}
-        @if ($decisionSession->status === 'final')
+        {{-- STATUS CLOSED --}}
+        @if ($decisionSession->status === 'closed')
           @include('control.partials.action-card', [
               'border' => 'border-slate-200', 'badgeBg' => 'bg-slate-100', 'badgeText' => 'text-slate-600',
-              'phase' => 'Phase 05: Final', 'title' => 'Keputusan Final',
-              'description' => 'Proses pengambilan keputusan telah selesai.',
-              'canActivate' => false
+              'phase' => 'Phase 04: Closed',
+              'title' => 'Keputusan Ditutup',
+              'description' => 'Keputusan akhir telah ditetapkan dan dapat dilihat.',
+              'right_path' => 'control.partials.buttons.view-result',
+              'canActivate' => true
           ])
         @endif
 

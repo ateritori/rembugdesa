@@ -75,6 +75,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::patch('/decision-sessions/{decisionSession}/close', [DecisionSessionController::class, 'close'])
         ->name('decision-sessions.close');
 
+    Route::get(
+        '/decision-sessions/{decisionSession}/result',
+        [DecisionSessionController::class, 'result']
+    )->name('decision-sessions.result');
+
     Route::delete('/decision-sessions/{decisionSession}', [DecisionSessionController::class, 'destroy'])
         ->name('decision-sessions.destroy');
 

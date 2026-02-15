@@ -8,6 +8,7 @@ use App\Models\CriteriaPairwise;
 use App\Models\AlternativeEvaluation;
 use Illuminate\Http\Request;
 use App\Services\SMART\SmartRankingService;
+use App\Models\SmartResultDm;
 
 class DecisionMakerController extends Controller
 {
@@ -76,9 +77,21 @@ class DecisionMakerController extends Controller
                 ->groupBy('alternative_id')
                 ->map(fn($items) => $items->keyBy('criteria_id'));
 
+            $lastEvaluationUpdate = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
+                ->where('dm_id', auth()->id())
+                ->max('updated_at');
+
+            $lastSmartUpdate = SmartResultDm::where('decision_session_id', $decisionSession->id)
+                ->where('dm_id', auth()->id())
+                ->max('updated_at');
+
+            $shouldPersist = is_null($lastSmartUpdate)
+                || ($lastEvaluationUpdate && $lastEvaluationUpdate > $lastSmartUpdate);
+
             $smartScores = $smartRankingService->calculate(
                 $decisionSession,
-                auth()->user()
+                auth()->user(),
+                $shouldPersist
             );
 
             $hasSmartResult = ! empty($smartScores);

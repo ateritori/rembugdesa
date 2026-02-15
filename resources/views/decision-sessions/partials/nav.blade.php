@@ -23,10 +23,19 @@
                         'label' => 'Kontrol Sesi',
                         'url' => route('control.index', $decisionSession->id),
                     ],
+                    [
+                        'route' => 'decision-sessions.result',
+                        'label' => 'Hasil',
+                        'url' => route('decision-sessions.result', $decisionSession->id),
+                        'condition' => $decisionSession->status === 'closed',
+                    ],
                 ];
             @endphp
 
             @foreach ($navItems as $item)
+                @if (isset($item['condition']) && !$item['condition'])
+                    @continue
+                @endif
                 @php $isActive = request()->routeIs($item['route']); @endphp
 
                 <a href="{{ $item['url'] }}"
