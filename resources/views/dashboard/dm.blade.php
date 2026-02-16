@@ -7,7 +7,8 @@
         <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
                 <h1 class="text-2xl font-black tracking-tight text-slate-800 dark:text-white">Dashboard Decision Maker</h1>
-                <p class="text-sm font-bold text-slate-400">Pilih sesi untuk memulai atau melihat hasil penilaian.</p>
+                <p class="text-sm font-bold text-slate-400">Kelola dan pantau partisipasi Anda dalam pengambilan keputusan.
+                </p>
             </div>
 
             <div class="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2">
@@ -74,18 +75,12 @@
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             @forelse ($assignedSessions as $session)
                 @php
-                    $dmWeight = $session->criteriaWeights->where('dm_id', auth()->id())->first();
-                    $crValue = $dmWeight ? $dmWeight->cr : null;
-                    $isConsistent = $crValue !== null && $crValue <= 0.1;
-
                     $url = '#';
                     $btnLabel = 'Buka Workspace';
                     $statusMessage = '';
                     $statusColor = 'text-slate-400';
                     $isLocked = true;
 
-                    /** * LOGIKA NAVIGASI BERBASIS TAB & STATUS GLOBAL
-                     */
                     if ($session->status === 'closed') {
                         $url = route('dms.index', [$session->id, 'tab' => 'hasil-akhir']);
                         $btnLabel = 'Lihat Hasil Akhir';
@@ -94,7 +89,7 @@
                         $isLocked = false;
                     } elseif ($session->status === 'scoring') {
                         if (!($session->dmEvaluationFinished ?? false)) {
-                            $url = route('dms.index', [$session->id, 'tab' => 'penilaian-alternatif']);
+                            $url = route('dms.index', [$session->id, 'tab' => 'evaluasi-alternatif']);
                             $btnLabel = 'Nilai Alternatif';
                             $statusMessage = 'Perlu Evaluasi Alternatif';
                             $statusColor = 'text-blue-500 animate-pulse';
@@ -130,25 +125,22 @@
                     <div class="space-y-5">
                         <div class="flex items-start justify-between gap-4">
                             <div class="min-w-0 flex-1">
-                                {{-- Judul Bisa Pindah Baris (Max 2 Baris) --}}
                                 <h3 class="line-clamp-2 text-lg font-black uppercase leading-tight tracking-tight text-slate-800 transition-colors group-hover:text-primary dark:text-white"
                                     title="{{ $session->name }}">
                                     {{ $session->name }}
                                 </h3>
-                                <p class="mt-1 text-[10px] font-black uppercase tracking-widest text-primary">
-                                    Periode {{ $session->year }}
-                                </p>
+                                <p class="mt-1 text-[10px] font-black uppercase tracking-widest text-primary">Periode
+                                    {{ $session->year }}</p>
                             </div>
                             <span
-                                class="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-500 dark:bg-slate-900">
-                                ID-{{ $session->id }}
-                            </span>
+                                class="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-500 dark:bg-slate-900">ID-{{ $session->id }}</span>
                         </div>
 
-                        {{-- Info Grid --}}
+                        {{-- Info Grid: Tahap & Cakupan Data --}}
                         <div class="grid grid-cols-2 gap-4 border-y border-slate-50 py-4 dark:border-slate-700">
                             <div class="flex flex-col">
-                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Tahap</span>
+                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Tahap
+                                    Sesi</span>
                                 <div class="mt-1">
                                     @php
                                         $badge = match ($session->status) {
@@ -167,16 +159,21 @@
                             </div>
 
                             <div class="flex flex-col border-l border-slate-50 pl-4 dark:border-slate-700">
-                                <span
-                                    class="text-[9px] font-black uppercase tracking-widest text-slate-400">Konsistensi</span>
-                                @if ($session->dmHasCompleted)
-                                    <span
-                                        class="mt-1 text-xs font-black {{ $isConsistent ? 'text-emerald-500' : 'text-red-500' }}">
-                                        CR: {{ number_format($crValue ?? 0, 4) }}
-                                    </span>
-                                @else
-                                    <span class="mt-1 text-[10px] font-bold italic text-slate-300">Belum Ada</span>
-                                @endif
+                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Cakupan
+                                    Sesi</span>
+                                <div class="mt-1 flex items-center gap-2">
+                                    <div class="flex flex-col items-center">
+                                        <span
+                                            class="text-xs font-black text-slate-700 dark:text-slate-200">{{ $session->criteria_count ?? $session->criteria->count() }}</span>
+                                        <span class="text-[7px] uppercase font-bold text-slate-400">Kriteria</span>
+                                    </div>
+                                    <div class="h-4 w-px bg-slate-200 dark:bg-slate-600"></div>
+                                    <div class="flex flex-col items-center">
+                                        <span
+                                            class="text-xs font-black text-slate-700 dark:text-slate-200">{{ $session->alternatives_count ?? $session->alternatives->count() }}</span>
+                                        <span class="text-[7px] uppercase font-bold text-slate-400">Alternatif</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
