@@ -65,29 +65,29 @@ class AhpPairwiseController extends Controller
         $user = Auth::user();
         abort_if(!$user || !$user->hasRole('dm'), 403);
 
-        if (!in_array($decisionSession->status, ['configured', 'scoring'])) {
-            return back()->with('error', 'Sesi penilaian sudah dikunci.');
-        }
-
         $request->validate([
             'pairwise'       => 'required|array',
             'cr_value'       => 'required|numeric',
-            'final_weights'  => 'required|json',
+            'final_weights'  => 'required|json', // Kebenaran dari JS
         ]);
 
         try {
-            // Eksekusi penyimpanan dan kalkulasi melalui Service
-            // Transaksi database dikelola di dalam service atau menggunakan koneksi model
+            // Ambil data matang dari JS
+            $crFromJs = $request->input('cr_value');
+            $weightsFromJs = json_decode($request->input('final_weights'), true);
+
             $service->submit(
                 $decisionSession,
                 $user,
-                $request->input('pairwise')
+                $request->input('pairwise'),
+                $crFromJs,      // Oper CR
+                $weightsFromJs  // Oper Bobot
             );
 
             return redirect()->route('dms.index', [
                 'decisionSession' => $decisionSession->id,
                 'tab'             => 'penilaian-kriteria',
-            ])->with('success', 'Penilaian berhasil disimpan!');
+            ])->with('success', 'Penilaian disimpan (CR: ' . number_format($crFromJs, 4) . ')');
         } catch (\Exception $e) {
             Log::error('AHP Store Error: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan data.');

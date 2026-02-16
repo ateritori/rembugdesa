@@ -3,19 +3,19 @@
 @section('content')
     <div class="animate-in fade-in slide-in-from-bottom-4 space-y-8 pb-10 duration-700">
 
-        {{-- HEADER --}}
+        {{-- 1. HEADER --}}
         <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-                <h1 class="text-app text-2xl font-black tracking-tight">Dashboard Decision Maker</h1>
-                <p class="text-app text-sm opacity-60">Ringkasan sesi keputusan yang ditugaskan kepada Anda.</p>
+                <h1 class="text-2xl font-black tracking-tight text-slate-800 dark:text-white">Dashboard Decision Maker</h1>
+                <p class="text-sm font-bold text-slate-400">Pilih sesi untuk memulai atau melihat hasil penilaian.</p>
             </div>
 
-            <div class="bg-primary/10 border-primary/20 rounded-2xl border px-4 py-2">
-                <span class="text-primary text-[10px] font-black uppercase tracking-[0.2em]">Role: Decision Maker</span>
+            <div class="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2">
+                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Role: Decision Maker</span>
             </div>
         </div>
 
-        {{-- SUMMARY CARDS --}}
+        {{-- 2. SUMMARY CARDS --}}
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             @php
                 $cards = [
@@ -24,169 +24,166 @@
                         'value' => $assignedCount,
                         'icon' =>
                             'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
-                        'bg' => 'bg-blue-500',
+                        'color' => 'from-blue-600 to-blue-700',
                     ],
                     [
                         'label' => 'Sesi Aktif',
                         'value' => $activeCount,
                         'icon' => 'M13 10V3L4 14h7v7l9-11h-7z',
-                        'bg' => 'bg-emerald-500',
+                        'color' => 'from-emerald-600 to-emerald-700',
                     ],
                     [
                         'label' => 'Tugas Pending',
                         'value' => $pendingTaskCount,
                         'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-                        'bg' => $pendingTaskCount > 0 ? 'bg-amber-500' : 'bg-primary',
+                        'color' =>
+                            $pendingTaskCount > 0 ? 'from-amber-500 to-orange-600' : 'from-slate-700 to-slate-800',
                     ],
                 ];
             @endphp
 
             @foreach ($cards as $card)
                 <div
-                    class="adaptive-card hover:border-primary/50 group relative overflow-hidden p-6 transition-all duration-500">
+                    class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-xl dark:border-slate-700 dark:bg-slate-800">
                     <div class="relative z-10 flex flex-col">
                         <span
-                            class="text-app mb-1 text-[11px] font-black uppercase tracking-widest opacity-40">{{ $card['label'] }}</span>
+                            class="mb-1 text-[11px] font-black uppercase tracking-widest text-slate-400">{{ $card['label'] }}</span>
                         <span
-                            class="text-app group-hover:text-primary text-4xl font-black transition-colors">{{ $card['value'] }}</span>
+                            class="text-4xl font-black tracking-tighter text-slate-800 transition-colors group-hover:text-primary dark:text-white">{{ $card['value'] }}</span>
                     </div>
                     <div
-                        class="absolute -bottom-4 -right-4 opacity-[0.03] transition-all duration-700 group-hover:scale-110 group-hover:opacity-10">
-                        <svg class="text-app h-24 w-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="absolute -bottom-4 -right-4 opacity-[0.05] transition-all duration-700 group-hover:scale-110 group-hover:opacity-10">
+                        <svg class="h-20 w-20 text-slate-900 dark:text-white" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $card['icon'] }}">
                             </path>
                         </svg>
                     </div>
-                    <div class="{{ $card['bg'] }} absolute left-0 top-0 h-full w-1 opacity-50"></div>
+                    <div class="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b {{ $card['color'] }}"></div>
                 </div>
             @endforeach
         </div>
 
-        {{-- DAFTAR TUGAS HEADER --}}
-        <div class="flex items-center gap-4">
-            <h2 class="text-app text-base font-black uppercase tracking-widest">Daftar Penilaian</h2>
-            <div class="bg-app h-px flex-1 opacity-10"></div>
+        {{-- 3. DAFTAR TUGAS HEADER --}}
+        <div class="flex items-center gap-4 text-slate-400">
+            <h2 class="text-xs font-black uppercase tracking-[0.3em]">Daftar Penilaian Aktif</h2>
+            <div class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></div>
         </div>
 
-        {{-- SESSION CARDS --}}
+        {{-- 4. SESSION CARDS --}}
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             @forelse ($assignedSessions as $session)
                 @php
-                    // Ambil CR untuk DM saat ini
                     $dmWeight = $session->criteriaWeights->where('dm_id', auth()->id())->first();
                     $crValue = $dmWeight ? $dmWeight->cr : null;
                     $isConsistent = $crValue !== null && $crValue <= 0.1;
 
-                    // RESET VARIABEL UNTUK TIAP LOOP
                     $url = '#';
                     $btnLabel = 'Buka Workspace';
                     $statusMessage = '';
-                    $statusColor = 'text-gray-500';
-                    $isLocked = false;
+                    $statusColor = 'text-slate-400';
+                    $isLocked = true;
 
-                    /** * LOGIKA FIX: CEK STATUS GLOBAL DULU, BARU CEK PROGRESS DM
+                    /** * LOGIKA NAVIGASI BERBASIS TAB & STATUS GLOBAL
                      */
-
-                    // 1. JIKA CLOSED (PRIORITAS UTAMA)
                     if ($session->status === 'closed') {
                         $url = route('dms.index', [$session->id, 'tab' => 'hasil-akhir']);
                         $btnLabel = 'Lihat Hasil Akhir';
-                        $statusMessage = 'Keputusan Selesai';
-                        $statusColor = 'text-emerald-500 font-bold';
-                    }
-
-                    // 2. JIKA DRAFT
-                    elseif ($session->status === 'draft') {
-                        $isLocked = true;
-                        $statusMessage = 'Menunggu Admin';
-                        $statusColor = 'text-gray-400';
-                    }
-
-                    // 3. JIKA BELUM ISI KRITERIA (PAIRWISE)
-                    elseif (!$session->dmHasCompleted) {
-                        $url = route('decision-sessions.pairwise.index', $session->id);
-                        $btnLabel = 'Mulai Penilaian Kriteria';
-                        $statusMessage = 'Perlu Perbandingan Kriteria';
-                        $statusColor = 'text-amber-500 animate-pulse';
-                    }
-
-                    // 4. JIKA SUDAH KRITERIA, TINGGAL ALTERNATIF (SCORING)
-                    elseif ($session->status === 'scoring') {
+                        $statusMessage = 'Sesi Selesai & Final';
+                        $statusColor = 'text-emerald-500';
+                        $isLocked = false;
+                    } elseif ($session->status === 'scoring') {
                         if (!($session->dmEvaluationFinished ?? false)) {
-                            $url = route('alternative-evaluations.index', $session->id);
-                            $btnLabel = 'Mulai Penilaian Alternatif';
-                            $statusMessage = 'Lanjut Penilaian Alternatif';
+                            $url = route('dms.index', [$session->id, 'tab' => 'penilaian-alternatif']);
+                            $btnLabel = 'Nilai Alternatif';
+                            $statusMessage = 'Perlu Evaluasi Alternatif';
                             $statusColor = 'text-blue-500 animate-pulse';
                         } else {
-                            $url = route('dms.index', $session->id);
-                            $btnLabel = 'Lihat Progress Saya';
-                            $statusMessage = 'Menunggu Hasil Final';
+                            $url = route('dms.index', [$session->id, 'tab' => 'status']);
+                            $btnLabel = 'Lihat Progres';
+                            $statusMessage = 'Menunggu Finalisasi';
                             $statusColor = 'text-emerald-500';
                         }
+                        $isLocked = false;
+                    } elseif ($session->status === 'configured') {
+                        if (!$session->dmHasCompleted) {
+                            $url = route('dms.index', [$session->id, 'tab' => 'penilaian-kriteria']);
+                            $btnLabel = 'Bobot Kriteria';
+                            $statusMessage = 'Perlu Input Pairwise';
+                            $statusColor = 'text-amber-500 animate-pulse';
+                        } else {
+                            $url = route('dms.index', [$session->id, 'tab' => 'status']);
+                            $btnLabel = 'Cek Status Bobot';
+                            $statusMessage = 'Menunggu Tahap Berikutnya';
+                            $statusColor = 'text-indigo-500';
+                        }
+                        $isLocked = false;
+                    } elseif ($session->status === 'draft') {
+                        $isLocked = true;
+                        $statusMessage = 'Belum Dibuka Admin';
+                        $statusColor = 'text-slate-400';
                     }
                 @endphp
 
                 <div
-                    class="adaptive-card hover:shadow-primary/5 group flex flex-col justify-between p-6 transition-all hover:shadow-2xl">
+                    class="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-xl dark:border-slate-700 dark:bg-slate-800">
                     <div class="space-y-5">
-                        <div class="flex items-start justify-between">
-                            <div class="min-w-0">
-                                <h3 class="text-app group-hover:text-primary truncate text-lg font-black transition-colors">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="min-w-0 flex-1">
+                                {{-- Judul Bisa Pindah Baris (Max 2 Baris) --}}
+                                <h3 class="line-clamp-2 text-lg font-black uppercase leading-tight tracking-tight text-slate-800 transition-colors group-hover:text-primary dark:text-white"
+                                    title="{{ $session->name }}">
                                     {{ $session->name }}
                                 </h3>
-                                <p class="text-app text-xs font-bold italic opacity-40">Periode {{ $session->year }}</p>
+                                <p class="mt-1 text-[10px] font-black uppercase tracking-widest text-primary">
+                                    Periode {{ $session->year }}
+                                </p>
                             </div>
+                            <span
+                                class="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-500 dark:bg-slate-900">
+                                ID-{{ $session->id }}
+                            </span>
                         </div>
 
-                        <div class="border-app/50 grid grid-cols-2 gap-4 border-y py-4">
+                        {{-- Info Grid --}}
+                        <div class="grid grid-cols-2 gap-4 border-y border-slate-50 py-4 dark:border-slate-700">
                             <div class="flex flex-col">
-                                <span class="text-[9px] font-black uppercase tracking-widest opacity-40">Status Sesi</span>
+                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Tahap</span>
                                 <div class="mt-1">
                                     @php
-                                        $statusBadge = [
-                                            'draft' => ['label' => 'Draft', 'class' => 'bg-gray-500/10 text-gray-500'],
-                                            'configured' => [
-                                                'label' => 'Ready',
-                                                'class' => 'bg-blue-500/10 text-blue-500',
-                                            ],
-                                            'scoring' => [
-                                                'label' => 'Scoring',
-                                                'class' => 'bg-amber-500/10 text-amber-500',
-                                            ],
-                                            'closed' => [
-                                                'label' => 'Closed',
-                                                'class' => 'bg-emerald-500/10 text-emerald-500',
-                                            ],
-                                        ];
-                                        $currentBadge = $statusBadge[$session->status] ?? [
-                                            'label' => $session->status,
-                                            'class' => 'bg-gray-500/10 text-gray-500',
-                                        ];
+                                        $badge = match ($session->status) {
+                                            'draft' => 'bg-slate-100 text-slate-500',
+                                            'configured' => 'bg-blue-100 text-blue-700',
+                                            'scoring' => 'bg-amber-100 text-amber-700',
+                                            'closed' => 'bg-emerald-100 text-emerald-700',
+                                            default => 'bg-slate-100 text-slate-500',
+                                        };
                                     @endphp
                                     <span
-                                        class="{{ $currentBadge['class'] }} rounded-md px-2 py-0.5 text-[10px] font-black uppercase">
-                                        {{ $currentBadge['label'] }}
+                                        class="{{ $badge }} rounded px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter">
+                                        {{ $session->status }}
                                     </span>
                                 </div>
                             </div>
 
-                            {{-- Hanya tampilkan CR jika sudah isi kriteria --}}
-                            @if ($session->dmHasCompleted)
-                                <div class="border-app/50 flex flex-col border-l pl-4">
-                                    <span class="text-[9px] font-black uppercase tracking-widest opacity-40">Konsistensi
-                                        (CR)
-                                    </span>
+                            <div class="flex flex-col border-l border-slate-50 pl-4 dark:border-slate-700">
+                                <span
+                                    class="text-[9px] font-black uppercase tracking-widest text-slate-400">Konsistensi</span>
+                                @if ($session->dmHasCompleted)
                                     <span
-                                        class="mt-1 text-xs font-black {{ $isConsistent ? 'text-primary' : 'text-red-500' }}">
-                                        {{ number_format($crValue ?? 0, 4) }}
+                                        class="mt-1 text-xs font-black {{ $isConsistent ? 'text-emerald-500' : 'text-red-500' }}">
+                                        CR: {{ number_format($crValue ?? 0, 4) }}
                                     </span>
-                                </div>
-                            @endif
+                                @else
+                                    <span class="mt-1 text-[10px] font-bold italic text-slate-300">Belum Ada</span>
+                                @endif
+                            </div>
                         </div>
 
-                        <div class="flex items-center gap-2">
-                            <div class="h-2 w-2 rounded-full bg-current {{ $statusColor }}"></div>
-                            <p class="text-[11px] font-black uppercase tracking-tighter {{ $statusColor }}">
+                        {{-- Status Indikator --}}
+                        <div class="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-slate-900/50">
+                            <div class="h-2 w-2 shrink-0 rounded-full bg-current {{ $statusColor }}"></div>
+                            <p class="text-[10px] font-black uppercase tracking-widest {{ $statusColor }}">
                                 {{ $statusMessage }}
                             </p>
                         </div>
@@ -195,25 +192,31 @@
                     <div class="mt-8">
                         @if (!$isLocked)
                             <a href="{{ $url }}"
-                                class="bg-primary shadow-primary/20 inline-flex w-full items-center justify-center rounded-xl px-4 py-3.5 text-[11px] font-black uppercase tracking-widest text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95">
+                                class="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-lg shadow-slate-200 transition-all hover:bg-primary hover:shadow-primary/30 active:scale-95 dark:bg-primary dark:shadow-none">
                                 {{ $btnLabel }}
-                                <svg class="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                         d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                 </svg>
                             </a>
                         @else
                             <div
-                                class="bg-app/10 border-app/20 w-full rounded-xl border px-4 py-3.5 text-center text-[10px] font-black uppercase tracking-widest opacity-50">
+                                class="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 dark:border-slate-700 dark:bg-slate-900">
+                                <svg class="h-4 w-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
                                 Akses Terkunci
                             </div>
                         @endif
                     </div>
                 </div>
             @empty
-                <div class="adaptive-card col-span-full rounded-3xl border-dashed py-24 text-center">
-                    <p class="text-app text-sm font-black uppercase tracking-[0.2em] opacity-30">Belum ada sesi ditugaskan
-                    </p>
+                <div
+                    class="col-span-full rounded-3xl border-2 border-dashed border-slate-200 py-24 text-center dark:border-slate-700">
+                    <p class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">Belum ada sesi yang
+                        ditugaskan kepada Anda</p>
                 </div>
             @endforelse
         </div>

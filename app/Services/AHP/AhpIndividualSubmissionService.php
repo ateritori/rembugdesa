@@ -13,68 +13,61 @@ class AhpIndividualSubmissionService
     /**
      * Menyimpan hasil perbandingan berpasangan dan menghitung bobot AHP.
      */
-    public function submit(DecisionSession $session, User $user, array $pairwiseData, array $rawFallback = [])
+    /**
+     * Menyimpan hasil perbandingan dan bobot (Menerima hasil hitung dari JS).
+     */
+    public function submit(DecisionSession $session, User $user, array $pairwiseData, $passedCr = null, $passedWeights = null)
     {
-        return DB::transaction(function () use ($session, $user, $pairwiseData) {
+        return DB::transaction(function () use ($session, $user, $pairwiseData, $passedCr, $passedWeights) {
 
-            // 1. Hapus data lama agar bersih (Mencegah Duplikat)
+            // 1. Bersihkan data lama
             CriteriaPairwise::where('decision_session_id', $session->id)
                 ->where('dm_id', $user->id)
                 ->delete();
 
-            $criterias = $session->criteria()->where('is_active', true)->orderBy('id')->get();
-            $n = $criterias->count();
-
-            // Inisialisasi Matriks Identitas
-            $matrix = [];
-            $ids = $criterias->pluck('id')->toArray();
-            foreach ($ids as $i) {
-                foreach ($ids as $j) {
-                    $matrix[$i][$j] = 1.0;
-                }
-            }
-
-            // 2. Simpan ke Database sesuai Struktur Tabel & Isi Matriks
-            // Format input dari Blade: $pairwiseData[id_i][id_j]['a_ij']
+            // 2. Simpan perbandingan ke database
             foreach ($pairwiseData as $idI => $targets) {
                 foreach ($targets as $idJ => $values) {
                     $valAIJ = (float)$values['a_ij'];
 
-                    // Logic Konversi untuk Tabel: criteria_id_1, criteria_id_2, value, direction
-                    // a_ij >= 1 artinya kriteria i (A) lebih dominan
                     $direction = ($valAIJ >= 1) ? 'left' : 'right';
                     $finalValue = ($valAIJ >= 1) ? $valAIJ : (1 / $valAIJ);
 
                     CriteriaPairwise::create([
                         'decision_session_id' => $session->id,
                         'dm_id'               => $user->id,
-                        'criteria_id_1'       => $idI, // Menggunakan kolom sesuai tabel Anda
-                        'criteria_id_2'       => $idJ, // Menggunakan kolom sesuai tabel Anda
+                        'criteria_id_1'       => $idI,
+                        'criteria_id_2'       => $idJ,
                         'value'               => $finalValue,
                         'direction'           => $direction,
                     ]);
-
-                    // Isi matriks untuk perhitungan AHP (menggunakan nilai asli a_ij)
-                    $matrix[$idI][$idJ] = $valAIJ;
-                    $matrix[$idJ][$idI] = 1 / $valAIJ;
                 }
             }
 
-            // 3. Jalankan Kalkulasi AHP
-            $analysis = $this->calculateAHP($matrix, $n);
+            // 3. Tentukan Bobot & CR
+            // Jika dilempar dari JS, pakai itu. Jika tidak (misal hitung manual), baru jalankan rumus PHP.
+            $finalWeights = $passedWeights;
+            $finalCr = $passedCr;
 
-            // 4. Update Bobot Akhir (Ini opsional jika di controller sudah ada,
-            // tapi bagus untuk redundancy agar data konsisten)
+            if (is_null($finalWeights) || is_null($finalCr)) {
+                // Fallback jika tidak dikirim dari JS (Misal testing/seeder)
+                // Anda tetap butuh matriks jika mau hitung ulang di sini
+                $analysis = $this->calculateAHP($this->buildMatrix($session, $pairwiseData), $session->criteria->count());
+                $finalWeights = $analysis['weights'];
+                $finalCr = $analysis['cr'];
+            }
+
+            // 4. Update Tabel Bobot
             CriteriaWeight::updateOrCreate(
                 ['decision_session_id' => $session->id, 'dm_id' => $user->id],
                 [
-                    'weights'    => $analysis['weights'],
-                    'cr'         => (float)$analysis['cr'],
+                    'weights'    => $finalWeights,
+                    'cr'         => (float)$finalCr,
                     'updated_at' => now()
                 ]
             );
 
-            return $analysis;
+            return ['weights' => $finalWeights, 'cr' => $finalCr];
         });
     }
 

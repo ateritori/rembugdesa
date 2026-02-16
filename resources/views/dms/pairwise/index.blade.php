@@ -1,10 +1,11 @@
 @php
-    // Inisialisasi data dari Controller
     $criterias = $criterias ?? collect();
     $existingData = $existingPairwise ?? [];
+    $isEditMode = !empty($existingData);
 
-    // Jika Mode Create (Kosong), siapkan state default tengah (pos 9)
-    if (empty($existingData)) {
+    // Persiapan data awal
+    if (!$isEditMode) {
+        // Jika Mode Create (Kosong), siapkan state default & wajib disentuh
         foreach ($criterias as $i => $ci) {
             foreach ($criterias as $j => $cj) {
                 if ($i < $j) {
@@ -13,15 +14,20 @@
                         'id_i' => $ci->id,
                         'id_j' => $cj->id,
                         'pos' => 9,
+                        'touched' => false, // WAJIB geser di mode Create
                     ];
                 }
             }
+        }
+    } else {
+        // Jika Mode UPDATE, set semua 'touched' jadi true agar tombol simpan aktif
+        foreach ($existingData as $key => $val) {
+            $existingData[$key]['touched'] = true;
         }
     }
 @endphp
 
 <style>
-    /* STYLE ASLI ANDA - TIDAK DIUBAH */
     .no-scrollbar::-webkit-scrollbar {
         display: none;
     }
@@ -61,6 +67,12 @@
         transform: scale(1.2);
         background: #3b82f6;
     }
+
+    /* Efek visual hanya untuk yang belum disentuh (khusus Create Mode) */
+    .pulse-slider::-webkit-slider-thumb {
+        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.2);
+        border-color: #f59e0b !important;
+    }
 </style>
 
 <div
@@ -69,16 +81,17 @@
         x-data="crState({{ json_encode($existingData) }}, {{ json_encode($criterias->pluck('id')) }}, {{ json_encode($criterias->pluck('name', 'id')) }})" x-init="initData()">
         @csrf
 
-        {{-- Hidden fields untuk integrasi Backend --}}
         <input type="hidden" name="cr_value" :value="cr">
         <input type="hidden" name="final_weights" :value="JSON.stringify(weightsMap)">
 
         <div class="space-y-4">
-            {{-- Loop menggunakan Template Alpine agar reaktif terhadap data --}}
             <template x-for="(pair, key) in pairs" :key="key">
                 <div class="grid grid-cols-12 items-center gap-3 rounded-2xl border bg-white/40 p-4 transition-all duration-300 md:p-5"
-                    :class="{ 'border-amber-500 bg-amber-500/5 shadow-md scale-[1.01] z-10': offenders.includes(
-                        key), 'border-slate-100 hover:border-primary/20': !offenders.includes(key) }">
+                    :class="{
+                        'border-amber-500 bg-amber-500/5 shadow-md scale-[1.01] z-10': offenders.includes(key),
+                        'border-slate-100 hover:border-primary/20': !offenders.includes(key),
+                        'border-dashed border-amber-300': !pair.touched
+                    }">
 
                     <div class="col-span-12 space-y-4">
                         <div class="relative flex flex-col items-center justify-between gap-3 px-1 md:flex-row">
@@ -91,8 +104,8 @@
                             </div>
 
                             <div class="relative z-20 flex justify-center md:absolute md:left-1/2 md:-translate-x-1/2">
-                                <div
-                                    class="bg-primary shadow-primary/20 flex h-10 w-10 rotate-2 items-center justify-center rounded-xl shadow-lg">
+                                <div class="shadow-lg flex h-10 w-10 rotate-2 items-center justify-center rounded-xl transition-colors duration-300"
+                                    :class="!pair.touched ? 'bg-amber-500 shadow-amber-200' : 'bg-primary shadow-primary/20'">
                                     <span class="text-base font-black text-white" x-text="getVal(pair.pos).val"></span>
                                 </div>
                             </div>
@@ -107,26 +120,27 @@
                             </div>
                         </div>
 
-                        {{-- Input Range (Slider) --}}
+                        {{-- Slider --}}
                         <div class="relative flex h-8 items-center px-1">
                             <input type="range" min="1" max="18" step="1" x-model.number="pair.pos"
-                                @input="recalculate()" class="accent-primary cursor-pointer">
+                                @input="pair.touched = true; recalculate()" class="accent-primary cursor-pointer"
+                                :class="!pair.touched ? 'pulse-slider' : ''">
                         </div>
 
-                        {{-- Skala Angka Clickable --}}
+                        {{-- Skala Angka --}}
                         <div class="overflow-hidden">
                             <div class="grid select-none text-[10px] font-bold"
                                 style="grid-template-columns: repeat(18, minmax(0, 1fr));">
                                 <template x-for="n in [9,8,7,6,5,4,3,2,1]" :key="'l' + n">
-                                    <div @click="pair.pos = 10-n; recalculate()"
-                                        class="cursor-pointer text-center transition-all"
+                                    <div @click="pair.pos = 10-n; pair.touched = true; recalculate()"
+                                        class="cursor-pointer text-center transition-all hover:text-primary"
                                         :class="getVal(pair.pos).dir === 'left' && getVal(pair.pos).val == n ?
                                             'text-primary scale-150' : 'text-slate-300'"
                                         x-text="n"></div>
                                 </template>
                                 <template x-for="n in [1,2,3,4,5,6,7,8,9]" :key="'r' + n">
-                                    <div @click="pair.pos = 9+n; recalculate()"
-                                        class="cursor-pointer text-center transition-all"
+                                    <div @click="pair.pos = 9+n; pair.touched = true; recalculate()"
+                                        class="cursor-pointer text-center transition-all hover:text-primary"
                                         :class="getVal(pair.pos).dir === 'right' && getVal(pair.pos).val == n ?
                                             'text-primary scale-150' : 'text-slate-300'"
                                         x-text="n"></div>
@@ -134,7 +148,6 @@
                             </div>
                         </div>
 
-                        {{-- Hidden inputs untuk dikirim ke Request --}}
                         <input type="hidden" :name="'pairwise[' + pair.id_i + '][' + pair.id_j + '][a_ij]'"
                             :value="getVal(pair.pos).a_ij">
                         <input type="hidden" :name="'pairwise[' + pair.id_i + '][' + pair.id_j + '][a_ji]'"
@@ -144,7 +157,7 @@
             </template>
         </div>
 
-        {{-- Footer - CR & Submit Button --}}
+        {{-- Footer --}}
         <div class="mt-8 flex flex-col items-center justify-between gap-6 border-t border-slate-100 pt-6 md:flex-row">
             <div class="flex items-center gap-5">
                 <div class="relative flex min-w-[120px] flex-col items-center rounded-2xl border bg-white px-5 py-3"
@@ -155,15 +168,26 @@
                         x-text="cr.toFixed(4)"></span>
                 </div>
                 <div class="text-[10px] font-black uppercase italic">
-                    <span x-show="cr > 0.101" class="text-rose-500 animate-pulse">⚠️ CR > 0.1 (Kurang Konsisten)</span>
-                    <span x-show="cr <= 0.101" class="text-emerald-500">✅ Konsisten & Siap Simpan</span>
+                    <template x-if="untouchedCount > 0">
+                        <span class="text-amber-500">⏳ Mode Baru: Lengkapi <span x-text="untouchedCount"></span> poin
+                            lagi</span>
+                    </template>
+                    <template x-if="untouchedCount === 0">
+                        <div>
+                            <span x-show="cr > 0.101" class="text-rose-500 animate-pulse">⚠️ CR > 0.1 (Kurang
+                                Konsisten)</span>
+                            <span x-show="cr <= 0.101" class="text-emerald-500">✅ Data Siap Disimpan</span>
+                        </div>
+                    </template>
                 </div>
             </div>
 
             <button type="submit"
-                class="bg-primary w-full rounded-xl px-12 py-4 text-xs font-black uppercase text-white shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-30 md:w-auto"
-                :disabled="cr > 0.101">
-                <span>Simpan Perubahan</span>
+                class="w-full rounded-xl px-12 py-4 text-xs font-black uppercase text-white shadow-lg transition-all md:w-auto disabled:cursor-not-allowed"
+                :class="(cr <= 0.101 && untouchedCount === 0) ? 'bg-primary hover:scale-105 active:scale-95' :
+                'bg-slate-300 opacity-50'"
+                :disabled="cr > 0.101 || untouchedCount > 0">
+                <span x-text="untouchedCount > 0 ? 'Input Belum Lengkap' : 'Simpan Perubahan'"></span>
             </button>
         </div>
     </form>
@@ -178,6 +202,7 @@
             cr: 0,
             weightsMap: {},
             offenders: [],
+            untouchedCount: 0,
 
             initData() {
                 this.recalculate();
@@ -187,14 +212,15 @@
                 const dir = pos <= 9 ? 'left' : 'right';
                 const val = pos <= 9 ? (10 - pos) : (pos - 9);
                 return {
-                    dir: dir,
-                    val: val,
+                    dir,
+                    val,
                     a_ij: dir === 'left' ? val : (1 / val),
                     a_ji: dir === 'left' ? (1 / val) : val
                 };
             },
 
             recalculate() {
+                this.untouchedCount = Object.values(this.pairs).filter(p => !p.touched).length;
                 const n = this.criteriaIds.length;
                 if (n < 2) return;
 
