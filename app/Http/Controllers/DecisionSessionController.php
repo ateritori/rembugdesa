@@ -36,6 +36,14 @@ class DecisionSessionController extends Controller
     }
 
     /**
+     * Detail Sesi Keputusan
+     */
+    public function show(DecisionSession $decisionSession)
+    {
+        return view('decision-sessions.show', compact('decisionSession'));
+    }
+
+    /**
      * Panel Kontrol Sesi (Dashboard Admin)
      */
     public function control(Request $request, DecisionSession $decisionSession)
@@ -78,6 +86,14 @@ class DecisionSessionController extends Controller
             'sawBorda',
             'smartByDm'
         ));
+    }
+
+    /**
+     * Form Buat Sesi Keputusan
+     */
+    public function create()
+    {
+        return view('decision-sessions.create');
     }
 
     /**
@@ -204,5 +220,38 @@ class DecisionSessionController extends Controller
     public function edit(DecisionSession $decisionSession)
     {
         return view('decision-sessions.edit', compact('decisionSession'));
+    }
+
+    /**
+     * Update Sesi Keputusan
+     */
+    public function update(Request $request, DecisionSession $decisionSession)
+    {
+        abort_if($decisionSession->status === 'closed', 403);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'year' => 'required|digits:4',
+        ]);
+
+        $decisionSession->update($validated);
+
+        return redirect()
+            ->route('decision-sessions.index')
+            ->with('success', 'Sesi berhasil diperbarui.');
+    }
+
+    /**
+     * Hapus Sesi Keputusan
+     */
+    public function destroy(DecisionSession $decisionSession)
+    {
+        abort_if($decisionSession->status !== 'draft', 403);
+
+        $decisionSession->delete();
+
+        return redirect()
+            ->route('decision-sessions.index')
+            ->with('success', 'Sesi berhasil dihapus.');
     }
 }

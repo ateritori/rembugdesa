@@ -217,12 +217,28 @@
                         {{-- EDIT FORM INLINE --}}
                         <div x-show="openEdit" x-collapse
                             class="border-t border-slate-100 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-900/30">
-                            <form method="POST" action="{{ route('criteria.update', $c->id) }}" class="flex gap-2">
-                                @csrf @method('PUT')
+                            <form method="POST" action="{{ route('criteria.update', $c->id) }}"
+                                class="flex flex-col sm:flex-row gap-2">
+                                @csrf
+                                @method('PUT')
+
                                 <input name="name" value="{{ $c->name }}" required
                                     class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold dark:bg-slate-800 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary/10">
+
+                                <select name="type" required
+                                    class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
+                                    <option value="benefit" {{ $c->type === 'benefit' ? 'selected' : '' }}>
+                                        BENEFIT
+                                    </option>
+                                    <option value="cost" {{ $c->type === 'cost' ? 'selected' : '' }}>
+                                        COST
+                                    </option>
+                                </select>
+
                                 <button
-                                    class="rounded-lg bg-primary px-4 py-1.5 text-[9px] font-black uppercase text-white hover:brightness-110">Save</button>
+                                    class="rounded-lg bg-primary px-4 py-1.5 text-[9px] font-black uppercase text-white hover:brightness-110">
+                                    Save
+                                </button>
                             </form>
                         </div>
 
