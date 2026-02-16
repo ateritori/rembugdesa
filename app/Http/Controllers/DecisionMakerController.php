@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DecisionSession;
 use App\Models\CriteriaWeight;
-use App\Models\CriteriaPairwise; // Tambahkan ini
+use App\Models\CriteriaPairwise;
 use App\Models\AlternativeEvaluation;
 use App\Models\SmartResultDm;
 use App\Services\SMART\SmartRankingService;
@@ -32,11 +32,10 @@ class DecisionMakerController extends Controller
     }
 
     /**
-     * PUSAT LOGIKA - Menjamin fitur revisi dan view sinkron.
+     * Manajemen workspace DM untuk penanganan revisi dan sinkronisasi view.
      */
     private function renderWorkspace(DecisionSession $decisionSession, ?SmartRankingService $smartRankingService = null)
     {
-        // 1. Otorisasi & Guard
         abort_if($decisionSession->status === 'draft', 403, 'Sesi masih dalam tahap draft.');
 
         $user = Auth::user();
@@ -46,7 +45,6 @@ class DecisionMakerController extends Controller
         $currentTab = request('tab', 'workspace');
         $isEditing = request('edit') == 1;
 
-        // 2. Data Dasar
         $criteria = $decisionSession->criteria()
             ->where('is_active', true)
             ->orderBy('order')
@@ -56,7 +54,7 @@ class DecisionMakerController extends Controller
             ->where('is_active', true)
             ->get();
 
-        // 3. Pengelolaan Bobot (Weights)
+        // Data bobot kelompok dan individu
         $groupResult = CriteriaWeight::where('decision_session_id', $decisionSession->id)
             ->whereNull('dm_id')
             ->first();
@@ -65,10 +63,7 @@ class DecisionMakerController extends Controller
             ->where('dm_id', $user->id)
             ->first();
 
-        /**
-         * PERBAIKAN KRUSIAL: Ambil data mentah perbandingan (Pairwise)
-         * Ini yang akan menggerakkan slider saat mode EDIT aktif.
-         */
+        // Load data mentah perbandingan (Pairwise) untuk slider mode edit
         $existingPairwise = [];
         if ($individualWeight || $isEditing) {
             $rawPairwise = CriteriaPairwise::where('decision_session_id', $decisionSession->id)
@@ -76,7 +71,6 @@ class DecisionMakerController extends Controller
                 ->get();
 
             foreach ($rawPairwise as $p) {
-                // Key format: "id_kecil-id_besar" agar cocok dengan JS
                 $key = min($p->criteria_a_id, $p->criteria_b_id) . '-' . max($p->criteria_a_id, $p->criteria_b_id);
 
                 $existingPairwise[$key] = (object)[
@@ -88,18 +82,16 @@ class DecisionMakerController extends Controller
             }
         }
 
-        // Penentuan Bobot untuk View
+        // Penentuan jenis bobot yang ditampilkan di view
         if ($isEditing) {
             $criteriaWeights = $individualWeight;
         } else {
-            if ($decisionSession->status === 'configured') {
-                $criteriaWeights = $individualWeight;
-            } else {
-                $criteriaWeights = $groupResult ?? $individualWeight;
-            }
+            $criteriaWeights = ($decisionSession->status === 'configured')
+                ? $individualWeight
+                : ($groupResult ?? $individualWeight);
         }
 
-        // 4. Evaluasi Alternatif
+        // Data evaluasi alternatif
         $evaluations = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
             ->where('dm_id', $user->id)
             ->get()
@@ -108,7 +100,7 @@ class DecisionMakerController extends Controller
 
         $hasCompletedEvaluation = $evaluations->isNotEmpty();
 
-        // 5. Kalkulasi SMART (Hanya jika kriteria sudah ada bobotnya)
+        // Kalkulasi skor SMART
         $smartScores = collect();
         $hasSmartResult = false;
 
@@ -118,17 +110,16 @@ class DecisionMakerController extends Controller
                 $smartScores = collect($scores)->sortByDesc('score');
                 $hasSmartResult = $smartScores->isNotEmpty();
             } catch (Exception $e) {
-                Log::error("SMART Error: " . $e->getMessage());
+                Log::error("SMART Calculation Error: " . $e->getMessage());
             }
         }
 
-        // 6. Kontribusi DM (Hanya Final/Closed)
+        // Analisis kontribusi DM pada hasil akhir
         $resultContribution = null;
         if ($currentTab === 'hasil-akhir' && $decisionSession->status === 'closed') {
             $resultContribution = app(DecisionResultService::class)->dmContribution($decisionSession, $user);
         }
 
-        // 7. Pengiriman ke View
         return view('dms.index', [
             'decisionSession'        => $decisionSession,
             'criteria'               => $criteria,
@@ -136,15 +127,13 @@ class DecisionMakerController extends Controller
             'alternatives'           => $alternatives,
             'evaluations'            => $evaluations,
             'criteriaWeights'        => $criteriaWeights,
-            'existingPairwise'       => $existingPairwise, // DATA BARU UNTUK SLIDER
+            'existingPairwise'       => $existingPairwise,
             'groupResult'            => $groupResult,
             'smartScores'            => $smartScores,
             'hasSmartResult'         => $hasSmartResult,
             'resultContribution'     => $resultContribution,
-
             'dmHasCompleted'         => !is_null($individualWeight),
             'hasCompletedEvaluation' => $hasCompletedEvaluation,
-
             'tab'                    => $currentTab,
             'isEditing'              => $isEditing,
             'smartContext'           => ['dm_name' => $user->name],

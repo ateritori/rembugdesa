@@ -10,18 +10,17 @@ use Illuminate\Support\Facades\Auth;
 class DashboardController extends Controller
 {
     /**
-     * Menampilkan dashboard utama berdasarkan role user.
+     * Dashboard utama berdasarkan peran user.
      */
     public function index()
     {
         $user = Auth::user();
 
-        // Guard: Jika tidak terautentikasi (meskipun middleware auth biasanya sudah menangani ini)
         if (!$user) {
             abort(401);
         }
 
-        // --- DASHBOARD SUPERADMIN ---
+        // Dashboard Superadmin
         if ($user->hasRole('superadmin')) {
             $stats = [
                 'totalUsers'    => User::count(),
@@ -33,9 +32,8 @@ class DashboardController extends Controller
             return view('dashboard.superadmin', $stats);
         }
 
-        // --- DASHBOARD ADMIN ---
+        // Dashboard Admin
         if ($user->hasRole('admin')) {
-            // Optimasi: Gunakan agregasi kolom tunggal untuk mengurangi query database
             $sessionStats = DecisionSession::selectRaw("
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft,
@@ -56,20 +54,15 @@ class DashboardController extends Controller
             ]);
         }
 
-        // --- DASHBOARD DM (Decision Maker) ---
+        // Dashboard Decision Maker (DM)
         if ($user->hasRole('dm')) {
-            /**
-             * Optimasi: Gunakan withCount untuk mengecek keberadaan relasi
-             * tanpa harus meload seluruh data criteriaWeights ke memori.
-             */
             $assignedSessions = $user->decisionSessions()
                 ->withCount(['criteriaWeights as has_weighted' => function ($query) use ($user) {
                     $query->where('dm_id', $user->id);
                 }])
-                ->with(['criteria']) // Tetap load criteria jika dibutuhkan di View
+                ->with(['criteria'])
                 ->get();
 
-            // Memisahkan data menggunakan Collection method (lebih cepat daripada query ulang)
             $activeSessions = $assignedSessions->where('status', '!=', 'draft');
 
             $pendingTaskCount = $activeSessions
@@ -84,6 +77,6 @@ class DashboardController extends Controller
             ]);
         }
 
-        abort(403, 'Anda tidak memiliki peran yang valid untuk mengakses dashboard.');
+        abort(403, 'Akses ditolak: Peran tidak valid.');
     }
 }

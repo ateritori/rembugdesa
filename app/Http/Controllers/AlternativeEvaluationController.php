@@ -6,16 +6,15 @@ use App\Models\AlternativeEvaluation;
 use App\Models\CriteriaScoringRule;
 use App\Models\DecisionSession;
 use App\Services\Scoring\UtilityTransformService;
-use App\Services\SMART\SmartRankingService; // Panggil Service Kebenaran
+use App\Services\SMART\SmartRankingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AlternativeEvaluationController extends Controller
 {
     /**
-     * Form penilaian alternatif (DM)
+     * Mengarahkan Decision Maker (DM) ke workspace penilaian alternatif.
      */
     public function index(DecisionSession $decisionSession)
     {
@@ -26,7 +25,7 @@ class AlternativeEvaluationController extends Controller
             ->where('users.id', $user->id)
             ->exists();
 
-        abort_if(!$isParticipant, 403, 'Anda tidak memiliki akses ke sesi ini.');
+        abort_if(!$isParticipant, 403, 'Akses ditolak.');
 
         return redirect()->route('dms.index', [
             $decisionSession->id,
@@ -35,13 +34,13 @@ class AlternativeEvaluationController extends Controller
     }
 
     /**
-     * Simpan penilaian & Panggil Service SMART
+     * Menyimpan penilaian, transformasi nilai utilitas, dan kalkulasi skor SMART.
      */
     public function store(
         Request $request,
         DecisionSession $decisionSession,
         UtilityTransformService $utilityService,
-        SmartRankingService $smartService // Inject Service
+        SmartRankingService $smartService
     ): RedirectResponse {
         $user = auth()->user();
         $dmId = auth()->id();
@@ -52,7 +51,7 @@ class AlternativeEvaluationController extends Controller
         abort_if(!$isParticipant, 403);
 
         if ($decisionSession->status !== 'scoring') {
-            return back()->with('error', 'Sesi penilaian tidak aktif atau sudah ditutup.');
+            return back()->with('error', 'Sesi penilaian tidak aktif.');
         }
 
         $validated = $request->validate([
@@ -62,7 +61,8 @@ class AlternativeEvaluationController extends Controller
         ]);
 
         try {
-            return DB::transaction(function () use ($validated, $decisionSession, $user, $utilityService, $smartService) {
+            // Menggunakan transaksi database melalui koneksi model
+            return $decisionSession->getConnection()->transaction(function () use ($validated, $decisionSession, $user, $utilityService, $smartService) {
 
                 $criteriaIds = collect($validated['evaluations'])->flatMap(fn($item) => array_keys($item))->unique();
 
@@ -74,7 +74,7 @@ class AlternativeEvaluationController extends Controller
                     ->get()
                     ->keyBy('criteria_id');
 
-                // 1. Simpan Data Mentah ke AlternativeEvaluation
+                // 1. Persist data mentah dan nilai utilitas hasil transformasi
                 foreach ($validated['evaluations'] as $alternativeId => $criteriaValues) {
                     foreach ($criteriaValues as $criteriaId => $rawValue) {
 
@@ -98,17 +98,16 @@ class AlternativeEvaluationController extends Controller
                     }
                 }
 
-                // 2. PANGGIL SERVICE SUMBER KEBENARAN (smart_score & rank_dm)
-                // Persist = true agar langsung simpan ke smart_resul_dm
+                // 2. Kalkulasi dan simpan skor SMART (Persist mode aktif)
                 $smartService->calculate($decisionSession, $user, true);
 
                 return redirect()
                     ->route('dms.index', [$decisionSession->id, 'tab' => 'evaluasi-alternatif'])
-                    ->with('success', 'Penilaian disimpan dan skor SMART berhasil diupdate oleh Service.');
+                    ->with('success', 'Penilaian disimpan dan skor SMART berhasil diperbarui.');
             });
         } catch (\Exception $e) {
             Log::error('Evaluation Store Error: ' . $e->getMessage());
-            return back()->withInput()->with('error', 'Gagal: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Terjadi kesalahan sistem.');
         }
     }
 }

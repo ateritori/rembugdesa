@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Criteria;
 use App\Models\CriteriaScoringRule;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CriteriaScoringRuleController extends Controller
 {
+    /**
+     * Memastikan sesi masih dalam status draft.
+     */
     private function authorizeDraft(Criteria $criteria): void
     {
         abort_if(
@@ -19,13 +21,17 @@ class CriteriaScoringRuleController extends Controller
         );
     }
 
+    /**
+     * Menyimpan aturan penilaian baru.
+     */
     public function store(Request $request, Criteria $criteria)
     {
         $this->authorizeDraft($criteria);
         $validated = $this->validateRequest($request);
 
         try {
-            DB::transaction(function () use ($validated, $criteria) {
+            // Menggunakan transaksi melalui koneksi model Criteria
+            return $criteria->getConnection()->transaction(function () use ($validated, $criteria) {
                 $rule = CriteriaScoringRule::create([
                     'criteria_id'         => $criteria->id,
                     'decision_session_id' => $criteria->decision_session_id,
@@ -34,15 +40,18 @@ class CriteriaScoringRuleController extends Controller
                 ]);
 
                 $this->saveParameters($rule, $validated);
-            });
 
-            return back()->with('success', 'Aturan penilaian berhasil disimpan.');
+                return back()->with('success', 'Aturan penilaian berhasil disimpan.');
+            });
         } catch (\Exception $e) {
             Log::error("Gagal menyimpan Scoring Rule: " . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Memperbarui aturan penilaian yang ada.
+     */
     public function update(Request $request, Criteria $criteria, CriteriaScoringRule $rule)
     {
         $this->authorizeDraft($criteria);
@@ -51,25 +60,28 @@ class CriteriaScoringRuleController extends Controller
         $validated = $this->validateRequest($request);
 
         try {
-            DB::transaction(function () use ($validated, $rule) {
+            return $criteria->getConnection()->transaction(function () use ($validated, $rule) {
                 $rule->update([
                     'input_type'      => $validated['input_type'],
                     'preference_type' => $validated['preference_type'],
                 ]);
 
-                // Bersihkan parameter lama
+                // Hapus parameter lama via relasi Eloquent
                 $rule->parameters()->delete();
 
                 $this->saveParameters($rule, $validated);
-            });
 
-            return back()->with('success', 'Aturan penilaian berhasil diperbarui.');
+                return back()->with('success', 'Aturan penilaian berhasil diperbarui.');
+            });
         } catch (\Exception $e) {
             Log::error("Gagal memperbarui Scoring Rule: " . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Validasi input request.
+     */
     private function validateRequest(Request $request): array
     {
         return $request->validate([
@@ -83,7 +95,7 @@ class CriteriaScoringRuleController extends Controller
     }
 
     /**
-     * PERBAIKAN UTAMA: Memastikan integer key pada array tetap terjaga
+     * Menyimpan parameter detail (scale range, semantics, utilities).
      */
     private function saveParameters(CriteriaScoringRule $rule, array $validated): void
     {
@@ -91,7 +103,6 @@ class CriteriaScoringRuleController extends Controller
             $semantics = $validated['semantics'] ?? [];
             $utilities = $validated['utilities'] ?? [];
 
-            // Urutkan agar urutan 1, 2, 3... konsisten
             ksort($semantics);
             ksort($utilities);
 
@@ -105,11 +116,10 @@ class CriteriaScoringRuleController extends Controller
             ];
 
             foreach ($params as $key => $value) {
-                // PERBAIKAN: Langsung kirim $value (array),
-                // jangan di-json_encode manual di sini.
+                // Simpan parameter melalui relasi
                 $rule->parameters()->create([
                     'param_key'   => $key,
-                    'param_value' => $value,
+                    'param_value' => $value, // Pastikan $value dikonversi ke JSON di Model (Casting)
                 ]);
             }
         }

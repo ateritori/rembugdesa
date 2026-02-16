@@ -6,27 +6,24 @@ use App\Models\Criteria;
 use App\Models\CriteriaScoringRule;
 use App\Models\DecisionSession;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CriteriaController extends Controller
 {
     /**
-     * Menampilkan daftar kriteria dan aturan penilaiannya.
+     * Menampilkan daftar kriteria dan aturan penilaian.
      */
     public function index(DecisionSession $decisionSession)
     {
-        // Eager load kriteria untuk performa lebih baik
         $criteria = $decisionSession->criteria()
             ->orderBy('order')
             ->get();
 
-        // Mengambil scoring rules yang terkait dengan kriteria pada sesi ini
         $scoringRules = CriteriaScoringRule::with('parameters')
             ->whereIn('criteria_id', $criteria->pluck('id'))
             ->where(function ($query) use ($decisionSession) {
                 $query->where('decision_session_id', $decisionSession->id)
-                    ->orWhereNull('decision_session_id'); // Support untuk rule global jika ada
+                    ->orWhereNull('decision_session_id');
             })
             ->get()
             ->keyBy('criteria_id');
@@ -51,28 +48,25 @@ class CriteriaController extends Controller
         ]);
 
         try {
-            return DB::transaction(function () use ($request, $decisionSession) {
-                // Menggunakan count() langsung pada relasi untuk menentukan urutan
-                $order = $decisionSession->criteria()->count() + 1;
+            $order = $decisionSession->criteria()->count() + 1;
 
-                $decisionSession->criteria()->create([
-                    'name'  => $request->name,
-                    'type'  => $request->type,
-                    'order' => $order,
-                ]);
+            $decisionSession->criteria()->create([
+                'name'  => $request->name,
+                'type'  => $request->type,
+                'order' => $order,
+            ]);
 
-                return redirect()
-                    ->route('criteria.index', $decisionSession->id)
-                    ->with('success', 'Kriteria berhasil ditambahkan.');
-            });
+            return redirect()
+                ->route('criteria.index', $decisionSession->id)
+                ->with('success', 'Kriteria berhasil ditambahkan.');
         } catch (\Exception $e) {
-            Log::error('Gagal menambahkan kriteria: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan saat menyimpan kriteria.');
+            Log::error('Store criteria failed: ' . $e->getMessage());
+            return back()->with('error', 'Gagal menyimpan kriteria.');
         }
     }
 
     /**
-     * Memperbarui kriteria.
+     * Memperbarui detail kriteria.
      */
     public function update(Request $request, Criteria $criteria)
     {
@@ -90,7 +84,7 @@ class CriteriaController extends Controller
                 ->route('criteria.index', $criteria->decision_session_id)
                 ->with('success', 'Kriteria berhasil diperbarui.');
         } catch (\Exception $e) {
-            Log::error('Gagal memperbarui kriteria: ' . $e->getMessage());
+            Log::error('Update criteria failed: ' . $e->getMessage());
             return back()->with('error', 'Gagal memperbarui data.');
         }
     }
@@ -104,20 +98,20 @@ class CriteriaController extends Controller
 
         try {
             $criteria->update([
-                'is_active' => ! $criteria->is_active,
+                'is_active' => !$criteria->is_active,
             ]);
 
             return redirect()
                 ->route('criteria.index', $criteria->decision_session_id)
-                ->with('success', 'Status kriteria berhasil diperbarui.');
+                ->with('success', 'Status kriteria diperbarui.');
         } catch (\Exception $e) {
-            Log::error('Gagal toggle kriteria: ' . $e->getMessage());
+            Log::error('Toggle criteria failed: ' . $e->getMessage());
             return back()->with('error', 'Gagal mengubah status.');
         }
     }
 
     /**
-     * Menghapus kriteria.
+     * Menghapus kriteria dan mengatur ulang urutan.
      */
     public function destroy(Criteria $criteria)
     {
@@ -125,36 +119,34 @@ class CriteriaController extends Controller
         $this->authorizeDraft($decisionSession);
 
         try {
-            DB::transaction(function () use ($criteria, $decisionSession) {
+            // Menggunakan koneksi model untuk transaksi database
+            return $decisionSession->getConnection()->transaction(function () use ($criteria, $decisionSession) {
                 $deletedOrder = $criteria->order;
 
-                // Hapus kriteria
                 $criteria->delete();
 
-                // Re-order kriteria yang tersisa agar tidak ada nomor urut yang melompat
+                // Re-order menggunakan Eloquent builder
                 $decisionSession->criteria()
                     ->where('order', '>', $deletedOrder)
                     ->decrement('order');
-            });
 
-            return redirect()
-                ->route('criteria.index', $decisionSession->id)
-                ->with('success', 'Kriteria berhasil dihapus dan urutan diperbarui.');
+                return redirect()
+                    ->route('criteria.index', $decisionSession->id)
+                    ->with('success', 'Kriteria dihapus dan urutan diperbarui.');
+            });
         } catch (\Exception $e) {
-            Log::error('Gagal menghapus kriteria: ' . $e->getMessage());
+            Log::error('Delete criteria failed: ' . $e->getMessage());
             return back()->with('error', 'Gagal menghapus kriteria.');
         }
     }
 
-    /* ================= INTERNAL ================= */
-
     /**
-     * Memastikan sesi masih dalam status draft sebelum diubah.
+     * Otorisasi status draft.
      */
     private function authorizeDraft(DecisionSession $decisionSession): void
     {
         if ($decisionSession->status !== 'draft') {
-            abort(403, 'Sesi sudah aktif. Perubahan kriteria tidak diperbolehkan.');
+            abort(403, 'Sesi sudah aktif. Perubahan tidak diperbolehkan.');
         }
     }
 }

@@ -4,175 +4,279 @@
 
 @section('content')
 
-  {{-- 1. HEADER LOGIC: DEFINE SEMUA VARIABEL BIAR GAK ERROR --}}
-  @php
-      // Hitung Data Dasar
-      $activeCriteriaCount = $decisionSession->criterias->where('is_active', true)->count();
-      $activeAlternativesCount = $decisionSession->alternatives->where('is_active', true)->count();
+    {{-- 1. HEADER LOGIC --}}
+    @php
+        $activeCriteriaCount = $decisionSession->criterias->where('is_active', true)->count();
+        $activeAlternativesCount = $decisionSession->alternatives->where('is_active', true)->count();
 
-      // Hitung Progres (Cek data di DB via relasi)
-      $dmPairwiseDone = $decisionSession->dms->filter(function($dm) use ($decisionSession) {
-          return \Illuminate\Support\Facades\DB::table('criteria_weights')
-              ->where('decision_session_id', $decisionSession->id)
-              ->where('dm_id', $dm->id)->exists();
-      })->count();
+        $dmPairwiseDone = $decisionSession->dms
+            ->filter(function ($dm) use ($decisionSession) {
+                return \Illuminate\Support\Facades\DB::table('criteria_weights')
+                    ->where('decision_session_id', $decisionSession->id)
+                    ->where('dm_id', $dm->id)
+                    ->exists();
+            })
+            ->count();
 
-      $dmAltDone = $decisionSession->dms->filter(function($dm) use ($decisionSession) {
-          return \Illuminate\Support\Facades\DB::table('alternative_evaluations')
-              ->where('decision_session_id', $decisionSession->id)
-              ->where('dm_id', $dm->id)->exists();
-      })->count();
+        $dmAltDone = $decisionSession->dms
+            ->filter(function ($dm) use ($decisionSession) {
+                return \Illuminate\Support\Facades\DB::table('alternative_evaluations')
+                    ->where('decision_session_id', $decisionSession->id)
+                    ->where('dm_id', $dm->id)
+                    ->exists();
+            })
+            ->count();
 
-      // Syarat Aktivasi
-      $canActivate = ($activeCriteriaCount >= 2 && $activeAlternativesCount >= 2 && $assignedDmCount >= 1);
-  @endphp
+        $canActivate = $activeCriteriaCount >= 2 && $activeAlternativesCount >= 2 && $assignedDmCount >= 1;
+    @endphp
 
-  {{-- TAB NAVIGASI SESI --}}
-  @include('decision-sessions.partials.nav')
+    {{-- TAB NAVIGASI SESI --}}
+    @include('decision-sessions.partials.nav')
 
-  @if (!in_array(request('tab'), ['hasil-akhir', 'analisis']))
-  <div class="animate-in fade-in slide-in-from-bottom-4 w-full px-4 py-8 duration-700">
-    <div class="w-full space-y-10">
+    @if (!in_array(request('tab'), ['hasil-akhir', 'analisis']))
+        <div
+            class="animate-in fade-in slide-in-from-bottom-2 w-full px-4 py-4 md:px-6 md:py-6 duration-500 dark:bg-slate-900">
+            <div class="w-full space-y-8">
 
-      {{-- SECTION 1: DASHBOARD RINGKASAN --}}
-      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        @php
-          $stats = [
-              ['label' => 'Status Sesi', 'value' => $decisionSession->status, 'icon' => 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'color' => 'blue'],
-              ['label' => 'Kriteria Aktif', 'value' => $activeCriteriaCount, 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', 'color' => 'purple'],
-              ['label' => 'Alternatif Aktif', 'value' => $activeAlternativesCount, 'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z', 'color' => 'indigo'],
-              ['label' => 'Total DM', 'value' => $assignedDmCount, 'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', 'color' => 'emerald'],
-          ];
-        @endphp
+                {{-- SECTION 1: DASHBOARD RINGKASAN --}}
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    @php
+                        $stats = [
+                            [
+                                'label' => 'Status Sesi',
+                                'value' => $decisionSession->status,
+                                'icon' =>
+                                    'M11.241 4.817c.121-.696.927-1.023 1.511-.524l9.464 8.112a.75.75 0 0 1-.428 1.328H18v6.25a.75.75 0 0 1-.75.75H14.5a.75.75 0 0 1-.75-.75v-4.5a.25.25 0 0 0-.25-.25h-3a.25.25 0 0 0-.25.25v4.5a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V13.733H3.213a.75.75 0 0 1-.428-1.328l9.464-8.112c.125-.107.292-.158.459-.15z',
+                                'color' => 'from-blue-600 to-indigo-600',
+                                'shadow' => 'shadow-blue-500/20',
+                            ],
+                            [
+                                'label' => 'Kriteria Aktif',
+                                'value' => $activeCriteriaCount,
+                                'icon' =>
+                                    'M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6z',
+                                'color' => 'from-indigo-600 to-violet-600',
+                                'shadow' => 'shadow-indigo-500/20',
+                            ],
+                            [
+                                'label' => 'Alternatif Aktif',
+                                'value' => $activeAlternativesCount,
+                                'icon' =>
+                                    'M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z',
+                                'color' => 'from-purple-600 to-fuchsia-600',
+                                'shadow' => 'shadow-purple-500/20',
+                            ],
+                            [
+                                'label' => 'Total DM',
+                                'value' => $assignedDmCount,
+                                'icon' =>
+                                    'M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18.75a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75ZM5.106 17.834a.75.75 0 0 0 1.06 1.06l1.591-1.59a.75.75 0 1 0-1.06-1.061l-1.591 1.59ZM3 12a.75.75 0 0 1 .75-.75h2.25a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm3.166-5.894a.75.75 0 0 0 1.06 1.06l1.59-1.591a.75.75 0 1 0-1.06-1.061l-1.591 1.59Z',
+                                'color' => 'from-emerald-600 to-teal-600',
+                                'shadow' => 'shadow-emerald-500/20',
+                            ],
+                        ];
+                    @endphp
 
-        @foreach ($stats as $stat)
-          <div class="group rounded-[2rem] border-2 border-slate-100 bg-white p-8 shadow-sm transition-all duration-500 hover:scale-[1.03] hover:shadow-xl">
-            <div class="flex items-center gap-6">
-              <div class="bg-{{ $stat['color'] }}-50 text-{{ $stat['color'] }}-600 group-hover:bg-{{ $stat['color'] }}-600 flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner transition-colors duration-500 group-hover:text-white">
-                <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $stat['icon'] }}" />
-                </svg>
-              </div>
-              <div class="min-w-0">
-                <p class="mb-1 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">{{ $stat['label'] }}</p>
-                <p class="text-3xl font-black capitalize tracking-tighter text-slate-800">{{ $stat['value'] }}</p>
-              </div>
+                    @foreach ($stats as $stat)
+                        <div
+                            class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                            <div class="relative flex items-center gap-4">
+                                {{-- Box Icon yang dipertegas --}}
+                                <div
+                                    class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br {{ $stat['color'] }} {{ $stat['shadow'] }} shadow-lg transition-all duration-500 group-hover:rotate-6 group-hover:scale-110">
+                                    <svg class="h-8 w-8 text-white fill-current" viewBox="0 0 24 24">
+                                        <path d="{{ $stat['icon'] }}" />
+                                    </svg>
+                                </div>
+
+                                <div class="min-w-0">
+                                    <p class="text-[9px] font-black uppercase tracking-[.2em] text-slate-400">
+                                        {{ $stat['label'] }}</p>
+                                    <p
+                                        class="text-lg font-black uppercase tracking-tight text-slate-800 dark:text-slate-100">
+                                        {{ $stat['value'] }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- SECTION 2: PROGRES BAR (Firm & Aligned) --}}
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    @php
+                        $pairwisePercent = $assignedDmCount > 0 ? ($dmPairwiseDone / $assignedDmCount) * 100 : 0;
+                        $altPercent = $assignedDmCount > 0 ? ($dmAltDone / $assignedDmCount) * 100 : 0;
+                    @endphp
+
+                    <div
+                        class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 transition-all duration-300 hover:border-slate-300">
+                        <div class="mb-4 flex items-end justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Progres
+                                        Pairwise</p>
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-400">Pembobotan Kriteria</h4>
+                            </div>
+                            <span
+                                class="text-2xl font-black tracking-tighter text-slate-800 dark:text-white">{{ round($pairwisePercent) }}%</span>
+                        </div>
+                        <div class="h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
+                            <div class="h-full bg-slate-800 transition-all duration-1000 dark:bg-blue-500"
+                                style="width: {{ $pairwisePercent }}%"></div>
+                        </div>
+                        <div
+                            class="mt-3 flex justify-between text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                            <span>Status: {{ $dmPairwiseDone }} / {{ $assignedDmCount }} DM</span>
+                        </div>
+                    </div>
+
+                    <div
+                        class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 transition-all duration-300 hover:border-slate-300">
+                        <div class="mb-4 flex items-end justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Penilaian
+                                        Alternatif</p>
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-400">Evaluasi Alternatif</h4>
+                            </div>
+                            <span
+                                class="text-2xl font-black tracking-tighter text-slate-800 dark:text-white">{{ round($altPercent) }}%</span>
+                        </div>
+                        <div class="h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
+                            <div class="h-full bg-emerald-500 transition-all duration-1000"
+                                style="width: {{ $altPercent }}%"></div>
+                        </div>
+                        <div
+                            class="mt-3 flex justify-between text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                            <span>Status: {{ $dmAltDone }} / {{ $assignedDmCount }} DM</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- SECTION 3: ACTION CENTER --}}
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 px-1">
+                        <span class="h-1.5 w-6 rounded-full bg-slate-900 dark:bg-primary"></span>
+                        <p class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-primary">Control
+                            Center</p>
+                    </div>
+
+                    @php
+                        $currentStatus = $decisionSession->status;
+                        $actionConfig = [
+                            'draft' => [
+                                'phase' => '01',
+                                'label' => 'Preparation',
+                                'title' => 'Aktifkan Sesi',
+                                'ready_msg' => 'Parameter siap. Klik untuk membuka akses penilaian bagi DM.',
+                                'wait_msg' => 'Lengkapi minimal 2 Kriteria, 2 Alternatif, dan 1 DM untuk mengaktifkan.',
+                                'path' => 'control.partials.buttons.draft-activate',
+                                'check' => $canActivate,
+                            ],
+                            'configured' => [
+                                'phase' => '02',
+                                'label' => 'Configured',
+                                'title' => 'Buka Penilaian Alternatif',
+                                'ready_msg' => 'Pairwise selesai. Klik untuk memulai tahap evaluasi alternatif.',
+                                'wait_msg' =>
+                                    'Menunggu ' .
+                                    ($assignedDmCount - $dmPairwiseDone) .
+                                    ' DM lagi untuk menyelesaikan Pairwise.',
+                                'path' => 'control.partials.buttons.start-alternative',
+                                'check' => $dmPairwiseDone >= $assignedDmCount,
+                            ],
+                            'scoring' => [
+                                'phase' => '03',
+                                'label' => 'Scoring',
+                                'title' => 'Finalisasi Sesi',
+                                'ready_msg' => 'Seluruh evaluasi selesai. Klik untuk mengunci dan hitung hasil akhir.',
+                                'wait_msg' =>
+                                    'Menunggu ' .
+                                    ($assignedDmCount - $dmAltDone) .
+                                    ' DM lagi menyelesaikan penilaian alternatif.',
+                                'path' => 'control.partials.buttons.close-scoring',
+                                'check' => $dmAltDone >= $assignedDmCount,
+                            ],
+                            'closed' => [
+                                'phase' => '04',
+                                'label' => 'Closed',
+                                'title' => 'Keputusan Final',
+                                'ready_msg' => 'Sesi telah dikunci. Hasil akhir dapat dilihat di tab analisis.',
+                                'wait_msg' => '',
+                                'path' => 'control.partials.buttons.view-result',
+                                'check' => true,
+                            ],
+                        ];
+                        $act = $actionConfig[$currentStatus] ?? null;
+                    @endphp
+
+                    @if ($act)
+                        <div
+                            class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800">
+                            <div class="flex flex-col items-center justify-between gap-6 p-6 md:flex-row md:p-8">
+                                <div class="flex items-center gap-6">
+                                    {{-- Phase Number --}}
+                                    <div
+                                        class="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-slate-900 font-black text-white shadow-lg transition-transform duration-500 group-hover:scale-105 dark:bg-slate-700">
+                                        <span class="text-[10px] leading-none opacity-50">PH</span>
+                                        <span class="text-xl leading-none">{{ $act['phase'] }}</span>
+                                    </div>
+
+                                    {{-- Text Info --}}
+                                    <div>
+                                        <span
+                                            class="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:bg-slate-900">
+                                            {{ $act['label'] }}
+                                        </span>
+                                        <h3
+                                            class="mt-1 text-xl font-black uppercase tracking-tight text-slate-800 dark:text-white">
+                                            {{ $act['title'] }}
+                                        </h3>
+
+                                        {{-- Logic Deskripsi Tunggal --}}
+                                        <div class="mt-2 flex items-center gap-2">
+                                            @if (!$act['check'])
+                                                <span class="flex h-2 w-2 animate-pulse rounded-full bg-amber-500"></span>
+                                                <p class="text-xs font-bold text-amber-600 tracking-tight italic">
+                                                    {{ $act['wait_msg'] }}
+                                                </p>
+                                            @else
+                                                <span class="flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                                                <p class="text-xs font-bold text-slate-500 tracking-tight">
+                                                    {{ $act['ready_msg'] }}
+                                                </p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Button Action --}}
+                                <div
+                                    class="w-full transition-all duration-300 @if ($act['check']) hover:scale-105 @else opacity-50 grayscale @endif md:w-auto">
+                                    @include($act['path'], ['canActivate' => $act['check']])
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
             </div>
-          </div>
-        @endforeach
-      </div>
+    @endif
 
-      {{-- SECTION 2: PROGRES BAR --}}
-      <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        @php
-          $pairwisePercent = $assignedDmCount > 0 ? ($dmPairwiseDone / $assignedDmCount) * 100 : 0;
-          $altPercent = $assignedDmCount > 0 ? ($dmAltDone / $assignedDmCount) * 100 : 0;
-        @endphp
-
-        <div class="group relative overflow-hidden rounded-[2.5rem] border-2 border-slate-100 bg-white p-10 shadow-sm">
-          <div class="relative z-10">
-            <div class="mb-8 flex items-end justify-between">
-              <div>
-                <h4 class="text-2xl font-black uppercase tracking-tight text-slate-800">Progres Pairwise</h4>
-                <p class="mt-2 text-sm font-medium text-slate-400">Menghitung bobot kepentingan kriteria.</p>
-              </div>
-              <span class="text-4xl font-black tracking-tighter text-amber-500">{{ round($pairwisePercent) }}%</span>
-            </div>
-            <div class="h-5 w-full overflow-hidden rounded-full bg-slate-100 p-1 shadow-inner">
-              <div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 shadow-lg transition-all duration-1000" style="width: {{ $pairwisePercent }}%"></div>
-            </div>
-            <div class="mt-4 flex justify-between text-[11px] font-black uppercase tracking-widest text-slate-400">
-              <span>{{ $dmPairwiseDone }} DATA MASUK / TARGET: {{ $assignedDmCount }} DM</span>
-            </div>
-          </div>
+    {{-- TAB CONTENT: HASIL & ANALISIS --}}
+    @if (request('tab') === 'hasil-akhir' && $decisionSession->status === 'closed')
+        <div class="animate-in fade-in slide-in-from-bottom-2 duration-500">
+            @include('control.result')
         </div>
+    @endif
 
-        <div class="group relative overflow-hidden rounded-[2.5rem] border-2 border-slate-100 bg-white p-10 shadow-sm">
-          <div class="relative z-10">
-            <div class="mb-8 flex items-end justify-between">
-              <div>
-                <h4 class="text-2xl font-black uppercase tracking-tight text-slate-800">Penilaian Alternatif</h4>
-                <p class="mt-2 text-sm font-medium text-slate-400">Status penilaian kandidat per kriteria.</p>
-              </div>
-              <span class="text-4xl font-black tracking-tighter text-emerald-500">{{ round($altPercent) }}%</span>
-            </div>
-            <div class="h-5 w-full overflow-hidden rounded-full bg-slate-100 p-1 shadow-inner">
-              <div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-lg transition-all duration-1000" style="width: {{ $altPercent }}%"></div>
-            </div>
-            <div class="mt-4 flex justify-between text-[11px] font-black uppercase tracking-widest text-slate-400">
-              <span>{{ $dmAltDone }} DATA MASUK / TARGET: {{ $assignedDmCount }} DM</span>
-            </div>
-          </div>
+    @if (request('tab') === 'analisis' && $decisionSession->status === 'closed')
+        <div class="animate-in fade-in slide-in-from-bottom-2 duration-500">
+            @include('control.analysis')
         </div>
-      </div>
+    @endif
 
-      {{-- SECTION 3: ACTION CENTER --}}
-      <div class="w-full space-y-6">
-
-        {{-- STATUS DRAFT --}}
-        @if ($decisionSession->status === 'draft')
-          @include('control.partials.action-card', [
-              'border' => 'border-blue-100', 'badgeBg' => 'bg-blue-50', 'badgeText' => 'text-blue-600',
-              'phase' => 'Phase 01: Preparation', 'title' => 'Aktifkan Sesi Sekarang',
-              'description' => 'Sistem akan membuka akses penilaian bagi Decision Maker.',
-              'right_path' => 'control.partials.buttons.draft-activate',
-              'canActivate' => $canActivate
-          ])
-        @endif
-
-        {{-- STATUS CONFIGURED --}}
-        @if ($decisionSession->status === 'configured')
-          @include('control.partials.action-card', [
-              'border' => 'border-indigo-100', 'badgeBg' => 'bg-indigo-50', 'badgeText' => 'text-indigo-600',
-              'phase' => 'Phase 02: Configured', 'title' => 'Sesi Siap Dinilai',
-              'description' => 'Konfigurasi selesai. Menunggu seluruh DM mengisi pairwise.',
-              'right_path' => 'control.partials.buttons.start-alternative',
-              'canActivate' => true {{-- Asumsi: sudah lewat aktivasi berarti bisa lanjut --}}
-          ])
-        @endif
-
-        {{-- STATUS SCORING --}}
-        @if ($decisionSession->status === 'scoring')
-          @include('control.partials.action-card', [
-              'border' => 'border-amber-100', 'badgeBg' => 'bg-amber-50', 'badgeText' => 'text-amber-600',
-              'phase' => 'Phase 03: Scoring', 'title' => 'Proses Penilaian Berlangsung',
-              'description' => 'Decision Maker sedang melakukan penilaian.',
-              'right_path' => 'control.partials.buttons.close-scoring',
-              'canActivate' => ($dmAltDone >= $assignedDmCount) {{-- Hanya bisa tutup kalau semua DM beres --}}
-          ])
-        @endif
-
-        {{-- STATUS CLOSED --}}
-        @if ($decisionSession->status === 'closed')
-          @include('control.partials.action-card', [
-              'border' => 'border-slate-200', 'badgeBg' => 'bg-slate-100', 'badgeText' => 'text-slate-600',
-              'phase' => 'Phase 04: Closed',
-              'title' => 'Keputusan Ditutup',
-              'description' => 'Keputusan akhir telah ditetapkan dan dapat dilihat.',
-              'right_path' => 'control.partials.buttons.view-result',
-              'canActivate' => true
-          ])
-        @endif
-
-      </div>
-    </div>
-  </div>
-  @endif
-  {{-- =========================
-       TAB CONTENT: HASIL AKHIR
-       ========================= --}}
-  @if (request('tab') === 'hasil-akhir' && $decisionSession->status === 'closed')
-      <div class="mt-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          @include('control.result')
-      </div>
-  @endif
-  {{-- =========================
-       TAB CONTENT: ANALISIS
-       ========================= --}}
-  @if (request('tab') === 'analisis' && $decisionSession->status === 'closed')
-      <div class="mt-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          @include('control.analysis')
-      </div>
-  @endif
-</div>
 @endsection

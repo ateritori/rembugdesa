@@ -110,7 +110,6 @@ class DecisionSessionController extends Controller
 
         if ($decisionSession->status === 'configured') {
             try {
-                // Pake koneksi dari model untuk transaksi
                 $decisionSession->getConnection()->transaction(function () use ($decisionSession, $ahpGroupWeightService) {
                     $ahpGroupWeightService->aggregate($decisionSession);
                 });
@@ -137,7 +136,6 @@ class DecisionSessionController extends Controller
         $totalAssigned = count($assignedDmIds);
         $alternativeCount = $decisionSession->alternatives()->count();
 
-        // Validasi via Model SmartResultDm
         $expectedSmartCount = $totalAssigned * $alternativeCount;
         $actualSmartCount = SmartResultDm::where('decision_session_id', $decisionSession->id)->count();
 
@@ -146,7 +144,6 @@ class DecisionSessionController extends Controller
         }
 
         try {
-            // Pake koneksi dari model untuk transaksi, BEBAS DARI DB:: Facade
             $decisionSession->getConnection()->transaction(function () use ($decisionSession, $bordaRankingService) {
                 $bordaRankingService->calculateAndPersist($decisionSession);
                 $decisionSession->update(['status' => 'closed']);
@@ -184,7 +181,9 @@ class DecisionSessionController extends Controller
     {
         $dms = User::role('dm')->get();
         $assignedDmIds = $decisionSession->dms()->pluck('users.id')->toArray();
-        return view('decision-sessions.assign-dms', compact('decisionSession', 'dms', 'assignedDmIds'));
+
+        // Diarahkan ke folder assign-dms/index sesuai permintaan
+        return view('assign-dms.index', compact('decisionSession', 'dms', 'assignedDmIds'));
     }
 
     /**
@@ -195,8 +194,10 @@ class DecisionSessionController extends Controller
         abort_if($decisionSession->status === 'closed', 403);
         $validDmIds = User::role('dm')->whereIn('id', $request->input('dm_ids', []))->pluck('id');
         $decisionSession->dms()->sync($validDmIds);
+
         return redirect()->route('control.index', $decisionSession->id)->with('success', 'Daftar DM diperbarui.');
     }
+
     /**
      * Form Edit Sesi Keputusan
      */

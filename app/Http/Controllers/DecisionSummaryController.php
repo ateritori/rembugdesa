@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 class DecisionSummaryController extends Controller
 {
     /**
-     * Menampilkan ringkasan hasil penilaian SMART untuk individu DM.
+     * Menampilkan ringkasan hasil penilaian SMART untuk individu Decision Maker.
      */
     public function show(
         DecisionSession $decisionSession,
@@ -17,18 +17,16 @@ class DecisionSummaryController extends Controller
     ) {
         $user = Auth::user();
 
-        // 1. Guard Dasar: Pastikan user adalah DM
         abort_if(!$user || !$user->hasRole('dm'), 403, 'Akses ditolak.');
 
-        // 2. Guard Penugasan: Pastikan DM terdaftar di sesi ini
+        // Memastikan DM terdaftar dalam sesi keputusan terkait
         $isAssigned = $decisionSession->dms()
             ->where('users.id', $user->id)
             ->exists();
 
         abort_if(!$isAssigned, 403, 'Anda tidak ditugaskan pada sesi ini.');
 
-        // 3. Guard Status Sesi
-        // Ringkasan biasanya tersedia saat sesi mulai masuk tahap penilaian (scoring) hingga selesai (closed/final)
+        // Validasi akses berdasarkan fase status sesi
         $allowedStatuses = ['scoring', 'closed', 'final'];
         abort_unless(
             in_array($decisionSession->status, $allowedStatuses),
@@ -36,22 +34,17 @@ class DecisionSummaryController extends Controller
             'Hasil ringkasan belum tersedia pada tahap ini.'
         );
 
-        /**
-         * 4. Hitung skor SMART untuk DM ini
-         * Mematuhi kontrak Service: calculate(DecisionSession $session, User $user)
-         */
+        // Kalkulasi skor utilitas SMART untuk individu DM
         $smartScores = $smartService->calculate($decisionSession, $user);
-
-        // Pastikan $smartScores adalah array agar tidak error saat dihitung
         $smartScores = is_array($smartScores) ? $smartScores : [];
 
-        // 5. Ambil data alternatif yang relevan
+        // Memuat data alternatif yang telah dinilai
         $alternatives = $decisionSession->alternatives()
             ->whereIn('id', array_keys($smartScores))
             ->get()
             ->keyBy('id');
 
-        // 6. Susun data tabel (Data Mapping)
+        // Pemetaan data untuk presentasi tabel
         $rows = [];
         foreach ($smartScores as $altId => $score) {
             if (!isset($alternatives[$altId])) continue;
@@ -62,7 +55,7 @@ class DecisionSummaryController extends Controller
             ];
         }
 
-        // 7. Sorting: Urutkan dari skor utilitas tertinggi
+        // Pengurutan berdasarkan skor utilitas tertinggi
         usort($rows, fn($a, $b) => $b['smart'] <=> $a['smart']);
 
         return view('dms.summary.index', [
