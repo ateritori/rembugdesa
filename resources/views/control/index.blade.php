@@ -275,7 +275,7 @@
 
     @if (request('tab') === 'analisis' && $decisionSession->status === 'closed')
         <div class="animate-in fade-in slide-in-from-bottom-2 duration-500">
-            @include('control.analysis')
+            @include('analysis.index')
         </div>
     @endif
 
