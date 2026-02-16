@@ -48,7 +48,8 @@
                                         $criteria = $decisionSession->criteria->firstWhere('id', $criteriaId);
                                     @endphp
                                     <tr>
-                                        <td class="px-4 py-3 text-gray-700 font-medium">
+                                        <td
+                                            class="px-4 py-3 text-gray-700 font-medium break-words whitespace-normal w-full max-w-none">
                                             {{ $criteria?->name ?? 'Kriteria #' . $criteriaId }}
                                         </td>
                                         <td class="px-4 py-3 text-right font-mono font-bold text-gray-700">

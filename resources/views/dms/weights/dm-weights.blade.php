@@ -93,9 +93,11 @@
                             </span>
                             <div class="min-w-0">
                                 <h3
-                                    class="truncate text-[11px] font-black uppercase tracking-wider text-slate-400 mb-0.5">
-                                    Kriteria</h3>
-                                <p class="truncate text-sm font-bold text-slate-800 uppercase leading-none italic">
+                                    class="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-0.5">
+                                    Kriteria
+                                </h3>
+                                <p
+                                    class="text-sm font-bold text-slate-800 uppercase italic leading-snug break-words whitespace-normal">
                                     {{ $criteria->name ?? 'Kriteria #' . $criteriaId }}
                                 </p>
                             </div>
