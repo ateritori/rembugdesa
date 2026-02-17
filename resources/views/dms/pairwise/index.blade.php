@@ -182,13 +182,22 @@
                 </div>
             </div>
 
-            <button type="submit"
-                class="w-full rounded-xl px-12 py-4 text-xs font-black uppercase text-white shadow-lg transition-all md:w-auto disabled:cursor-not-allowed"
-                :class="(cr <= 0.101 && untouchedCount === 0) ? 'bg-primary hover:scale-105 active:scale-95' :
-                'bg-slate-300 opacity-50'"
-                :disabled="cr > 0.101 || untouchedCount > 0">
-                <span x-text="untouchedCount > 0 ? 'Input Belum Lengkap' : 'Simpan Perubahan'"></span>
-            </button>
+            <div class="flex w-full gap-3 md:w-auto">
+                <a href="{{ $isEditMode
+                    ? route('dms.index', ['decisionSession' => $decisionSession->id, 'tab' => 'penilaian-kriteria'])
+                    : route('dms.index', $decisionSession->id) }}"
+                    class="w-full rounded-xl border border-slate-300 px-10 py-4 text-xs font-black uppercase text-slate-600 transition-all hover:bg-slate-100 md:w-auto">
+                    Batal
+                </a>
+
+                <button type="submit"
+                    class="w-full rounded-xl px-12 py-4 text-xs font-black uppercase text-white shadow-lg transition-all md:w-auto disabled:cursor-not-allowed"
+                    :class="(cr <= 0.101 && untouchedCount === 0) ? 'bg-primary hover:scale-105 active:scale-95' :
+                    'bg-slate-300 opacity-50'"
+                    :disabled="cr > 0.101 || untouchedCount > 0">
+                    <span x-text="untouchedCount > 0 ? 'Input Belum Lengkap' : 'Simpan Perubahan'"></span>
+                </button>
+            </div>
         </div>
     </form>
 </div>
