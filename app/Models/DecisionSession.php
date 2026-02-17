@@ -18,6 +18,28 @@ class DecisionSession extends Model
         'created_by',
     ];
 
+    /**
+     * SINGLE SOURCE OF TRUTH untuk status decision_sessions.
+     * HARUS sama persis dengan ENUM di migration.
+     */
+    public const STATUSES = [
+        'draft',
+        'configured',
+        'scoring',
+        'closed',
+    ];
+
+    /**
+     * Urutan lifecycle resmi Decision Session.
+     * Digunakan untuk validasi rollback-only oleh superadmin.
+     */
+    public const STATUS_ORDER = [
+        'draft',
+        'configured',
+        'scoring',
+        'closed',
+    ];
+
     /* ================= RELATIONS ================= */
 
     public function criteria()

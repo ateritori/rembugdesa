@@ -15,6 +15,7 @@ use App\Http\Controllers\{
     AlternativeEvaluationController,
     AhpPairwiseController
 };
+use App\Http\Controllers\Superadmin\DecisionSessionController as SuperadminDecisionSessionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,18 +45,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/superadmin/dashboard', [DashboardController::class, 'index'])
             ->name('superadmin.dashboard');
 
-        // User Management (full access)
-        Route::get('/superadmin/users', [DecisionMakerController::class, 'users'])
-            ->name('superadmin.users.index');
 
-        // Role & Permission Management
-        Route::get('/superadmin/roles', function () {
-            return view('superadmin.roles.index');
-        })->name('superadmin.roles.index');
+        // User Management
+        Route::controller(\App\Http\Controllers\Superadmin\UserController::class)->group(function () {
+            Route::get('/superadmin/users', 'index')->name('superadmin.users.index');
+            Route::get('/superadmin/users/{user}/edit', 'edit')->name('superadmin.users.edit');
+            Route::put('/superadmin/users/{user}', 'update')->name('superadmin.users.update');
+            Route::delete('/superadmin/users/{user}', 'destroy')->name('superadmin.users.destroy');
+        });
 
-        // Global Decision Sessions Monitoring
-        Route::get('/superadmin/decision-sessions', [DecisionSessionController::class, 'index'])
-            ->name('superadmin.decision-sessions.index');
+        // Role Management
+        Route::resource('/superadmin/roles', \App\Http\Controllers\Superadmin\RoleController::class)
+            ->names('superadmin.roles')
+            ->except(['show']);
+
+        // Global Decision Sessions Monitoring (Superadmin)
+        Route::controller(SuperadminDecisionSessionController::class)->group(function () {
+            Route::get('/superadmin/decision-sessions', 'index')
+                ->name('superadmin.decision-sessions.index');
+
+            Route::get('/superadmin/decision-sessions/{session}', 'show')
+                ->name('superadmin.decision-sessions.show');
+
+            Route::patch('/superadmin/decision-sessions/{session}/status', 'updateStatus')
+                ->name('superadmin.decision-sessions.update-status');
+        });
 
         // System Monitoring (opsional, siap dikembangkan)
         Route::get('/superadmin/system', function () {
