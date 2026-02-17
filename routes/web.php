@@ -33,6 +33,36 @@ Route::get('/', function () {
 */
 Route::middleware(['auth', 'verified'])->group(function () {
 
+    /*
+    |--------------------------------------------------------------------------
+    | SUPERADMIN AREA
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('role:superadmin')->group(function () {
+
+        // Superadmin Dashboard
+        Route::get('/superadmin/dashboard', [DashboardController::class, 'index'])
+            ->name('superadmin.dashboard');
+
+        // User Management (full access)
+        Route::get('/superadmin/users', [DecisionMakerController::class, 'users'])
+            ->name('superadmin.users.index');
+
+        // Role & Permission Management
+        Route::get('/superadmin/roles', function () {
+            return view('superadmin.roles.index');
+        })->name('superadmin.roles.index');
+
+        // Global Decision Sessions Monitoring
+        Route::get('/superadmin/decision-sessions', [DecisionSessionController::class, 'index'])
+            ->name('superadmin.decision-sessions.index');
+
+        // System Monitoring (opsional, siap dikembangkan)
+        Route::get('/superadmin/system', function () {
+            return view('superadmin.system.index');
+        })->name('superadmin.system.index');
+    });
+
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Profile Management
