@@ -4,7 +4,7 @@
 
 @section('content')
 
-    @include('decision-sessions.partials.nav')
+    @include('admin.partials.session-nav')
 
     {{-- Logika Pengunci: Aksi hanya boleh dilakukan jika status MASIH draft --}}
     @php

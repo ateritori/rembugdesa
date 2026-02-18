@@ -3,22 +3,28 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     ProfileController,
-    DashboardController,
-    DecisionSessionController,
-    DecisionMakerController,
-    DecisionSummaryController,
-    DecisionResultController,
-    CriteriaController,
-    CriteriaAggregationController,
-    CriteriaScoringRuleController,
-    AlternativeController,
-    AlternativeEvaluationController,
-    AhpPairwiseController
+    DashboardController
+};
+use App\Http\Controllers\Admin\{
+    DecisionSessionController as AdminDecisionSessionController,
+    DecisionControlController,
+    DecisionSessionAssignmentController,
+    DecisionSessionResultController,
+    CriteriaController as AdminCriteriaController,
+    CriteriaAggregationController as AdminCriteriaAggregationController,
+    CriteriaScoringRuleController as AdminCriteriaScoringRuleController,
+    AlternativeController as AdminAlternativeController
 };
 use App\Http\Controllers\Superadmin\DecisionSessionController as SuperadminDecisionSessionController;
 use App\Http\Controllers\Superadmin\UsabilityInstrumentController;
 use App\Http\Controllers\Superadmin\UsabilityReportController;
-use App\Http\Controllers\UsabilityResponseController;
+use App\Http\Controllers\Dm\{
+    DecisionMakerController,
+    AhpPairwiseController as DmAhpPairwiseController,
+    AlternativeEvaluationController,
+    UsabilityResponseController as DmUsabilityResponseController,
+    DecisionSummaryController as DmDecisionSummaryController
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -118,7 +124,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | USABILITY (SUS) - RESPONDENT
     |--------------------------------------------------------------------------
     */
-    Route::controller(UsabilityResponseController::class)->group(function () {
+    Route::controller(DmUsabilityResponseController::class)->group(function () {
         Route::get('/usability/respond', 'create')
             ->name('usability.responses.create');
 
@@ -133,25 +139,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
     */
     Route::middleware('role:admin')->group(function () {
 
-        // Decision Sessions Management
-        Route::controller(DecisionSessionController::class)->group(function () {
+        // CRUD Decision Session
+        Route::controller(AdminDecisionSessionController::class)->group(function () {
             Route::get('/decision-sessions', 'index')->name('decision-sessions.index');
             Route::get('/decision-sessions/create', 'create')->name('decision-sessions.create');
             Route::post('/decision-sessions', 'store')->name('decision-sessions.store');
             Route::get('/decision-sessions/{decisionSession}/edit', 'edit')->name('decision-sessions.edit');
             Route::put('/decision-sessions/{decisionSession}', 'update')->name('decision-sessions.update');
+            Route::delete('/decision-sessions/{decisionSession}', 'destroy')->name('decision-sessions.destroy');
+        });
+
+        // Control & Lifecycle
+        Route::controller(DecisionControlController::class)->group(function () {
+            Route::get('/decision-sessions/{decisionSession}/control', 'index')->name('control.index');
             Route::patch('/decision-sessions/{decisionSession}/activate', 'activate')->name('decision-sessions.activate');
             Route::patch('/decision-sessions/{decisionSession}/close', 'close')->name('decision-sessions.close');
-            Route::delete('/decision-sessions/{decisionSession}', 'destroy')->name('decision-sessions.destroy');
-            Route::get('/decision-sessions/{decisionSession}/control', 'control')->name('control.index');
+        });
 
-            // DM Assignment
-            Route::get('/decision-sessions/{decisionSession}/assign-dms', 'assignDms')->name('decision-sessions.assign-dms');
-            Route::post('/decision-sessions/{decisionSession}/assign-dms', 'storeAssignedDms')->name('decision-sessions.assign-dms.store');
+        // DM Assignment
+        Route::controller(DecisionSessionAssignmentController::class)->group(function () {
+            Route::get('/decision-sessions/{decisionSession}/assign-dms', 'index')->name('decision-sessions.assign-dms');
+            Route::post('/decision-sessions/{decisionSession}/assign-dms', 'store')->name('decision-sessions.assign-dms.store');
         });
 
         // Criteria Management
-        Route::controller(CriteriaController::class)->group(function () {
+        Route::controller(AdminCriteriaController::class)->group(function () {
             Route::get('/decision-sessions/{decisionSession}/criteria', 'index')->name('criteria.index');
             Route::post('/decision-sessions/{decisionSession}/criteria', 'store')->name('criteria.store');
             Route::put('/criteria/{criteria}', 'update')->name('criteria.update');
@@ -160,13 +172,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         // Criteria Scoring Rules
-        Route::controller(CriteriaScoringRuleController::class)->group(function () {
+        Route::controller(AdminCriteriaScoringRuleController::class)->group(function () {
             Route::post('/criteria/{criteria}/scoring-rule', 'store')->name('criteria.scoring.store');
             Route::put('/criteria/{criteria}/scoring-rule/{rule}', 'update')->name('criteria.scoring.update');
         });
 
         // Alternatives Management
-        Route::controller(AlternativeController::class)->group(function () {
+        Route::controller(AdminAlternativeController::class)->group(function () {
             Route::get('/decision-sessions/{decisionSession}/alternatives', 'index')->name('alternatives.index');
             Route::post('/decision-sessions/{decisionSession}/alternatives', 'store')->name('alternatives.store');
             Route::put('/alternatives/{alternative}', 'update')->name('alternatives.update');
@@ -175,7 +187,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         // Aggregation Logic
-        Route::patch('/decision-sessions/{decisionSession}/lock-criteria', [CriteriaAggregationController::class, 'lock'])
+        Route::patch('/decision-sessions/{decisionSession}/lock-criteria', [AdminCriteriaAggregationController::class, 'lock'])
             ->name('decision-sessions.lock-criteria');
     });
 
@@ -185,8 +197,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::middleware('role:admin|dm')->group(function () {
-        Route::get('/decision-sessions/{decisionSession}/result', [DecisionSessionController::class, 'result'])
-            ->name('decision-sessions.result');
+        Route::get(
+            '/decision-sessions/{decisionSession}/result',
+            [DecisionSessionResultController::class, 'showPublic']
+        )->name('decision-sessions.result');
     });
 
     /*
@@ -204,7 +218,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         // Pairwise AHP - PERBAIKAN: Pastikan parameter sesuai dengan Controller
-        Route::controller(AhpPairwiseController::class)->group(function () {
+        Route::controller(DmAhpPairwiseController::class)->group(function () {
             // Link: /decision-sessions/1/pairwise
             Route::get('/decision-sessions/{decisionSession}/pairwise', 'index')->name('decision-sessions.pairwise.index');
 
@@ -220,7 +234,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         // Individual Summary
-        Route::get('/decision-sessions/{decisionSession}/summary', [DecisionSummaryController::class, 'show'])
+        Route::get('/decision-sessions/{decisionSession}/summary', [DmDecisionSummaryController::class, 'show'])
             ->name('decision-sessions.summary');
     });
 });

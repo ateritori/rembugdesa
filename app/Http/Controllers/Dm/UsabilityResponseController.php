@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Dm;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\UsabilityInstrument;
 use App\Models\UsabilityQuestion;

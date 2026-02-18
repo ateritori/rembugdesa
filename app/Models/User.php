@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Spatie\Permission\Traits\HasRoles;
 use App\Models\DecisionSession;
+use App\Models\CriteriaWeight;
+use App\Models\AlternativeEvaluation;
 
 class User extends Authenticatable
 {
@@ -31,6 +33,14 @@ class User extends Authenticatable
     public function criteriaPairwise()
     {
         return $this->hasMany(CriteriaPairwise::class, 'dm_id');
+    }
+
+    /**
+     * Relasi ke bobot kriteria (hasil agregasi / input DM).
+     */
+    public function criteriaWeights()
+    {
+        return $this->hasMany(CriteriaWeight::class, 'dm_id');
     }
 
     /**

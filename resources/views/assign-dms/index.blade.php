@@ -5,7 +5,7 @@
 @section('content')
 
     {{-- TAB NAVIGASI SESI --}}
-    @include('decision-sessions.partials.nav')
+    @include('admin.partials.session-nav')
 
     <div class="animate-in fade-in slide-in-from-bottom-2 w-full px-4 py-4 md:px-6 md:py-6 duration-500 dark:bg-slate-900"
         x-data="{

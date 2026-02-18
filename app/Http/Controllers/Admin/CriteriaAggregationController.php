@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\DecisionSession;
 use Illuminate\Http\RedirectResponse;
 use App\Services\AHP\AhpGroupWeightService;
