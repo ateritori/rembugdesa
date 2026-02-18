@@ -112,42 +112,17 @@ class UsabilityResponseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'decision_session_id' => 'required|integer',
+            'decision_session_id' => 'required|integer|exists:decision_sessions,id',
             'answers'             => 'required|array',
         ]);
 
         $user = Auth::user();
 
-        $decisionSession = DecisionSession::with(['alternatives', 'criteria'])
-            ->find($request->decision_session_id);
+        $decisionSession = DecisionSession::findOrFail(
+            $request->decision_session_id
+        );
 
-        if (! $decisionSession) {
-            return redirect()
-                ->route('dashboard')
-                ->with('info', 'Sesi keputusan tidak ditemukan.');
-        }
-
-        $instrument = UsabilityInstrument::where('is_active', true)->first();
-
-        if (! $instrument) {
-            return redirect()
-                ->route('dashboard')
-                ->with('info', 'Instrumen SUS belum tersedia.');
-        }
-
-        // Cegah submit ganda (per DM per session)
-        $alreadyExists = UsabilityResponse::where('user_id', $user->id)
-            ->where('usability_instrument_id', $instrument->id)
-            ->where('decision_session_id', $decisionSession->id)
-            ->exists();
-
-        if ($alreadyExists) {
-            return redirect()
-                ->route('usability.responses.create', [
-                    'decision_session_id' => $decisionSession->id,
-                ])
-                ->with('info', 'Anda sudah mengisi SUS untuk sesi ini.');
-        }
+        $instrument = UsabilityInstrument::where('is_active', true)->firstOrFail();
 
         $questions = UsabilityQuestion::where(
             'usability_instrument_id',
@@ -195,9 +170,7 @@ class UsabilityResponseController extends Controller
         });
 
         return redirect()
-            ->route('decision-sessions.summary', [
-                'decisionSession' => $decisionSession->id,
-            ])
+            ->route('dashboard')
             ->with('success', 'Terima kasih. Penilaian usability berhasil dikirim.');
     }
 }
