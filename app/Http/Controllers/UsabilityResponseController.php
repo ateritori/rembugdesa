@@ -7,6 +7,7 @@ use App\Models\UsabilityQuestion;
 use App\Models\UsabilityResponse;
 use App\Models\UsabilityAnswer;
 use App\Models\DecisionSession;
+use App\Models\AlternativeEvaluation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,11 +15,32 @@ use Illuminate\Support\Facades\DB;
 class UsabilityResponseController extends Controller
 {
     /**
-     * Tampilkan form pengisian SUS.
+     * Tampilkan form SUS.
+     * SUS hanya bisa diakses oleh DM
+     * setelah menyelesaikan evaluasi alternatif
+     * dan berlaku per decision session.
      */
     public function create(Request $request)
     {
-        // Instrumen wajib
+        // decision_session_id wajib
+        if (! $request->filled('decision_session_id')) {
+            return redirect()
+                ->route('dashboard')
+                ->with('info', 'SUS hanya dapat diisi dalam konteks sesi keputusan.');
+        }
+
+        $decisionSession = DecisionSession::with(['alternatives', 'criteria'])
+            ->find($request->decision_session_id);
+
+        if (! $decisionSession) {
+            return redirect()
+                ->route('dashboard')
+                ->with('info', 'Sesi keputusan tidak ditemukan.');
+        }
+
+        $user = Auth::user();
+
+        // Ambil instrumen SUS aktif
         $instrument = UsabilityInstrument::where('is_active', true)
             ->with(['questions' => function ($q) {
                 $q->where('is_active', true)
@@ -32,18 +54,37 @@ class UsabilityResponseController extends Controller
                 ->with('info', 'Instrumen SUS belum tersedia.');
         }
 
-        // Decision session OPSIONAL
-        $decisionSession = null;
-        if ($request->filled('decision_session_id')) {
-            $decisionSession = DecisionSession::find(
-                $request->decision_session_id
-            );
+        /**
+         * ===== CEK FASE SCORING SELESAI =====
+         * DM dianggap selesai jika:
+         * jumlah evaluasi alternatif >= (jumlah alternatif × jumlah kriteria)
+         */
+        $totalExpectation =
+            $decisionSession->alternatives->count()
+            * $decisionSession->criteria->count();
+
+        $dmCompletedScoring = $decisionSession->dms()
+            ->where('users.id', $user->id)
+            ->whereHas('alternativeEvaluations', function ($query) use ($decisionSession) {
+                $query->where('decision_session_id', $decisionSession->id);
+            }, '>=', $totalExpectation)
+            ->exists();
+
+        if (! $dmCompletedScoring) {
+            return redirect()
+                ->route('decision-sessions.summary', [
+                    'decisionSession' => $decisionSession->id,
+                ])
+                ->with(
+                    'info',
+                    'SUS dapat diisi setelah Anda menyelesaikan evaluasi alternatif.'
+                );
         }
 
-        // Ambil response lama TANPA tergantung session
-        $existingResponse = UsabilityResponse::where('user_id', Auth::id())
+        // Cari response SUS existing (per DM per session)
+        $existingResponse = UsabilityResponse::where('user_id', $user->id)
             ->where('usability_instrument_id', $instrument->id)
-            ->latest()
+            ->where('decision_session_id', $decisionSession->id)
             ->first();
 
         $existingAnswers = [];
@@ -66,16 +107,46 @@ class UsabilityResponseController extends Controller
     }
 
     /**
-     * Simpan jawaban SUS dan hitung skor.
+     * Simpan jawaban SUS (per DM per decision session).
      */
     public function store(Request $request)
     {
+        $request->validate([
+            'decision_session_id' => 'required|integer',
+            'answers'             => 'required|array',
+        ]);
+
+        $user = Auth::user();
+
+        $decisionSession = DecisionSession::with(['alternatives', 'criteria'])
+            ->find($request->decision_session_id);
+
+        if (! $decisionSession) {
+            return redirect()
+                ->route('dashboard')
+                ->with('info', 'Sesi keputusan tidak ditemukan.');
+        }
+
         $instrument = UsabilityInstrument::where('is_active', true)->first();
 
         if (! $instrument) {
             return redirect()
                 ->route('dashboard')
                 ->with('info', 'Instrumen SUS belum tersedia.');
+        }
+
+        // Cegah submit ganda (per DM per session)
+        $alreadyExists = UsabilityResponse::where('user_id', $user->id)
+            ->where('usability_instrument_id', $instrument->id)
+            ->where('decision_session_id', $decisionSession->id)
+            ->exists();
+
+        if ($alreadyExists) {
+            return redirect()
+                ->route('usability.responses.create', [
+                    'decision_session_id' => $decisionSession->id,
+                ])
+                ->with('info', 'Anda sudah mengisi SUS untuk sesi ini.');
         }
 
         $questions = UsabilityQuestion::where(
@@ -86,37 +157,18 @@ class UsabilityResponseController extends Controller
             ->orderBy('number')
             ->get();
 
-        $request->validate([
-            'answers' => 'required|array',
-        ]);
-
-        $user = Auth::user();
-
-        // Cegah submit ganda (1x per user per instrumen)
-        $alreadyExists = UsabilityResponse::where('user_id', $user->id)
-            ->where('usability_instrument_id', $instrument->id)
-            ->exists();
-
-        if ($alreadyExists) {
-            return redirect()
-                ->route('usability.responses.create')
-                ->with(
-                    'info',
-                    'Anda sudah pernah mengisi SUS. Jawaban sebelumnya ditampilkan.'
-                );
-        }
-
         DB::transaction(function () use (
             $request,
             $instrument,
             $questions,
-            $user
+            $user,
+            $decisionSession
         ) {
             $response = UsabilityResponse::create([
                 'usability_instrument_id' => $instrument->id,
                 'user_id'                 => $user->id,
                 'role'                    => $user->getRoleNames()->first(),
-                'decision_session_id'     => $request->decision_session_id,
+                'decision_session_id'     => $decisionSession->id,
             ]);
 
             $total = 0;
@@ -143,10 +195,9 @@ class UsabilityResponseController extends Controller
         });
 
         return redirect()
-            ->route('dashboard')
-            ->with(
-                'success',
-                'Terima kasih. Penilaian usability berhasil dikirim.'
-            );
+            ->route('decision-sessions.summary', [
+                'decisionSession' => $decisionSession->id,
+            ])
+            ->with('success', 'Terima kasih. Penilaian usability berhasil dikirim.');
     }
 }
