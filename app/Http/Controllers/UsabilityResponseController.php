@@ -18,39 +18,50 @@ class UsabilityResponseController extends Controller
      */
     public function create(Request $request)
     {
+        // Instrumen wajib
         $instrument = UsabilityInstrument::where('is_active', true)
             ->with(['questions' => function ($q) {
-                $q->where('is_active', true)->orderBy('number');
+                $q->where('is_active', true)
+                    ->orderBy('number');
             }])
-            ->firstOrFail();
+            ->first();
 
-        $decisionSession = null;
-
-        if ($request->filled('decision_session_id')) {
-            $decisionSession = DecisionSession::findOrFail($request->decision_session_id);
+        if (! $instrument) {
+            return redirect()
+                ->route('dashboard')
+                ->with('info', 'Instrumen SUS belum tersedia.');
         }
 
-        $existingResponse = null;
+        // Decision session OPSIONAL
+        $decisionSession = null;
+        if ($request->filled('decision_session_id')) {
+            $decisionSession = DecisionSession::find(
+                $request->decision_session_id
+            );
+        }
+
+        // Ambil response lama TANPA tergantung session
+        $existingResponse = UsabilityResponse::where('user_id', Auth::id())
+            ->where('usability_instrument_id', $instrument->id)
+            ->latest()
+            ->first();
+
         $existingAnswers = [];
 
-        if ($decisionSession) {
-            $existingResponse = UsabilityResponse::where('user_id', Auth::id())
-                ->where('usability_instrument_id', $instrument->id)
-                ->where('decision_session_id', $decisionSession->id)
-                ->first();
-
-            if ($existingResponse) {
-                $existingAnswers = UsabilityAnswer::where('usability_response_id', $existingResponse->id)
-                    ->pluck('value', 'usability_question_id')
-                    ->toArray();
-            }
+        if ($existingResponse) {
+            $existingAnswers = UsabilityAnswer::where(
+                'usability_response_id',
+                $existingResponse->id
+            )
+                ->pluck('value', 'usability_question_id')
+                ->toArray();
         }
 
         return view('usability.responses.index', [
-            'instrument' => $instrument,
-            'decisionSession' => $decisionSession,
+            'instrument'       => $instrument,
+            'decisionSession'  => $decisionSession,
             'existingResponse' => $existingResponse,
-            'existingAnswers' => $existingAnswers,
+            'existingAnswers'  => $existingAnswers,
         ]);
     }
 
@@ -59,9 +70,18 @@ class UsabilityResponseController extends Controller
      */
     public function store(Request $request)
     {
-        $instrument = UsabilityInstrument::where('is_active', true)->firstOrFail();
+        $instrument = UsabilityInstrument::where('is_active', true)->first();
 
-        $questions = UsabilityQuestion::where('usability_instrument_id', $instrument->id)
+        if (! $instrument) {
+            return redirect()
+                ->route('dashboard')
+                ->with('info', 'Instrumen SUS belum tersedia.');
+        }
+
+        $questions = UsabilityQuestion::where(
+            'usability_instrument_id',
+            $instrument->id
+        )
             ->where('is_active', true)
             ->orderBy('number')
             ->get();
@@ -70,34 +90,44 @@ class UsabilityResponseController extends Controller
             'answers' => 'required|array',
         ]);
 
-        DB::transaction(function () use ($request, $instrument, $questions) {
-            $user = Auth::user();
+        $user = Auth::user();
 
-            $alreadyExists = UsabilityResponse::where('user_id', $user->id)
-                ->where('usability_instrument_id', $instrument->id)
-                ->where('decision_session_id', $request->decision_session_id)
-                ->exists();
+        // Cegah submit ganda (1x per user per instrumen)
+        $alreadyExists = UsabilityResponse::where('user_id', $user->id)
+            ->where('usability_instrument_id', $instrument->id)
+            ->exists();
 
-            if ($alreadyExists) {
-                abort(403, 'Anda sudah mengisi penilaian usability.');
-            }
+        if ($alreadyExists) {
+            return redirect()
+                ->route('usability.responses.create')
+                ->with(
+                    'info',
+                    'Anda sudah pernah mengisi SUS. Jawaban sebelumnya ditampilkan.'
+                );
+        }
 
+        DB::transaction(function () use (
+            $request,
+            $instrument,
+            $questions,
+            $user
+        ) {
             $response = UsabilityResponse::create([
                 'usability_instrument_id' => $instrument->id,
-                'user_id' => $user->id,
-                'role' => $user->getRoleNames()->first(),
-                'decision_session_id' => $request->decision_session_id,
+                'user_id'                 => $user->id,
+                'role'                    => $user->getRoleNames()->first(),
+                'decision_session_id'     => $request->decision_session_id,
             ]);
 
             $total = 0;
 
             foreach ($questions as $question) {
-                $value = (int) ($request->answers[$question->id] ?? 0);
+                $value = (int) $request->answers[$question->id];
 
                 UsabilityAnswer::create([
                     'usability_response_id' => $response->id,
                     'usability_question_id' => $question->id,
-                    'value' => $value,
+                    'value'                 => $value,
                 ]);
 
                 if ($question->polarity === 'positive') {
@@ -114,6 +144,9 @@ class UsabilityResponseController extends Controller
 
         return redirect()
             ->route('dashboard')
-            ->with('success', 'Terima kasih, penilaian usability berhasil dikirim.');
+            ->with(
+                'success',
+                'Terima kasih. Penilaian usability berhasil dikirim.'
+            );
     }
 }
