@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: mysql
--- Generation Time: Feb 16, 2026 at 08:35 AM
+-- Generation Time: Feb 18, 2026 at 02:20 AM
 -- Server version: 8.0.45
 -- PHP Version: 8.3.26
 
@@ -2178,8 +2178,8 @@ INSERT INTO `borda_results` (`id`, `decision_session_id`, `alternative_id`, `bor
 (11, 1, 1, 42, 1, '2026-02-15 00:37:11', '2026-02-15 00:37:11'),
 (12, 1, 6, 39, 2, '2026-02-15 00:37:11', '2026-02-15 00:37:11'),
 (13, 1, 4, 37, 3, '2026-02-15 00:37:11', '2026-02-15 00:37:11'),
-(14, 1, 3, 30, 5, '2026-02-15 00:37:11', '2026-02-15 13:06:15'),
-(15, 1, 7, 30, 4, '2026-02-15 00:37:11', '2026-02-15 13:06:15'),
+(14, 1, 3, 30, 4, '2026-02-15 00:37:11', '2026-02-17 23:49:59'),
+(15, 1, 7, 30, 5, '2026-02-15 00:37:11', '2026-02-17 23:49:59'),
 (16, 1, 9, 28, 6, '2026-02-15 00:37:11', '2026-02-15 00:37:11'),
 (17, 1, 2, 24, 7, '2026-02-15 00:37:11', '2026-02-15 00:37:11'),
 (18, 1, 8, 21, 8, '2026-02-15 00:37:11', '2026-02-15 00:37:11'),
@@ -2288,7 +2288,8 @@ INSERT INTO `criteria` (`id`, `decision_session_id`, `name`, `type`, `is_active`
 (10, 3, 'Infrastruktur dan Lingkungan', 'benefit', 1, 2, '2026-02-16 00:45:43', '2026-02-16 00:45:43', NULL),
 (11, 3, 'Ekonomi Produktif dan Pertanian', 'benefit', 1, 3, '2026-02-16 00:45:49', '2026-02-16 00:45:49', NULL),
 (12, 3, 'Teknologi Tepat Guna', 'benefit', 1, 4, '2026-02-16 00:45:55', '2026-02-16 00:45:55', NULL),
-(13, 3, 'Ketertiban dan Ketentraman', 'benefit', 1, 5, '2026-02-16 00:46:01', '2026-02-16 00:46:01', NULL);
+(13, 3, 'Ketertiban dan Ketentraman', 'benefit', 1, 5, '2026-02-16 00:46:01', '2026-02-16 00:46:01', NULL),
+(14, 4, 'Desil DTSEN Berapa', 'benefit', 1, 1, '2026-02-16 14:46:50', '2026-02-16 14:47:26', NULL);
 
 -- --------------------------------------------------------
 
@@ -2646,9 +2647,10 @@ CREATE TABLE `decision_sessions` (
 --
 
 INSERT INTO `decision_sessions` (`id`, `name`, `year`, `status`, `created_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'Musyawarah Coba-Coba', '2026', 'closed', 2, '2026-02-12 12:32:58', '2026-02-15 15:52:52', NULL),
-(2, 'Muskalsus BLT-DD Kalurahan Wonosari', '2026', 'closed', 2, '2026-02-15 13:17:45', '2026-02-15 20:51:40', NULL),
-(3, 'Musrenbang Kalurahan Wonosari', '2026', 'closed', 2, '2026-02-16 00:25:54', '2026-02-16 07:18:58', NULL);
+(1, 'Musyawarah Coba-Coba', '2026', 'closed', 2, '2026-02-12 12:32:58', '2026-02-17 23:49:59', NULL),
+(2, 'Muskalsus BLT-DD Kalurahan Wonosari', '2026', 'closed', 2, '2026-02-15 13:17:45', '2026-02-17 23:49:47', NULL),
+(3, 'Musrenbang Kalurahan Wonosari', '2026', 'closed', 2, '2026-02-16 00:25:54', '2026-02-16 07:18:58', NULL),
+(4, 'Muskal Penerima Bansos UPK', '2026', 'draft', 2, '2026-02-16 13:39:14', '2026-02-16 13:39:14', NULL);
 
 -- --------------------------------------------------------
 
@@ -2796,7 +2798,11 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (23, '2026_02_11_144158_create_users_table', 1),
 (24, '2026_02_14_115949_create_alternative_decision_session_table', 2),
 (25, '2026_02_14_235243_create_smart_results_dm_table', 3),
-(26, '2026_02_14_235338_create_borda_results_table', 3);
+(26, '2026_02_14_235338_create_borda_results_table', 3),
+(27, '2026_02_18_010731_create_usability_instruments_table', 4),
+(28, '2026_02_18_010732_create_usability_questions_table', 4),
+(29, '2026_02_18_010733_create_usability_responses_table', 4),
+(30, '2026_02_18_010734_create_usability_answers_table', 5);
 
 -- --------------------------------------------------------
 
@@ -2868,6 +2874,25 @@ CREATE TABLE `permissions` (
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `permissions`
+--
+
+INSERT INTO `permissions` (`id`, `name`, `guard_name`, `created_at`, `updated_at`) VALUES
+(1, 'user.view', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(2, 'user.create', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(3, 'user.edit', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(4, 'user.delete', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(5, 'role.view', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(6, 'role.create', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(7, 'role.edit', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(8, 'role.delete', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(9, 'decision.view', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(10, 'decision.create', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(11, 'decision.edit', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(12, 'decision.delete', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52'),
+(13, 'decision.close', 'web', '2026-02-17 23:15:52', '2026-02-17 23:15:52');
+
 -- --------------------------------------------------------
 
 --
@@ -2902,6 +2927,25 @@ CREATE TABLE `role_has_permissions` (
   `role_id` bigint UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `role_has_permissions`
+--
+
+INSERT INTO `role_has_permissions` (`permission_id`, `role_id`) VALUES
+(1, 1),
+(2, 1),
+(3, 1),
+(4, 1),
+(5, 1),
+(6, 1),
+(7, 1),
+(8, 1),
+(9, 1),
+(10, 1),
+(11, 1),
+(12, 1),
+(13, 1);
+
 -- --------------------------------------------------------
 
 --
@@ -2922,7 +2966,8 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
-('TzIOLNwHif5xmSGaGtSyy0AeruF0UNXcPtAo7cN7', 2, '127.0.0.1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoiTEJMYUFTSWNlRzc0THR2a2RaOGtMQXg4cUJhTnFhV1hhdDh4ajY0RyI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6NjI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9kZWNpc2lvbi1zZXNzaW9ucy8zL2NvbnRyb2w/dGFiPWFuYWxpc2lzIjtzOjU6InJvdXRlIjtzOjEzOiJjb250cm9sLmluZGV4Ijt9czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6Mjt9', 1771230536);
+('JUbrc9WuHeaIJhiE5HaVdRGw7zzAH14AACyHFbFH', 9, '127.0.0.1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoiZ2oxRUNkWm5GdURiQUhkU255TkYwUnhaM3lPVmtkc2VvdzVCdWFCdiI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6NjE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC91c2FiaWxpdHkvcmVzcG9uZD9kZWNpc2lvbl9zZXNzaW9uX2lkPTMiO3M6NToicm91dGUiO3M6MjY6InVzYWJpbGl0eS5yZXNwb25zZXMuY3JlYXRlIjt9czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6OTt9', 1771381185),
+('MojqwKoz4jNk0VSIfKwSap1EjJIPqIs4GEAz86hs', NULL, '127.0.0.1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Safari/605.1.15', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoia0JlY21lSUlJbW85aTF1VDVTZkFzUkV0b3FmWWFZMmNtRFBOaWdGbCI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MjE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMCI7czo1OiJyb3V0ZSI7Tjt9fQ==', 1771369961);
 
 -- --------------------------------------------------------
 
@@ -3361,6 +3406,116 @@ INSERT INTO `smart_results_dm` (`id`, `decision_session_id`, `dm_id`, `alternati
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `usability_answers`
+--
+
+CREATE TABLE `usability_answers` (
+  `id` bigint UNSIGNED NOT NULL,
+  `usability_response_id` bigint UNSIGNED NOT NULL,
+  `usability_question_id` bigint UNSIGNED NOT NULL,
+  `value` tinyint UNSIGNED NOT NULL COMMENT 'Likert scale 1–5',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `usability_answers`
+--
+
+INSERT INTO `usability_answers` (`id`, `usability_response_id`, `usability_question_id`, `value`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, 4, '2026-02-18 02:09:45', '2026-02-18 02:09:45'),
+(2, 1, 2, 2, '2026-02-18 02:09:45', '2026-02-18 02:09:45'),
+(3, 1, 3, 5, '2026-02-18 02:09:45', '2026-02-18 02:09:45'),
+(4, 1, 4, 1, '2026-02-18 02:09:45', '2026-02-18 02:09:45'),
+(5, 1, 5, 4, '2026-02-18 02:09:45', '2026-02-18 02:09:45'),
+(6, 1, 6, 2, '2026-02-18 02:09:45', '2026-02-18 02:09:45'),
+(7, 1, 7, 4, '2026-02-18 02:09:45', '2026-02-18 02:09:45'),
+(8, 1, 8, 2, '2026-02-18 02:09:45', '2026-02-18 02:09:45'),
+(9, 1, 9, 4, '2026-02-18 02:09:45', '2026-02-18 02:09:45'),
+(10, 1, 10, 2, '2026-02-18 02:09:45', '2026-02-18 02:09:45');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `usability_instruments`
+--
+
+CREATE TABLE `usability_instruments` (
+  `id` bigint UNSIGNED NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `usability_instruments`
+--
+
+INSERT INTO `usability_instruments` (`id`, `name`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 'System Usability Scale (SUS)', 'Instrumen standar untuk mengukur usability sistem.', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `usability_questions`
+--
+
+CREATE TABLE `usability_questions` (
+  `id` bigint UNSIGNED NOT NULL,
+  `usability_instrument_id` bigint UNSIGNED NOT NULL,
+  `number` tinyint UNSIGNED NOT NULL,
+  `question` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `polarity` enum('positive','negative') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `usability_questions`
+--
+
+INSERT INTO `usability_questions` (`id`, `usability_instrument_id`, `number`, `question`, `polarity`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, 'Saya ingin menggunakan sistem ini secara sering.', 'positive', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48'),
+(2, 1, 2, 'Saya merasa sistem ini terlalu kompleks.', 'negative', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48'),
+(3, 1, 3, 'Saya merasa sistem ini mudah digunakan.', 'positive', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48'),
+(4, 1, 4, 'Saya membutuhkan bantuan teknis untuk dapat menggunakan sistem ini.', 'negative', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48'),
+(5, 1, 5, 'Saya merasa berbagai fungsi dalam sistem ini terintegrasi dengan baik.', 'positive', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48'),
+(6, 1, 6, 'Saya merasa terdapat terlalu banyak inkonsistensi dalam sistem ini.', 'negative', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48'),
+(7, 1, 7, 'Saya merasa kebanyakan orang akan mudah mempelajari penggunaan sistem ini dengan cepat.', 'positive', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48'),
+(8, 1, 8, 'Saya merasa sistem ini sangat merepotkan untuk digunakan.', 'negative', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48'),
+(9, 1, 9, 'Saya merasa sangat percaya diri saat menggunakan sistem ini.', 'positive', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48'),
+(10, 1, 10, 'Saya perlu mempelajari banyak hal sebelum dapat menggunakan sistem ini.', 'negative', 1, '2026-02-18 01:49:48', '2026-02-18 01:49:48');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `usability_responses`
+--
+
+CREATE TABLE `usability_responses` (
+  `id` bigint UNSIGNED NOT NULL,
+  `usability_instrument_id` bigint UNSIGNED NOT NULL,
+  `user_id` bigint UNSIGNED NOT NULL,
+  `role` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `decision_session_id` bigint UNSIGNED DEFAULT NULL,
+  `total_score` decimal(5,2) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `usability_responses`
+--
+
+INSERT INTO `usability_responses` (`id`, `usability_instrument_id`, `user_id`, `role`, `decision_session_id`, `total_score`, `created_at`, `updated_at`) VALUES
+(1, 1, 9, 'dm', 2, 80.00, '2026-02-18 02:09:45', '2026-02-18 02:09:45');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
@@ -3381,9 +3536,9 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `name`, `email`, `email_verified_at`, `password`, `remember_token`, `created_at`, `updated_at`) VALUES
 (1, 'Super Admin', 'superadmin@wonosarigk.id', NULL, '$2y$12$LjZSt79diNOmML6z7fW6e.IAUqIDYZMkiGbKO70agXjFaZX8xCIxm', NULL, '2026-02-12 01:43:33', '2026-02-12 01:43:33'),
-(2, 'Admin Keputusan', 'admin@wonosarigk.id', NULL, '$2y$12$9LK98yBUOoTvwFEc352pHe6dNfB7ZM99.KaT5YFFZAFkwAPqzmGsm', '7yCRGMFiLPdoTWsEdPyqqFAlNpKBKP0oChLR0TWEBkmGLfMO0FIm502QfW6x', '2026-02-12 01:43:33', '2026-02-12 01:43:33'),
+(2, 'Admin Keputusan', 'admin@wonosarigk.id', NULL, '$2y$12$9LK98yBUOoTvwFEc352pHe6dNfB7ZM99.KaT5YFFZAFkwAPqzmGsm', '7h4Vfj4z1kmw9AjnCdtApNTwIwr2MxpkRMQdwQLmEcAn1mmoxlNzwcKgqKye', '2026-02-12 01:43:33', '2026-02-12 01:43:33'),
 (3, 'Decision Maker', 'dm@wonosarigk.id', NULL, '$2y$12$NStoc26b/AAcxtCnK5ryl.YCKm4UlV2D7sSdxbnTUYnLbGdZ8Q5SG', NULL, '2026-02-12 12:46:47', '2026-02-12 12:46:47'),
-(4, 'Dedi Mustajab', 'dedi@wonosarigk.id', NULL, '$2y$12$407xvo06FQjNg6XqTkYvYuEiMX3A2ZG4l6XKZi9pi878Y71V6w5JG', 'R6LrQ7IGHG2P0tACKp8OOGMXP7aOYEBM44lRxVAHrsue1fg4Rdx1Myvme4c0', '2026-02-12 14:53:58', '2026-02-12 14:53:58'),
+(4, 'Dedi Mustajab', 'dedi@wonosarigk.id', NULL, '$2y$12$407xvo06FQjNg6XqTkYvYuEiMX3A2ZG4l6XKZi9pi878Y71V6w5JG', 'N20liaJfnngoodXQLaqfUvKhrVYb01NMLdqJcU2E4ZwOvDFzieUFsB3rH85J', '2026-02-12 14:53:58', '2026-02-12 14:53:58'),
 (5, 'Windira Safitri', 'windira@wonosarigk.id', NULL, '$2y$12$3b.wmOO34rqbbj0gzraFuODiHTjWeQT2leiyWWMijFU5H48sgO2FO', NULL, '2026-02-12 14:54:17', '2026-02-12 14:54:17'),
 (6, 'Tugino', 'tugino@wonosarigk.id', NULL, '$2y$12$601gCaq7fy9l8XZf5NCPKur6VPWXETXLdVleGJgmsSeFmE3nw9kAy', NULL, '2026-02-12 14:56:08', '2026-02-12 14:56:08'),
 (7, 'Suindartini', 'suindartini@wonosarigk.id', NULL, '$2y$12$Gk9GrnYhEQH3WknHHRlLxOv6UJ1ZGzkLVCncQQghScA4BXHLMbPh6', NULL, '2026-02-12 14:56:27', '2026-02-12 14:56:27'),
@@ -3586,6 +3741,37 @@ ALTER TABLE `smart_results_dm`
   ADD KEY `smart_results_dm_alternative_id_foreign` (`alternative_id`);
 
 --
+-- Indexes for table `usability_answers`
+--
+ALTER TABLE `usability_answers`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_usability_answer_once` (`usability_response_id`,`usability_question_id`),
+  ADD KEY `usability_answers_usability_question_id_index` (`usability_question_id`);
+
+--
+-- Indexes for table `usability_instruments`
+--
+ALTER TABLE `usability_instruments`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `usability_questions`
+--
+ALTER TABLE `usability_questions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `usability_questions_usability_instrument_id_number_unique` (`usability_instrument_id`,`number`);
+
+--
+-- Indexes for table `usability_responses`
+--
+ALTER TABLE `usability_responses`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_usability_response_once` (`usability_instrument_id`,`user_id`,`decision_session_id`),
+  ADD KEY `usability_responses_user_id_foreign` (`user_id`),
+  ADD KEY `1` (`decision_session_id`),
+  ADD KEY `usability_responses_role_index` (`role`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -3618,7 +3804,7 @@ ALTER TABLE `borda_results`
 -- AUTO_INCREMENT for table `criteria`
 --
 ALTER TABLE `criteria`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `criteria_pairwise`
@@ -3648,7 +3834,7 @@ ALTER TABLE `criteria_weights`
 -- AUTO_INCREMENT for table `decision_sessions`
 --
 ALTER TABLE `decision_sessions`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `decision_session_criteria`
@@ -3678,13 +3864,13 @@ ALTER TABLE `jobs`
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `permissions`
 --
 ALTER TABLE `permissions`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -3697,6 +3883,30 @@ ALTER TABLE `roles`
 --
 ALTER TABLE `smart_results_dm`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=575;
+
+--
+-- AUTO_INCREMENT for table `usability_answers`
+--
+ALTER TABLE `usability_answers`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `usability_instruments`
+--
+ALTER TABLE `usability_instruments`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `usability_questions`
+--
+ALTER TABLE `usability_questions`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `usability_responses`
+--
+ALTER TABLE `usability_responses`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -3722,6 +3932,27 @@ ALTER TABLE `smart_results_dm`
   ADD CONSTRAINT `smart_results_dm_alternative_id_foreign` FOREIGN KEY (`alternative_id`) REFERENCES `alternatives` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `smart_results_dm_decision_session_id_foreign` FOREIGN KEY (`decision_session_id`) REFERENCES `decision_sessions` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `smart_results_dm_dm_id_foreign` FOREIGN KEY (`dm_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `usability_answers`
+--
+ALTER TABLE `usability_answers`
+  ADD CONSTRAINT `fk_usability_answers_question` FOREIGN KEY (`usability_question_id`) REFERENCES `usability_questions` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_usability_answers_response` FOREIGN KEY (`usability_response_id`) REFERENCES `usability_responses` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `usability_questions`
+--
+ALTER TABLE `usability_questions`
+  ADD CONSTRAINT `usability_questions_usability_instrument_id_foreign` FOREIGN KEY (`usability_instrument_id`) REFERENCES `usability_instruments` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `usability_responses`
+--
+ALTER TABLE `usability_responses`
+  ADD CONSTRAINT `1` FOREIGN KEY (`decision_session_id`) REFERENCES `decision_sessions` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `usability_responses_usability_instrument_id_foreign` FOREIGN KEY (`usability_instrument_id`) REFERENCES `usability_instruments` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `usability_responses_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

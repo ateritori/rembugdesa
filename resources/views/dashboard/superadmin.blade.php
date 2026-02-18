@@ -117,6 +117,34 @@
                         <p class="adaptive-text-sub text-xs font-bold">Monitoring seluruh sesi</p>
                     </div>
                 </a>
+
+                <a href="{{ route('superadmin.usability.instruments.index') }}"
+                    class="adaptive-card hover:border-primary/50 group flex items-center gap-4 p-5 transition-all">
+                    <div class="bg-purple-500/10 text-purple-500 flex h-10 w-10 items-center justify-center rounded-xl">
+                        <svg class="h-5 w-5 transition-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="adaptive-text-main text-sm font-black">Instrumen Usability</p>
+                        <p class="adaptive-text-sub text-xs font-bold">Kelola SUS & pertanyaan</p>
+                    </div>
+                </a>
+
+                <a href="{{ route('superadmin.usability.reports.index') }}"
+                    class="adaptive-card hover:border-primary/50 group flex items-center gap-4 p-5 transition-all">
+                    <div class="bg-rose-500/10 text-rose-500 flex h-10 w-10 items-center justify-center rounded-xl">
+                        <svg class="h-5 w-5 transition-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 11V7a4 4 0 118 0v4m-4 4v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="adaptive-text-main text-sm font-black">Laporan Usability</p>
+                        <p class="adaptive-text-sub text-xs font-bold">Hasil & agregasi SUS</p>
+                    </div>
+                </a>
             </div>
         </div>
 

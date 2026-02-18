@@ -197,6 +197,14 @@
                                         d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                 </svg>
                             </a>
+                            <a href="{{ route('usability.responses.create', ['decision_session_id' => $session->id]) }}"
+                                class="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 transition hover:border-primary/30 hover:text-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                Isi SUS
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5l7 7-7 7" />
+                                </svg>
+                            </a>
                         @else
                             <div
                                 class="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 dark:border-slate-700 dark:bg-slate-900">

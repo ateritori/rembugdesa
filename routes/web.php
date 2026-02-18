@@ -16,6 +16,9 @@ use App\Http\Controllers\{
     AhpPairwiseController
 };
 use App\Http\Controllers\Superadmin\DecisionSessionController as SuperadminDecisionSessionController;
+use App\Http\Controllers\Superadmin\UsabilityInstrumentController;
+use App\Http\Controllers\Superadmin\UsabilityReportController;
+use App\Http\Controllers\UsabilityResponseController;
 
 /*
 |--------------------------------------------------------------------------
@@ -71,6 +74,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->name('superadmin.decision-sessions.update-status');
         });
 
+        /*
+        |--------------------------------------------------------------------------
+        | USABILITY (SUS) - SUPERADMIN
+        |--------------------------------------------------------------------------
+        */
+        Route::controller(UsabilityInstrumentController::class)->group(function () {
+            Route::get('/superadmin/usability/instrument', 'index')
+                ->name('superadmin.usability.instruments.index');
+
+            Route::get('/superadmin/usability/instrument/edit', 'edit')
+                ->name('superadmin.usability.instruments.edit');
+
+            Route::put('/superadmin/usability/instrument', 'update')
+                ->name('superadmin.usability.instruments.update');
+
+            Route::put('/superadmin/usability/questions/{question}', 'updateQuestion')
+                ->name('superadmin.usability.questions.update');
+        });
+
+        Route::get(
+            '/superadmin/usability/reports',
+            [UsabilityReportController::class, 'index']
+        )->name('superadmin.usability.reports.index');
+
         // System Monitoring (opsional, siap dikembangkan)
         Route::get('/superadmin/system', function () {
             return view('superadmin.system.index');
@@ -84,6 +111,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/profile', 'edit')->name('profile.edit');
         Route::patch('/profile', 'update')->name('profile.update');
         Route::delete('/profile', 'destroy')->name('profile.destroy');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | USABILITY (SUS) - RESPONDENT
+    |--------------------------------------------------------------------------
+    */
+    Route::controller(UsabilityResponseController::class)->group(function () {
+        Route::get('/usability/respond', 'create')
+            ->name('usability.responses.create');
+
+        Route::post('/usability/respond', 'store')
+            ->name('usability.responses.store');
     });
 
     /*
