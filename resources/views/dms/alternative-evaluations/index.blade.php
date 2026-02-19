@@ -8,14 +8,16 @@
             <h2 class="text-3xl font-light tracking-tight text-slate-900">Penilaian <span
                     class="font-bold">Alternatif</span></h2>
             <p class="mt-3 text-sm text-slate-500">
-                Menurut Anda, <span class="font-semibold">seberapa besar dampak alternatif berikut</span>
-                dalam memenuhi <span class="font-semibold">kriteria yang dimaksud</span>?
+                Berikan penilaian Anda terhadap <span class="font-semibold">setiap alternatif</span>
+                sesuai dengan <span class="font-semibold">kriteria yang dinilai</span>.
+                Gunakan skala yang tersedia atau masukkan nilai numerik sesuai kebutuhan.
             </p>
         </div>
 
         @foreach ($criteria as $c)
             @php
-                $semanticsParam = $c->scoringRule->getParameter('scale_semantics');
+                $rule = $c->scoringRule;
+                $semanticsParam = $rule?->getParameter('scale_semantics');
                 $semantics = is_string($semanticsParam) ? json_decode($semanticsParam, true) : $semanticsParam ?? [];
             @endphp
 
@@ -32,9 +34,10 @@
                     </h3>
                 </div>
                 <p class="mt-3 px-4 text-sm adaptive-text-sub">
-                    Menurut Anda, <span class="font-semibold adaptive-text-main">seberapa besar dampak masing-masing
+                    Berikan penilaian untuk <span class="font-semibold adaptive-text-main">masing-masing
                         alternatif</span>
-                    dalam memenuhi <span class="font-semibold adaptive-text-main">kriteria ini</span>?
+                    berdasarkan <span class="font-semibold adaptive-text-main">kriteria ini</span>.
+                    Pilih skor pada skala atau isi nilai numerik sesuai tipe input.
                 </p>
 
                 <div class="divide-y divide-slate-100 px-4">
@@ -57,28 +60,40 @@
                             {{-- Pilihan Skor: Horizontal Scroll di Mobile, Flex di Desktop --}}
                             <div class="no-scrollbar -mx-4 flex overflow-x-auto px-4 lg:mx-0 lg:px-0">
                                 <div class="flex gap-2">
-                                    @foreach ($semantics as $value => $label)
-                                        <label class="relative flex flex-col items-center group/item cursor-pointer">
-                                            <input type="radio"
-                                                name="evaluations[{{ $a->id }}][{{ $c->id }}]"
-                                                value="{{ $value }}" required @checked(optional($evaluation)->raw_value == $value)
-                                                class="peer sr-only">
 
-                                            {{-- Bulatan Skor --}}
-                                            <div
-                                                class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-100 bg-white text-sm font-bold text-slate-400 transition-all
-                                                peer-checked:border-slate-900 peer-checked:bg-slate-900 peer-checked:text-white
-                                                peer-hover:border-slate-300 peer-focus:ring-2 peer-focus:ring-slate-900 peer-focus:ring-offset-2">
-                                                {{ $value }}
-                                            </div>
+                                    @if ($rule && $rule->input_type === 'scale')
+                                        @foreach ($semantics as $value => $label)
+                                            <label
+                                                class="relative flex flex-col items-center group/item cursor-pointer">
+                                                <input type="radio"
+                                                    name="evaluations[{{ $a->id }}][{{ $c->id }}]"
+                                                    value="{{ $value }}" required @checked(optional($evaluation)->raw_value == $value)
+                                                    class="peer sr-only">
 
-                                            {{-- Label di bawah (opsional, muncul saat hover/aktif untuk ringkas) --}}
-                                            <span
-                                                class="mt-2 whitespace-nowrap text-[10px] font-medium uppercase tracking-tighter text-slate-400 transition-colors peer-checked:text-slate-900">
-                                                {{ $label }}
-                                            </span>
-                                        </label>
-                                    @endforeach
+                                                <div
+                                                    class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-100 bg-white text-sm font-bold text-slate-400 transition-all
+                                                    peer-checked:border-slate-900 peer-checked:bg-slate-900 peer-checked:text-white
+                                                    peer-hover:border-slate-300 peer-focus:ring-2 peer-focus:ring-slate-900 peer-focus:ring-offset-2">
+                                                    {{ $value }}
+                                                </div>
+
+                                                <span
+                                                    class="mt-2 whitespace-nowrap text-[10px] font-medium uppercase tracking-tighter text-slate-400 transition-colors peer-checked:text-slate-900">
+                                                    {{ $label }}
+                                                </span>
+                                            </label>
+                                        @endforeach
+                                    @endif
+
+                                    @if ($rule && $rule->input_type === 'numeric')
+                                        <input type="number" step="any" required
+                                            name="evaluations[{{ $a->id }}][{{ $c->id }}]"
+                                            value="{{ optional($evaluation)->raw_value }}"
+                                            class="w-40 rounded-lg border border-slate-300 px-4 py-3 text-sm
+                                                   focus:border-slate-900 focus:ring-slate-900"
+                                            placeholder="Masukkan nilai numerik">
+                                    @endif
+
                                 </div>
                             </div>
                         </div>

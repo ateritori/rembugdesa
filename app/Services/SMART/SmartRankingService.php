@@ -29,13 +29,57 @@ class SmartRankingService
 
         if ($evaluations->isEmpty()) return [];
 
+        // Persiapan min-max untuk kriteria numeric bebas (berbasis raw_value)
+        $numericStats = [];
+        foreach ($evaluations as $eval) {
+            $rule = $eval->criteria->scoringRule ?? null;
+            if (!$rule || $rule->input_type !== 'numeric') continue;
+
+            // numeric dengan min-max eksplisit dihitung di service transform
+            if ($rule->getParameter('value_min') !== null && $rule->getParameter('value_max') !== null) {
+                continue;
+            }
+
+            $critId = $eval->criteria_id;
+            $val = (float) $eval->raw_value;
+
+            if (!isset($numericStats[$critId])) {
+                $numericStats[$critId] = ['min' => $val, 'max' => $val];
+            } else {
+                $numericStats[$critId]['min'] = min($numericStats[$critId]['min'], $val);
+                $numericStats[$critId]['max'] = max($numericStats[$critId]['max'], $val);
+            }
+        }
+
         $scores = [];
         foreach ($evaluations as $eval) {
             $altId = $eval->alternative_id;
             $critId = $eval->criteria_id;
             if (!isset($normalizedWeights[$critId])) continue;
 
-            $scores[$altId] = ($scores[$altId] ?? 0) + ($normalizedWeights[$critId] * (float) $eval->utility_value);
+            $utility = (float) $eval->utility_value;
+
+            $rule = $eval->criteria->scoringRule ?? null;
+            if ($rule && $rule->input_type === 'numeric') {
+
+                // numeric bebas → hitung utility di sini (tidak disimpan)
+                if ($rule->getParameter('value_min') === null || $rule->getParameter('value_max') === null) {
+                    if (isset($numericStats[$critId])) {
+                        $min = $numericStats[$critId]['min'];
+                        $max = $numericStats[$critId]['max'];
+
+                        if ($max > $min) {
+                            // default: benefit
+                            $utility = ($eval->raw_value - $min) / ($max - $min);
+                        } else {
+                            $utility = 1.0;
+                        }
+                    }
+                }
+            }
+
+            $scores[$altId] = ($scores[$altId] ?? 0)
+                + ($normalizedWeights[$critId] * (float) $utility);
         }
 
         // Deterministic sorting: smart_score DESC, alternative_id ASC

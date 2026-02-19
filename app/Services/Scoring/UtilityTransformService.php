@@ -88,15 +88,30 @@ class UtilityTransformService
         CriteriaScoringRule $rule,
         float $value
     ): float {
-        $min = (float) $rule->getParameter('value_min');
-        $max = (float) $rule->getParameter('value_max');
+        // Ambil parameter min & max (boleh null untuk numeric bebas)
+        $minParam = $rule->getParameter('value_min');
+        $maxParam = $rule->getParameter('value_max');
+
+        // Jika min dan max TIDAK didefinisikan → numeric bebas (placeholder)
+        // Utility BELUM dihitung di sini
+        // Simpan raw_value sebagai utility sementara
+        if ($minParam === null || $maxParam === null) {
+            return $value;
+        }
+
+        $min = (float) $minParam;
+        $max = (float) $maxParam;
+
+        if ($max <= $min) {
+            throw new InvalidArgumentException('Invalid numeric range definition');
+        }
 
         if ($value < $min || $value > $max) {
             throw new InvalidArgumentException('Numeric value out of range');
         }
 
         // Normalisasi numeric → 0–1
-        $normalized = ($value - $min) / max(($max - $min), 0.00001);
+        $normalized = ($value - $min) / ($max - $min);
 
         return $this->applyPreference(
             $normalized,
