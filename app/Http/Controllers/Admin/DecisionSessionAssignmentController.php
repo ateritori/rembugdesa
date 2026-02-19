@@ -19,7 +19,6 @@ class DecisionSessionAssignmentController extends Controller
      */
     public function index(DecisionSession $decisionSession)
     {
-        abort_if($decisionSession->status === 'closed', 403);
 
         $dms = User::role('dm')->get();
         $assignedDmIds = $decisionSession->dms()->pluck('users.id')->toArray();
@@ -36,7 +35,6 @@ class DecisionSessionAssignmentController extends Controller
      */
     public function store(Request $request, DecisionSession $decisionSession)
     {
-        abort_if($decisionSession->status === 'closed', 403);
 
         $validDmIds = User::role('dm')
             ->whereIn('id', $request->input('dm_ids', []))
