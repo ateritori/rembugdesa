@@ -2,37 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\DecisionSession;
 use App\Models\User;
+use App\Models\CriteriaPairwise;
+use App\Models\AlternativeEvaluation;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
-    /**
-     * Dashboard utama berdasarkan peran user.
-     */
     public function index()
     {
         $user = Auth::user();
+        abort_if(!$user, 401);
 
-        if (!$user) {
-            abort(401);
-        }
-
-        // Dashboard Superadmin
+        // SUPERADMIN
         if ($user->hasRole('superadmin')) {
-            $stats = [
+            return view('dashboard.superadmin', [
                 'totalUsers'    => User::count(),
                 'totalAdmins'   => User::role('admin')->count(),
                 'totalDms'      => User::role('dm')->count(),
                 'totalSessions' => DecisionSession::count(),
-            ];
-
-            return view('dashboard.superadmin', $stats);
+            ]);
         }
 
-        // Dashboard Admin
+        // ADMIN
         if ($user->hasRole('admin')) {
             $sessionStats = DecisionSession::selectRaw("
                 COUNT(*) as total,
@@ -41,21 +34,19 @@ class DashboardController extends Controller
                 SUM(CASE WHEN status = 'final' THEN 1 ELSE 0 END) as final
             ")->first();
 
-            $latestSessions = DecisionSession::latest()
-                ->take(5)
-                ->get();
-
             return view('dashboard.admin', [
                 'totalSessions'  => $sessionStats->total,
                 'draftSessions'  => $sessionStats->draft,
                 'activeSessions' => $sessionStats->scoring,
                 'closedSessions' => $sessionStats->final,
-                'latestSessions' => $latestSessions,
+                'latestSessions' => DecisionSession::latest()->take(5)->get(),
             ]);
         }
 
-        // Dashboard Decision Maker (DM)
+        // DECISION MAKER
         if ($user->hasRole('dm')) {
+
+            // QUERY ASLI — TIDAK DIUBAH
             $assignedSessions = $user->decisionSessions()
                 ->withCount(['criteriaWeights as has_weighted' => function ($query) use ($user) {
                     $query->where('dm_id', $user->id);
@@ -63,6 +54,20 @@ class DashboardController extends Controller
                 ->with(['criteria'])
                 ->get();
 
+            // TAMBAHAN INFO SAJA
+            $assignedSessions->each(function ($session) use ($user) {
+                $session->dmHasCompleted =
+                    CriteriaPairwise::where('decision_session_id', $session->id)
+                    ->where('dm_id', $user->id)
+                    ->exists();
+
+                $session->hasCompletedEvaluation =
+                    AlternativeEvaluation::where('decision_session_id', $session->id)
+                    ->where('dm_id', $user->id)
+                    ->exists();
+            });
+
+            // LOGIKA ASLI — TIDAK DIUBAH
             $activeSessions = $assignedSessions->where('status', '!=', 'draft');
 
             $pendingTaskCount = $activeSessions
@@ -70,13 +75,13 @@ class DashboardController extends Controller
                 ->count();
 
             return view('dashboard.dm', [
-                'assignedCount'     => $assignedSessions->count(),
-                'activeCount'       => $activeSessions->count(),
-                'pendingTaskCount'  => $pendingTaskCount,
-                'assignedSessions'  => $assignedSessions,
+                'assignedCount'    => $assignedSessions->count(),
+                'activeCount'      => $activeSessions->count(),
+                'pendingTaskCount' => $pendingTaskCount,
+                'assignedSessions' => $assignedSessions,
             ]);
         }
 
-        abort(403, 'Akses ditolak: Peran tidak valid.');
+        abort(403, 'Akses ditolak.');
     }
 }
