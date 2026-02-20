@@ -15,7 +15,6 @@ class UserController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
@@ -37,7 +36,7 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8|confirmed',
@@ -45,12 +44,12 @@ class UserController extends Controller
         ]);
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => bcrypt($validated['password']),
         ]);
 
-        $user->assignRole($request->role);
+        $user->assignRole($validated['role']);
 
         return redirect()
             ->route('superadmin.users.index')
@@ -66,27 +65,34 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'role' => 'required|exists:roles,name',
             'password' => 'nullable|min:8|confirmed',
+            'role' => 'required|exists:roles,name',
         ]);
 
-        $user->name = $request->name;
-        $user->email = $request->email;
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
 
-        if ($request->filled('password')) {
-            $user->password = bcrypt($request->password);
+        $passwordUpdated = false;
+        if (!empty($validated['password'])) {
+            $user->password = bcrypt($validated['password']);
+            $passwordUpdated = true;
         }
 
         $user->save();
 
-        $user->syncRoles([$request->role]);
+        $user->syncRoles([$validated['role']]);
+
+        $message = 'Data pengguna berhasil diperbarui.';
+        if ($passwordUpdated) {
+            $message .= ' Password berhasil diperbarui.';
+        }
 
         return redirect()
             ->route('superadmin.users.index')
-            ->with('success', 'Data pengguna berhasil diperbarui.');
+            ->with('success', $message);
     }
 
     public function destroy(User $user)
