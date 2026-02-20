@@ -7,10 +7,12 @@ use App\Models\DecisionSession;
 use App\Models\SmartResultDm;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+
 use App\Services\AHP\AhpGroupWeightService;
 use App\Services\Result\DecisionResultService;
 use App\Services\SAW\SawRankingService;
 use App\Services\BORDA\BordaRankingService;
+use App\Services\Validation\ValidationService;
 
 class DecisionControlController extends Controller
 {
@@ -22,8 +24,11 @@ class DecisionControlController extends Controller
     /**
      * Panel Kontrol Sesi (Dashboard Admin)
      */
-    public function index(Request $request, DecisionSession $decisionSession)
-    {
+    public function index(
+        Request $request,
+        DecisionSession $decisionSession,
+        ValidationService $validationService
+    ) {
         $decisionSession->load(['dms', 'alternatives', 'criteria']);
 
         $dmProgress = $decisionSession->dms->map(function ($dm) use ($decisionSession) {
@@ -56,6 +61,7 @@ class DecisionControlController extends Controller
         $borda = collect();
         $sawBorda = collect();
         $smartByDm = collect();
+        $rho = null; // inisialisasi korelasi
 
         $resultService = app(DecisionResultService::class);
 
@@ -68,6 +74,15 @@ class DecisionControlController extends Controller
                 $sawService = app(SawRankingService::class);
                 $sawBorda = $resultService->sawBordaBenchmark($decisionSession, $sawService);
                 $smartByDm = $resultService->smartByDm($decisionSession);
+
+                // Mapping ranking SMART
+                $rankSmart = $borda->pluck('final_rank', 'alternative_id')->toArray();
+                // Mapping ranking SAW
+                $rankSaw = $sawBorda->pluck('final_rank', 'alternative_id')->toArray();
+
+                if (!empty($rankSmart) && !empty($rankSaw)) {
+                    $rho = $validationService->calculateSpearmanRho($rankSmart, $rankSaw);
+                }
             }
         }
 
@@ -78,7 +93,8 @@ class DecisionControlController extends Controller
             'borda',
             'sawBorda',
             'smartByDm',
-            'dmProgress'
+            'dmProgress',
+            'rho' // kirim ke view
         ));
     }
 
