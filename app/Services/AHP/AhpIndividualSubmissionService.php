@@ -28,10 +28,20 @@ class AhpIndividualSubmissionService
             // 2. Simpan perbandingan ke database
             foreach ($pairwiseData as $idI => $targets) {
                 foreach ($targets as $idJ => $values) {
-                    $valAIJ = (float)$values['a_ij'];
+                    $valAIJ = isset($values['a_ij']) ? (float)$values['a_ij'] : 0;
 
+                    // Skip invalid or zero values (safety guard)
+                    if ($valAIJ == 0) {
+                        continue;
+                    }
+
+                    // Tentukan arah berdasarkan nilai asli dari JS
                     $direction = ($valAIJ >= 1) ? 'left' : 'right';
-                    $finalValue = ($valAIJ >= 1) ? $valAIJ : (1 / $valAIJ);
+
+                    // Simpan value sebagai angka positif 1–9 (tanpa menebak ulang reciprocal)
+                    $finalValue = ($valAIJ >= 1)
+                        ? $valAIJ
+                        : (1 / $valAIJ);
 
                     CriteriaPairwise::create([
                         'decision_session_id' => $session->id,
@@ -78,33 +88,57 @@ class AhpIndividualSubmissionService
     {
         if ($n <= 0) return ['weights' => [], 'cr' => 0];
 
-        // 1. Hitung Jumlah Kolom
-        $colSums = [];
-        foreach ($matrix as $i => $rows) {
-            foreach ($rows as $j => $val) {
-                $colSums[$j] = (float)($colSums[$j] ?? 0) + (float)$val;
+        // 1. Power Method (Eigenvector)
+        $weights = array_fill(0, $n, 1 / $n);
+
+        for ($iter = 0; $iter < 100; $iter++) {
+            $nextWeights = array_fill(0, $n, 0);
+
+            for ($i = 0; $i < $n; $i++) {
+                for ($j = 0; $j < $n; $j++) {
+                    $nextWeights[$i] += (float)$matrix[$i][$j] * (float)$weights[$j];
+                }
             }
+
+            $sumNext = array_sum($nextWeights);
+            if ($sumNext > 0) {
+                for ($i = 0; $i < $n; $i++) {
+                    $nextWeights[$i] /= $sumNext;
+                }
+            }
+
+            $weights = $nextWeights;
         }
 
-        // 2. Normalisasi Matriks & Hitung Eigenvector (Weights)
-        $weights = [];
-        foreach ($matrix as $i => $rows) {
-            $rowSum = 0;
-            foreach ($rows as $j => $val) {
-                $rowSum += ($colSums[$j] > 0) ? ((float)$val / (float)$colSums[$j]) : 0;
-            }
-            $weights[$i] = (float)($rowSum / $n);
-        }
-
-        // 3. Kalkulasi Lambda Max
+        // 2. Hitung Lambda Max
         $lambdaMax = 0;
-        foreach ($colSums as $id => $sum) {
-            $lambdaMax += ((float)$sum * (float)($weights[$id] ?? 0));
+        for ($i = 0; $i < $n; $i++) {
+            $rowSum = 0;
+            for ($j = 0; $j < $n; $j++) {
+                $rowSum += (float)$matrix[$i][$j] * (float)$weights[$j];
+            }
+            if ($weights[$i] != 0) {
+                $lambdaMax += $rowSum / $weights[$i];
+            }
         }
+        $lambdaMax /= $n;
 
-        // 4. CI & CR
+        // 3. Hitung CI & CR
         $ci = ($n > 1) ? ($lambdaMax - $n) / ($n - 1) : 0;
-        $riTable = [1 => 0, 2 => 0, 3 => 0.58, 4 => 0.9, 5 => 1.12, 6 => 1.24, 7 => 1.32, 8 => 1.41, 9 => 1.45, 10 => 1.49];
+
+        $riTable = [
+            1 => 0,
+            2 => 0,
+            3 => 0.58,
+            4 => 0.9,
+            5 => 1.12,
+            6 => 1.24,
+            7 => 1.32,
+            8 => 1.41,
+            9 => 1.45,
+            10 => 1.49
+        ];
+
         $ri = $riTable[$n] ?? 1.49;
         $cr = ($ri > 0) ? ($ci / $ri) : 0;
 

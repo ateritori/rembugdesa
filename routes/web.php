@@ -5,6 +5,7 @@ use App\Http\Controllers\{
     ProfileController,
     DashboardController
 };
+use App\Http\Controllers\Admin\AhpLogController;
 use App\Http\Controllers\Admin\{
     DecisionSessionController as AdminDecisionSessionController,
     DecisionControlController,
@@ -189,6 +190,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Aggregation Logic
         Route::patch('/decision-sessions/{decisionSession}/lock-criteria', [AdminCriteriaAggregationController::class, 'lock'])
             ->name('decision-sessions.lock-criteria');
+
+        // AHP Log Routes (Admin)
+        Route::get('/decision-sessions/{decisionSession}/ahp-log', [AhpLogController::class, 'index'])
+            ->name('decision-sessions.ahp-log.index');
     });
 
     /*

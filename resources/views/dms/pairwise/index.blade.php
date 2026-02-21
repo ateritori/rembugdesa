@@ -122,9 +122,15 @@
 
                         {{-- Slider --}}
                         <div class="relative flex h-8 items-center px-1">
-                            <input type="range" min="1" max="18" step="1" x-model.number="pair.pos"
-                                @input="pair.touched = true; recalculate()" class="accent-primary cursor-pointer"
-                                :class="!pair.touched ? 'pulse-slider' : ''">
+                            <input type="range" min="1" max="17" step="1" x-model.number="pair.pos"
+                                @input="
+                                    pair.touched = true;
+                                    const res = getVal(pair.pos);
+                                    pair.a_ij = res.a_ij;
+                                    pair.a_ji = res.a_ji;
+                                    recalculate();
+                                "
+                                class="accent-primary cursor-pointer" :class="!pair.touched ? 'pulse-slider' : ''">
                         </div>
 
                         {{-- Skala Angka --}}
@@ -132,14 +138,28 @@
                             <div class="grid select-none text-[10px] font-bold"
                                 style="grid-template-columns: repeat(18, minmax(0, 1fr));">
                                 <template x-for="n in [9,8,7,6,5,4,3,2,1]" :key="'l' + n">
-                                    <div @click="pair.pos = 10-n; pair.touched = true; recalculate()"
+                                    <div @click="
+                                        pair.pos = 10-n;
+                                        pair.touched = true;
+                                        const res = getVal(pair.pos);
+                                        pair.a_ij = res.a_ij;
+                                        pair.a_ji = res.a_ji;
+                                        recalculate();
+                                    "
                                         class="cursor-pointer text-center transition-all hover:text-primary"
                                         :class="getVal(pair.pos).dir === 'left' && getVal(pair.pos).val == n ?
                                             'text-primary scale-150' : 'text-slate-300'"
                                         x-text="n"></div>
                                 </template>
                                 <template x-for="n in [1,2,3,4,5,6,7,8,9]" :key="'r' + n">
-                                    <div @click="pair.pos = 9+n; pair.touched = true; recalculate()"
+                                    <div @click="
+                                        pair.pos = 9+n;
+                                        pair.touched = true;
+                                        const res = getVal(pair.pos);
+                                        pair.a_ij = res.a_ij;
+                                        pair.a_ji = res.a_ji;
+                                        recalculate();
+                                    "
                                         class="cursor-pointer text-center transition-all hover:text-primary"
                                         :class="getVal(pair.pos).dir === 'right' && getVal(pair.pos).val == n ?
                                             'text-primary scale-150' : 'text-slate-300'"
@@ -149,9 +169,9 @@
                         </div>
 
                         <input type="hidden" :name="'pairwise[' + pair.id_i + '][' + pair.id_j + '][a_ij]'"
-                            :value="getVal(pair.pos).a_ij">
+                            :value="pair.a_ij">
                         <input type="hidden" :name="'pairwise[' + pair.id_i + '][' + pair.id_j + '][a_ji]'"
-                            :value="getVal(pair.pos).a_ji">
+                            :value="pair.a_ji">
                     </div>
                 </div>
             </template>
@@ -214,18 +234,43 @@
             untouchedCount: 0,
 
             initData() {
+                // Inisialisasi a_ij dan a_ji agar tidak undefined (mode create & edit)
+                Object.values(this.pairs).forEach(p => {
+                    const res = this.getVal(p.pos);
+                    p.a_ij = res.a_ij;
+                    p.a_ji = res.a_ji;
+                });
+
                 this.recalculate();
             },
 
             getVal(pos) {
-                const dir = pos <= 9 ? 'left' : 'right';
-                const val = pos <= 9 ? (10 - pos) : (pos - 9);
-                return {
-                    dir,
-                    val,
-                    a_ij: dir === 'left' ? val : (1 / val),
-                    a_ji: dir === 'left' ? (1 / val) : val
-                };
+                const center = 9; // titik netral
+                const distance = Math.abs(pos - center);
+                const value = distance + 1; // skala 1–9
+
+                if (pos < center) {
+                    return {
+                        dir: 'left',
+                        val: value,
+                        a_ij: value,
+                        a_ji: 1 / value
+                    };
+                } else if (pos > center) {
+                    return {
+                        dir: 'right',
+                        val: value,
+                        a_ij: 1 / value,
+                        a_ji: value
+                    };
+                } else {
+                    return {
+                        dir: 'equal',
+                        val: 1,
+                        a_ij: 1,
+                        a_ji: 1
+                    };
+                }
             },
 
             recalculate() {
@@ -233,6 +278,7 @@
                 const n = this.criteriaIds.length;
                 if (n < 2) return;
 
+                console.log("JS criteriaIds (order):", JSON.stringify(this.criteriaIds));
                 const idxMap = {};
                 this.criteriaIds.forEach((id, i) => idxMap[id] = i);
                 const M = Array.from({
@@ -240,22 +286,38 @@
                 }, () => Array(n).fill(1));
 
                 Object.values(this.pairs).forEach(p => {
-                    const res = this.getVal(p.pos);
-                    M[idxMap[p.id_i]][idxMap[p.id_j]] = res.a_ij;
-                    M[idxMap[p.id_j]][idxMap[p.id_i]] = res.a_ji;
+                    const i = idxMap[p.id_i];
+                    const j = idxMap[p.id_j];
+
+                    if (i === undefined || j === undefined) return;
+
+                    const aij = p.a_ij ?? this.getVal(p.pos).a_ij;
+                    const aji = p.a_ji ?? this.getVal(p.pos).a_ji;
+
+                    if (i < j) {
+                        M[i][j] = aij;
+                        M[j][i] = aji;
+                    } else {
+                        M[i][j] = aji;
+                        M[j][i] = aij;
+                    }
                 });
 
+                console.log("JS Matrix:", JSON.stringify(M));
                 let W = Array(n).fill(1 / n);
-                for (let i = 0; i < 20; i++) {
+                for (let i = 0; i < 100; i++) {
                     let nextW = M.map(row => row.reduce((acc, v, j) => acc + v * W[j], 0));
                     let sum = nextW.reduce((a, b) => a + b, 0);
-                    W = nextW.map(v => v / (sum || 1));
+
+                    if (sum > 0) {
+                        W = nextW.map(v => v / sum);
+                    }
                 }
                 this.weightsMap = {};
                 this.criteriaIds.forEach((id, i) => this.weightsMap[id] = W[i]);
 
                 const Aw = M.map((row, i) => row.reduce((acc, v, j) => acc + v * W[j], 0));
-                const lambdaMax = Aw.reduce((acc, val, i) => acc + (val / (W[i] || 1)), 0) / n;
+                const lambdaMax = Aw.reduce((acc, val, i) => acc + (val / W[i]), 0) / n;
                 const CI = (lambdaMax - n) / (Math.max(1, n - 1));
                 const RI = [0, 0, 0, 0.58, 0.9, 1.12, 1.24, 1.32, 1.41, 1.45, 1.49][n] || 1.49;
                 this.cr = RI === 0 ? 0 : CI / RI;

@@ -34,8 +34,12 @@ class AhpPairwiseController extends Controller
         foreach ($rawPairwise as $p) {
             $key = min($p->criteria_id_1, $p->criteria_id_2) . '-' . max($p->criteria_id_1, $p->criteria_id_2);
 
-            // Konversi nilai database ke posisi slider (1-17)
-            $pos = ($p->direction === 'left') ? (10 - $p->value) : (9 + $p->value);
+            // Konversi nilai database ke posisi slider (1-17) secara simetris (center = 9)
+            if ($p->direction === 'left') {
+                $pos = 9 - ($p->value - 1);
+            } else {
+                $pos = 9 + ($p->value - 1);
+            }
 
             $existingPairwise[$key] = [
                 'id_i' => (int) $p->criteria_id_1,
