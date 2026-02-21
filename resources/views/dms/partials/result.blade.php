@@ -89,6 +89,7 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="text-slate-400 border-b bg-slate-50/30">
+                                <th class="px-6 py-4 text-center font-bold text-xs uppercase">Kode</th>
                                 <th class="px-6 py-4 text-left font-bold text-xs uppercase">Alternatif Program</th>
                                 <th class="px-6 py-4 text-right font-bold text-xs uppercase">Skor SMART</th>
                                 <th class="px-6 py-4 text-center font-bold text-xs uppercase text-indigo-500">Rank Anda
@@ -100,13 +101,14 @@
                         <tbody class="divide-y divide-slate-100 font-medium">
                             @forelse ($resultContribution as $row)
                                 <tr class="hover:bg-indigo-50/20 transition-colors group">
+                                    <td class="px-6 py-4 text-center font-mono text-slate-500">
+                                        A{{ $row->alternative->id ?? '0' }}
+                                    </td>
                                     <td class="px-6 py-4">
                                         <div
                                             class="text-slate-800 font-bold group-hover:text-indigo-600 transition-colors uppercase tracking-tight">
                                             {{ $row->alternative->name ?? '-' }}
                                         </div>
-                                        <div class="text-[10px] text-slate-400 font-mono tracking-tighter">REF-ID:
-                                            A{{ $row->alternative->id ?? '0' }}</div>
                                     </td>
                                     <td class="px-6 py-4 text-right font-mono text-slate-500">
                                         {{ number_format($row->smart_score, 4) }}
@@ -130,7 +132,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-6 py-12 text-center text-slate-400 italic">Data belum
+                                    <td colspan="6" class="px-6 py-12 text-center text-slate-400 italic">Data belum
                                         tersedia.</td>
                                 </tr>
                             @endforelse

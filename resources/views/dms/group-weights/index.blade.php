@@ -5,40 +5,39 @@
 @section('content')
     @include('dms.partials.nav')
 
-    <div class="space-y-6 mt-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        {{-- Header Status: Group Aggregation --}}
-        <div
-            class="relative flex flex-col md:flex-row md:items-center justify-between overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm gap-4">
-            <div class="absolute left-0 top-0 h-full w-2 bg-indigo-600"></div>
-            <div class="pl-2">
-                <h2 class="text-slate-800 text-sm font-black uppercase tracking-widest">Bobot Kelompok</h2>
-                <div class="flex items-center gap-2 mt-1 text-indigo-600">
+    <div class="space-y-8 mt-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+
+        {{-- HEADER: Locked Style (Sama dengan Hasil SMART) --}}
+        <div class="px-2 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Bobot Kelompok</h2>
+                <div class="flex items-center gap-2 mt-1">
                     <span class="relative flex h-2 w-2">
                         <span
-                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                     </span>
-                    <p class="text-[10px] font-black uppercase tracking-tight">Konsensus Agregasi Berjalan</p>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Konsensus Agregasi Geometric
+                        Mean (GM)</p>
                 </div>
             </div>
 
-            {{-- Info Metode --}}
-            <div class="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
-                <div class="p-2 bg-white rounded-lg shadow-sm">
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            {{-- Info Badge --}}
+            <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 flex items-center gap-3 w-fit">
+                <div class="p-1 bg-white rounded shadow-sm text-primary">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                        <path fill-rule="evenodd"
+                            d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                            clip-rule="evenodd" />
                     </svg>
                 </div>
-                <div class="text-left">
-                    <span
-                        class="block text-[8px] font-black uppercase tracking-widest text-slate-400 leading-none">Agregasi</span>
-                    <span class="text-[10px] font-bold text-slate-600 uppercase">Arithmetic Mean</span>
-                </div>
+                <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Status: Agregasi
+                    Final</span>
             </div>
         </div>
 
-        {{-- Main Grid Content --}}
+        {{-- MAIN CONTENT: Masonry Layout (Urut 1,2,3 kebawah baru pindah kanan) --}}
         @if ($groupResult && !empty($groupResult->weights))
             @php
                 $sortedWeights = collect($groupResult->weights)->sortDesc();
@@ -46,7 +45,8 @@
                 $rank = 1;
             @endphp
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {{-- CSS Columns: Menjamin flow vertikal 1..2..3 baru 4..5..6 --}}
+            <div class="columns-1 lg:columns-2 gap-6 space-y-6">
                 @foreach ($sortedWeights as $criteriaId => $weight)
                     @php
                         $criteria = $decisionSession->criteria->firstWhere('id', $criteriaId);
@@ -57,85 +57,78 @@
                             1 => 'bg-amber-500 text-white shadow-amber-200',
                             2 => 'bg-slate-400 text-white shadow-slate-100',
                             3 => 'bg-orange-400 text-white shadow-orange-100',
-                            default => 'bg-white text-slate-400 border border-slate-200',
+                            default => 'bg-white text-slate-500 border border-slate-200',
                         };
                     @endphp
 
+                    {{-- Break-inside-avoid: Agar card tidak terpotong saat pindah kolom --}}
                     <div
-                        class="group relative rounded-[1.5rem] border border-slate-200 bg-white p-5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                        class="break-inside-avoid relative rounded-3xl border border-slate-200 bg-white p-5 transition-all duration-300 hover:shadow-lg mb-6">
                         <div class="flex items-start justify-between mb-4">
                             <div class="flex items-center gap-3 min-w-0">
                                 <span
-                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl font-black text-xs shadow-md transition-transform group-hover:scale-110 {{ $rankStyle }}">
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl font-black text-xs shadow-sm {{ $rankStyle }}">
                                     {{ $rank++ }}
                                 </span>
                                 <div class="min-w-0">
                                     <h3
                                         class="truncate text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
-                                        Kriteria Kelompok</h3>
+                                        Prioritas Kriteria</h3>
                                     <p
-                                        class="truncate text-sm font-bold text-slate-800 uppercase leading-none tracking-tight">
-                                        {{ $criteria?->name ?? 'Kriteria #' . $criteriaId }}</p>
+                                        class="truncate text-sm font-black text-slate-800 uppercase leading-none tracking-tight">
+                                        {{ $criteria?->name ?? 'Kriteria #' . $criteriaId }}
+                                    </p>
                                 </div>
                             </div>
                             <div class="text-right shrink-0">
-                                <span class="text-indigo-600 font-mono text-xl font-black">
-                                    {{ number_format($weight, 4) }}
+                                <span class="text-primary font-mono text-xl font-black">
+                                    {{ number_format($percentage, 1) }}%
                                 </span>
                             </div>
                         </div>
 
-                        {{-- Progress Bar Visual --}}
-                        <div class="relative h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                            <div class="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-[1.5s] ease-out shadow-[0_0_8px_rgba(79,70,229,0.3)]"
+                        {{-- Progress Bar (Minimalist) --}}
+                        <div class="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                            <div class="absolute left-0 top-0 h-full rounded-full bg-primary transition-all duration-[1s] ease-out"
                                 style="width: {{ $visualWidth }}%">
                             </div>
                         </div>
 
                         <div class="mt-4 flex items-center justify-between border-t border-slate-50 pt-3">
-                            <span class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Distribusi
-                                Prioritas</span>
+                            <span
+                                class="text-[9px] font-bold uppercase tracking-widest text-slate-400 italic">Persentase</span>
                             <span class="text-[10px] font-black text-slate-500 font-mono">
-                                {{ number_format($percentage, 1) }}%
+                                {{ number_format($weight, 4) }}
                             </span>
                         </div>
                     </div>
                 @endforeach
             </div>
 
-            {{-- Info Read-Only --}}
-            <div class="flex items-center gap-4 rounded-[1.5rem] border border-amber-100 bg-amber-50/40 p-5">
+            {{-- Footer Alert: Read-Only --}}
+            <div class="flex items-center gap-4 rounded-2xl border border-amber-100 bg-amber-50/50 p-4">
                 <div
-                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 shadow-sm border border-amber-200">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 shadow-sm border border-amber-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                             d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                 </div>
-                <div>
-                    <h4 class="text-[11px] font-black uppercase tracking-widest text-amber-900 leading-none">Akses Terbatas
-                        (Read-Only)</h4>
-                    <p
-                        class="mt-1 text-[10px] font-bold text-amber-700/70 leading-relaxed uppercase tracking-tighter italic">
-                        Perubahan hanya dapat dilakukan melalui konsensus atau kebijakan administrator sistem.
-                    </p>
+                <div class="text-[10px] font-bold text-amber-800 uppercase tracking-widest leading-tight">
+                    Akses Terbatas (Read-Only) — Nilai telah dikunci melalui konsensus sistem.
                 </div>
             </div>
         @else
             {{-- Empty State --}}
-            <div class="rounded-[2.5rem] border-2 border-dashed border-slate-200 p-16 text-center bg-white shadow-sm">
-                <div
-                    class="inline-flex items-center justify-center w-20 h-20 rounded-[2rem] bg-slate-50 mb-6 text-slate-300">
-                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div
+                class="rounded-[2.5rem] border-2 border-dashed border-slate-200 p-24 text-center bg-white flex flex-col items-center justify-center">
+                <div class="bg-slate-50 p-4 rounded-full mb-4">
+                    <svg class="w-10 h-10 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM5.884 6.944a1 1 0 10-1.414-1.414l.707-.707a1 1 0 101.414 1.414l-.707.707zm8.232-1.414a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707zM8.867 14.035a1 1 0 01.595-.939l3-1.5a1 1 0 011.214 1.428l-3.5 3.5a1 1 0 01-1.414 0l-1.5-1.5a1 1 0 011.414-1.414l.791.791z" />
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
                 </div>
-                <h3 class="text-slate-900 font-black text-xl uppercase tracking-tight">Menunggu Agregasi</h3>
-                <p class="text-slate-500 max-w-sm mx-auto mt-2 text-sm leading-relaxed italic">
-                    Bobot kelompok akan muncul secara otomatis setelah sistem selesai menghitung preferensi dari seluruh
-                    responden.
-                </p>
+                <p class="text-slate-400 text-xs font-black uppercase tracking-[0.3em]">Menunggu Agregasi Data</p>
             </div>
         @endif
     </div>
