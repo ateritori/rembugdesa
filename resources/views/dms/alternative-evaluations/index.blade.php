@@ -120,6 +120,57 @@
             const name = `evaluations[${alternativeId}][${criteriaId}]`;
             return !!document.querySelector(`input[name="${name}"]:checked`);
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // Function to populate inputs from saved draft
+            function populateInputs(saved) {
+                Object.keys(saved).forEach(aid => {
+                    Object.keys(saved[aid]).forEach(cid => {
+                        const val = saved[aid][cid];
+
+                        // Update radio buttons
+                        const input = document.querySelector(
+                            `input[name="evaluations[${aid}][${cid}]"][value="${val}"]`
+                        );
+                        if (input) input.checked = true;
+
+                        // Update numeric inputs
+                        const numericInput = document.querySelector(
+                            `input[type="number"][name="evaluations[${aid}][${cid}]"]`
+                        );
+                        if (numericInput) numericInput.value = val;
+                    });
+                });
+            }
+
+            // Initial load
+            let saved = JSON.parse(localStorage.getItem('evaluationsDraft') || '{}');
+            populateInputs(saved);
+
+            // Save on change
+            document.querySelectorAll('input[type="radio"], input[type="number"]').forEach(input => {
+                input.addEventListener('change', function() {
+                    const nameMatch = this.name.match(/evaluations\[(\d+)\]\[(\d+)\]/);
+                    if (!nameMatch) return;
+                    const [_, aid, cid] = nameMatch;
+                    const val = this.value;
+
+                    saved[aid] = saved[aid] || {};
+                    saved[aid][cid] = val;
+                    localStorage.setItem('evaluationsDraft', JSON.stringify(saved));
+                });
+            });
+
+            // Listen to storage events (for live update from other tabs)
+            window.addEventListener('storage', (event) => {
+                if (event.key === 'evaluationsDraft') {
+                    saved = JSON.parse(event.newValue || '{}');
+                    populateInputs(saved);
+                }
+            });
+
+        });
     </script>
 </form>
 
