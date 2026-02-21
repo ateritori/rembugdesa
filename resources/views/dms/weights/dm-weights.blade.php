@@ -99,7 +99,7 @@
                                 <h3 class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
                                     Prioritas Kriteria</h3>
                                 <p
-                                    class="text-sm font-black text-slate-800 uppercase tracking-tight leading-none truncate">
+                                    class="text-sm font-black text-slate-800 uppercase tracking-tight leading-tight break-words">
                                     {{ $criteria->name ?? 'Kriteria #' . $criteriaId }}
                                 </p>
                             </div>

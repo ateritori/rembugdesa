@@ -74,14 +74,13 @@
 
                                     {{-- Alternatif (Nama + Kode Inline) --}}
                                     <td class="px-4 py-4">
-                                        <div class="flex flex-wrap items-center gap-2 min-w-0">
+                                        <div class="min-w-0">
                                             <span
-                                                class="font-bold text-slate-800 text-sm md:text-base leading-tight truncate max-w-[70%]">
+                                                class="font-bold text-slate-800 text-sm md:text-base leading-tight break-words">
                                                 {{ $alt->name }}
-                                            </span>
-                                            <span
-                                                class="inline-block flex-shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 uppercase">
-                                                {{ $alt->code ?? 'ALT-' . $originalRank }}
+                                                <span class="text-[9px] font-black text-slate-400 uppercase">
+                                                    ({{ $alt->code ?? 'ALT-' . $originalRank }})
+                                                </span>
                                             </span>
                                         </div>
                                     </td>
