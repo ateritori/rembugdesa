@@ -1,6 +1,9 @@
 @php
-    $status = $decisionSession->status ?? null;
+    $decisionSession = $decisionSession ?? null;
+    $status = $decisionSession?->status;
     $currentTab = request('tab', 'workspace');
+    $dmHasCompleted = $dmHasCompleted ?? false;
+    $hasCompletedEvaluation = $hasCompletedEvaluation ?? false;
 
     // Helper class untuk logic active/inactive
     $activeClass = 'bg-white text-primary shadow-sm ring-1 ring-black/5';

@@ -56,32 +56,6 @@ class UsabilityResponseController extends Controller
                 ->with('info', 'Instrumen SUS belum tersedia.');
         }
 
-        /**
-         * ===== CEK FASE SCORING SELESAI =====
-         * DM dianggap selesai jika:
-         * jumlah evaluasi alternatif >= (jumlah alternatif × jumlah kriteria)
-         */
-        $totalExpectation =
-            $decisionSession->alternatives->count()
-            * $decisionSession->criteria->count();
-
-        $dmCompletedScoring = $decisionSession->dms()
-            ->where('users.id', $user->id)
-            ->whereHas('alternativeEvaluations', function ($query) use ($decisionSession) {
-                $query->where('decision_session_id', $decisionSession->id);
-            }, '>=', $totalExpectation)
-            ->exists();
-
-        if (! $dmCompletedScoring) {
-            return redirect()
-                ->route('decision-sessions.summary', [
-                    'decisionSession' => $decisionSession->id,
-                ])
-                ->with(
-                    'info',
-                    'SUS dapat diisi setelah Anda menyelesaikan evaluasi alternatif.'
-                );
-        }
 
         // Cari response SUS existing (per DM per session)
         $existingResponse = UsabilityResponse::where('user_id', $user->id)
