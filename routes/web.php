@@ -7,6 +7,7 @@ use App\Http\Controllers\{
 };
 use App\Http\Controllers\Admin\AhpLogController;
 use App\Http\Controllers\Admin\SmartLogController;
+use App\Http\Controllers\Admin\SawLogController;
 use App\Http\Controllers\Admin\BordaLogController;
 use App\Http\Controllers\Admin\{
     DecisionSessionController as AdminDecisionSessionController,
@@ -200,6 +201,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // SMART Log Routes (Admin)
         Route::get('/decision-sessions/{decisionSession}/smart-log', [SmartLogController::class, 'index'])
             ->name('decision-sessions.smart-log.index');
+
+        // SAW Log Routes (Admin)
+        Route::get('/decision-sessions/{decisionSession}/saw-log', [SawLogController::class, 'index'])
+            ->name('decision-sessions.saw-log.index');
 
         // BORDA Log Routes (Admin)
         Route::get('/decision-sessions/{decisionSession}/borda-log', [BordaLogController::class, 'show'])
