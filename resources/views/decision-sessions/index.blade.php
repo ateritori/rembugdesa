@@ -145,6 +145,20 @@
                                             SMART Log
                                         </span>
                                     </a>
+
+                                    {{-- BORDA Log --}}
+                                    <a href="{{ route('decision-sessions.borda-log.index', $s->id) }}"
+                                        class="group relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all active:scale-90">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M3 3v18h18M7 14l3-3 4 4 5-6" />
+                                        </svg>
+                                        <span
+                                            class="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 scale-0 rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-white shadow-xl transition-all group-hover:scale-100 z-20 whitespace-nowrap">
+                                            BORDA Log
+                                        </span>
+                                    </a>
                                 </div>
                             @endif
 

@@ -4,6 +4,7 @@ namespace App\Services\AHP;
 
 use App\Models\Criteria;
 use App\Models\CriteriaPairwise;
+use App\Models\User;
 
 class AhpLogService
 {
@@ -30,10 +31,20 @@ class AhpLogService
         $criteriaNames = $criteria->pluck('name')->toArray();
         $n = count($criteriaIds);
 
+        if ($n <= 1) {
+            return [
+                'dm' => [],
+                'gm_final' => [],
+                'criteria_names' => $criteriaNames,
+            ];
+        }
+
         // 2. Ambil semua DM
         $dmIds = CriteriaPairwise::where('decision_session_id', $decisionSessionId)
             ->distinct()
             ->pluck('dm_id');
+
+        $users = User::whereIn('id', $dmIds)->get()->keyBy('id');
 
         $weightsPerDM = [];
 
@@ -130,8 +141,9 @@ class AhpLogService
             $ri = $riTable[$n] ?? 1.49;
             $cr = ($ri > 0) ? $ci / $ri : 0;
 
-            $result['dm'][$dmId] = [
+            $result['dm'][] = [
                 'dm_id' => $dmId,
+                'dm_name' => $users[$dmId]->name ?? 'DM ' . $dmId,
                 'criteria_names' => $criteriaNames,
                 'matrix' => $matrix,
                 'weights' => array_map(fn($w) => round($w, 4), $weights),
@@ -167,6 +179,8 @@ class AhpLogService
         }
 
         $result['gm_final'] = $gmFinal;
+
+        $result['criteria_names'] = $criteriaNames;
 
         return $result;
     }

@@ -25,20 +25,13 @@ class AhpLogController extends Controller
      * Tampilkan log AHP lengkap per session
      * Menggunakan Route Model Binding untuk langsung memanggil model
      */
-    public function index($sessionId)
+    public function index(DecisionSession $decisionSession)
     {
-        // Cari data manual seperti kode asli Anda
-        $session = DecisionSession::findOrFail($sessionId);
+        $log = $this->ahpLogService->generateFullLog($decisionSession->id);
 
-        // Generate log lengkap
-        $log = $this->ahpLogService->generateFullLog($session->id);
-
-        // Pastikan keys utama ada (Null Coalescing Assignment)
-        $log['criteria_names'] ??= [];
-        $log['dm'] ??= [];
-        $log['gm_final'] ??= [];
-
-        // Kirim ke view
-        return view('admin.ahp-log.index', compact('session', 'log'));
+        return view('admin.ahp-log.index', [
+            'decisionSession' => $decisionSession,
+            'log'             => $log,
+        ]);
     }
 }

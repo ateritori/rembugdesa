@@ -121,6 +121,9 @@ class SmartLogController extends Controller
             ->values()
             ->toArray();
 
+        // Reindex smartLogs to ensure numeric keys
+        $smartLogs = array_values($smartLogs);
+
         return view('admin.smart-log.index', [
             'decisionSession' => $decisionSession,
             'smartLogs'       => $smartLogs,

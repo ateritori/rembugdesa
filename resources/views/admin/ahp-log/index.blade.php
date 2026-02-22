@@ -6,7 +6,7 @@
     <div class="animate-in fade-in space-y-8 pb-10 duration-500">
 
         {{-- HEADER SECTION --}}
-        <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+        <div class="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
             <div>
                 <h1 class="adaptive-text-main text-3xl font-black leading-tight tracking-tight">
                     Log Perhitungan AHP
@@ -17,12 +17,12 @@
             </div>
 
             <a href="{{ route('decision-sessions.index') }}"
-                class="bg-primary shadow-primary/20 group flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-black text-white shadow-lg transition-all hover:scale-105 active:scale-95">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform group-hover:-translate-x-1"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                class="group flex items-center gap-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 px-5 py-2.5 text-sm font-black text-slate-600 dark:text-slate-300 transition-all hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-hover:-translate-x-1"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
                 </svg>
-                <span>Kembali ke Sesi</span>
+                <span>Kembali</span>
             </a>
         </div>
 
@@ -54,6 +54,20 @@
                 }
 
                 $gmFinal = $log['gm_final'] ?? [];
+
+                // --- SMART baseline DM filter logic ---
+                $allDmLogs = $log['dm'];
+                $selectedDm = request('dm_id');
+
+                // Default: show first DM only
+                if (!request()->filled('dm_id') && isset($allDmLogs[0])) {
+                    $selectedDm = $allDmLogs[0]['dm_id'];
+                    $log['dm'] = [$allDmLogs[0]];
+                } elseif ($selectedDm === 'all') {
+                    $log['dm'] = $allDmLogs;
+                } elseif ($selectedDm) {
+                    $log['dm'] = collect($allDmLogs)->where('dm_id', (int) $selectedDm)->values()->all();
+                }
             @endphp
 
             {{-- LEGENDA REFERENSI (C & D) --}}
@@ -80,12 +94,25 @@
                     <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 text-center md:text-left">
                         Referensi Decision Maker (D)</h3>
                     <div class="flex flex-wrap gap-2 justify-center md:justify-start">
-                        @foreach ($dmLabels as $dm)
-                            <div
-                                class="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 border rounded-lg shadow-sm">
-                                <span class="text-orange-500 font-black text-xs italic">{{ $dm['label'] }}</span>
-                                <span class="text-xs font-medium dark:text-gray-400">ID: {{ $dm['id'] }}</span>
-                            </div>
+                        {{-- Tombol Semua --}}
+                        <a href="?dm_id=all"
+                            class="px-3 py-1.5 rounded-xl text-[11px] font-bold border shadow-sm transition
+                           {{ $selectedDm === 'all' ? 'bg-primary text-white border-primary' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                            Semua
+                        </a>
+
+                        @foreach ($allDmLogs as $dmData)
+                            @php
+                                $dmId = $dmData['dm_id'];
+                                $label = $dmMapping[$dmId];
+                                $name = $dmData['dm_name'] ?? 'DM ' . $dmId;
+                            @endphp
+                            <a href="?dm_id={{ $dmId }}"
+                                class="px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-2 border shadow-sm transition
+                               {{ (string) $selectedDm === (string) $dmId ? 'bg-orange-500 text-white border-orange-500' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                                <span class="text-orange-500 font-black text-xs italic">{{ $label }}</span>
+                                <span class="text-xs font-medium">{{ $name }}</span>
+                            </a>
                         @endforeach
                     </div>
                 </div>
@@ -240,7 +267,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y dark:divide-gray-700">
-                                @foreach ($log['dm'] as $dmLog)
+                                @foreach ($allDmLogs as $dmLog)
                                     <tr class="hover:bg-gray-50/50 transition-colors">
                                         <th
                                             class="px-2 py-2 font-black border-r text-gray-400 bg-gray-50/30 dark:bg-gray-800/20 text-center">
