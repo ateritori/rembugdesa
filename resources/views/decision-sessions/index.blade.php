@@ -64,13 +64,13 @@
                     };
                 @endphp
 
-                <div class="adaptive-card hover:border-primary/40 group p-5 transition-all duration-300">
+                <div class="adaptive-card hover:border-primary/40 p-5 transition-all duration-300">
                     <div class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
 
                         {{-- INFO SECTION --}}
                         <div class="flex w-full items-start gap-5">
                             <div
-                                class="bg-app border-app {{ $statusConfig['css'] }} flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-transform group-hover:scale-110">
+                                class="bg-app border-app {{ $statusConfig['css'] }} flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-transform">
                                 <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="{{ $statusConfig['icon'] }}" />
@@ -79,8 +79,7 @@
 
                             <div class="min-w-0 flex-1">
                                 <div class="mb-1.5 flex items-center gap-3">
-                                    <h3
-                                        class="adaptive-text-main group-hover:text-primary truncate text-lg font-black transition-colors">
+                                    <h3 class="adaptive-text-main truncate text-lg font-black transition-colors">
                                         {{ $s->name }}
                                     </h3>
                                     <span
@@ -114,68 +113,91 @@
                         </div>
 
                         {{-- ACTIONS SECTION --}}
-                        <div class="flex w-full items-center justify-end gap-2 md:w-auto">
+                        <div class="flex w-full items-center justify-end gap-1.5 md:w-auto">
 
-                            {{-- Button: Audit Log (Only when Closed) --}}
                             @if ($s->status === 'closed')
-                                <a href="{{ route('decision-sessions.ahp-log.index', $s->id) }}"
-                                    class="group flex items-center gap-2 rounded-xl border-2 border-primary/20 bg-primary/5 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary hover:text-white active:scale-95 shadow-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6" />
-                                    </svg>
-                                    <span class="hidden sm:inline">Audit Log</span>
-                                    <span class="sm:hidden">Log</span>
-                                </a>
-                            @endif
-
-                            {{-- Button: Manage / Results --}}
-                            <a href="{{ $s->status === 'draft' ? route('criteria.index', $s->id) : route('control.index', $s->id) }}"
-                                class="bg-primary shadow-primary/20 flex items-center gap-2 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all hover:brightness-110 active:scale-95">
-
-                                @if ($s->status === 'closed')
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                                    </svg>
-                                    <span>Hasil Akhir</span>
-                                @else
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                                    </svg>
-                                    <span>Kelola</span>
-                                @endif
-                            </a>
-
-                            {{-- Edit/Delete for Draft --}}
-                            @if ($s->status === 'draft')
                                 <div
-                                    class="ml-1 flex items-center border-l border-slate-200 dark:border-slate-700 pl-2 gap-1">
-                                    <a href="{{ route('decision-sessions.edit', $s->id) }}"
-                                        class="adaptive-text-sub hover:text-primary hover:bg-primary/10 rounded-lg p-2 transition-all">
+                                    class="flex items-center gap-1.5 pr-2 mr-0.5 border-r border-slate-200 dark:border-slate-700">
+                                    {{-- AHP Log --}}
+                                    <a href="{{ route('decision-sessions.ahp-log.index', $s->id) }}"
+                                        class="group relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-primary/10 hover:text-primary transition-all active:scale-90">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                         </svg>
+                                        <span
+                                            class="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 scale-0 rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-white shadow-xl transition-all group-hover:scale-100 z-20 whitespace-nowrap">
+                                            AHP Log
+                                        </span>
+                                    </a>
+
+                                    {{-- SMART Log --}}
+                                    <a href="{{ route('decision-sessions.smart-log.index', $s->id) }}"
+                                        class="group relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-all active:scale-90">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.628.283a2 2 0 01-1.186.127l-3.514-.451a2 2 0 01-1.817-1.93l-.149-2.276a2 2 0 011.219-1.903l2.364-1.048a2 2 0 001.089-1.2l1.32-3.446A2 2 0 0115.355 2.1l.392 2.413a2 2 0 001.314 1.519l2.412.827a2 2 0 011.334 2.112l-.473 2.448a2 2 0 00.12 1.344l1.183 2.708a2 2 0 01-.746 2.458l-1.961 1.307z" />
+                                        </svg>
+                                        <span
+                                            class="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 scale-0 rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-white shadow-xl transition-all group-hover:scale-100 z-20 whitespace-nowrap">
+                                            SMART Log
+                                        </span>
+                                    </a>
+                                </div>
+                            @endif
+
+                            {{-- Main Workspace Action --}}
+                            <a href="{{ $s->status === 'draft' ? route('criteria.index', $s->id) : route('control.index', $s->id) }}"
+                                class="group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all active:scale-95 {{ $s->status === 'closed' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white' }}">
+                                @if ($s->status === 'closed')
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                    </svg>
+                                @else
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                    </svg>
+                                @endif
+                                <span
+                                    class="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 scale-0 rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-white shadow-xl transition-all group-hover:scale-100 z-20 whitespace-nowrap">
+                                    {{ $s->status === 'closed' ? 'Lihat Hasil' : 'Kelola Workspace' }}
+                                </span>
+                            </a>
+
+                            {{-- Edit/Delete (Draft Only) --}}
+                            @if ($s->status === 'draft')
+                                <div
+                                    class="flex items-center gap-1 ml-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+                                    <a href="{{ route('decision-sessions.edit', $s->id) }}"
+                                        class="group relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-all active:scale-90">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        <span
+                                            class="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 scale-0 rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-white shadow-xl transition-all group-hover:scale-100 z-20 whitespace-nowrap">Edit</span>
                                     </a>
 
                                     <form method="POST" action="{{ route('decision-sessions.destroy', $s->id) }}"
-                                        onsubmit="return confirm('Hapus sesi ini?')">
+                                        onsubmit="return confirm('Hapus sesi ini?')" class="group relative">
                                         @csrf @method('DELETE')
                                         <button type="submit"
-                                            class="adaptive-text-sub rounded-lg p-2 transition-all hover:bg-rose-500/10 hover:text-rose-500">
-                                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                stroke-width="2">
+                                            class="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-all active:scale-90">
+                                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                                stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                     d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>
+                                        <span
+                                            class="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 scale-0 rounded-lg bg-rose-600 px-2.5 py-1 text-[10px] font-bold text-white shadow-xl transition-all group-hover:scale-100 z-20 whitespace-nowrap">Hapus</span>
                                     </form>
                                 </div>
                             @endif

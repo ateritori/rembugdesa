@@ -6,6 +6,7 @@ use App\Http\Controllers\{
     DashboardController
 };
 use App\Http\Controllers\Admin\AhpLogController;
+use App\Http\Controllers\Admin\SmartLogController;
 use App\Http\Controllers\Admin\{
     DecisionSessionController as AdminDecisionSessionController,
     DecisionControlController,
@@ -194,6 +195,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // AHP Log Routes (Admin)
         Route::get('/decision-sessions/{decisionSession}/ahp-log', [AhpLogController::class, 'index'])
             ->name('decision-sessions.ahp-log.index');
+
+        // SMART Log Routes (Admin)
+        Route::get('/decision-sessions/{decisionSession}/smart-log', [SmartLogController::class, 'index'])
+            ->name('decision-sessions.smart-log.index');
     });
 
     /*

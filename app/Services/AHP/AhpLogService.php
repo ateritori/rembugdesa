@@ -143,8 +143,8 @@ class AhpLogService
             $weightsPerDM[$dmId] = $weights;
         }
 
-        // 4. Hitung GM final kelompok
-        $gmFinal = [];
+        // 4. Hitung GM final kelompok (dengan normalisasi)
+        $gmRaw = [];
         foreach ($criteriaIds as $index => $criteriaId) {
             $prod = 1.0;
             $count = 0;
@@ -154,9 +154,16 @@ class AhpLogService
                     $count++;
                 }
             }
-            $gmFinal[$criteriaNames[$index]] = ($count > 0)
-                ? round(pow($prod, 1 / $count), 4)
+            $gmRaw[$criteriaNames[$index]] = ($count > 0)
+                ? pow($prod, 1 / $count)
                 : 0;
+        }
+
+        // Normalisasi agar total = 1
+        $total = array_sum($gmRaw);
+        $gmFinal = [];
+        foreach ($gmRaw as $name => $val) {
+            $gmFinal[$name] = $total > 0 ? round($val / $total, 4) : 0;
         }
 
         $result['gm_final'] = $gmFinal;

@@ -20,7 +20,7 @@ class CriteriaAggregationController extends Controller
 
         abort_unless(auth()->user()?->hasRole('admin'), 403, 'Akses ditolak.');
 
-        if ($decisionSession->status !== 'scoring') {
+        if (!in_array($decisionSession->status, ['scoring', 'aggregated'])) {
             return back()->with('error', 'Status sesi tidak valid untuk agregasi.');
         }
 
