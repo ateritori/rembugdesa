@@ -7,6 +7,8 @@ use Spatie\Permission\Traits\HasRoles;
 use App\Models\DecisionSession;
 use App\Models\CriteriaWeight;
 use App\Models\AlternativeEvaluation;
+use App\Models\EvaluationAggregation;
+use App\Models\UserProfile;
 
 class User extends Authenticatable
 {
@@ -49,5 +51,28 @@ class User extends Authenticatable
     public function alternativeEvaluations()
     {
         return $this->hasMany(AlternativeEvaluation::class, 'dm_id');
+    }
+
+    /**
+     * Relasi ke hasil agregasi evaluasi (SMART, SAW, dll) per DM.
+     */
+    public function evaluationAggregations()
+    {
+        return $this->hasMany(EvaluationAggregation::class, 'dm_id');
+    }
+
+    /**
+     * Relasi ke profil user (data demografis & kelembagaan).
+     */
+    public function profile()
+    {
+        return $this->hasOne(UserProfile::class);
+    }
+
+    protected static function booted()
+    {
+        static::created(function ($user) {
+            $user->profile()->create();
+        });
     }
 }

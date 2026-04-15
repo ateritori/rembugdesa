@@ -15,8 +15,10 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->unsignedBigInteger('decision_session_id')->index('criteria_decision_session_id_foreign');
             $table->string('name');
+            $table->tinyInteger('level');
             $table->enum('type', ['benefit', 'cost']);
             $table->boolean('is_active')->default(true);
+            $table->enum('evaluator_type', ['system', 'human'])->default('human');
             $table->integer('order')->default(0);
             $table->timestamps();
             $table->softDeletes();

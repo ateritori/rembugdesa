@@ -3,113 +3,100 @@
 namespace App\Http\Controllers\Dm;
 
 use App\Http\Controllers\Controller;
-
-use App\Models\AlternativeEvaluation;
-use App\Models\CriteriaScoringRule;
 use App\Models\DecisionSession;
-use App\Services\Scoring\UtilityTransformService;
-use App\Services\SMART\SmartRankingService;
 use Illuminate\Http\Request;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+
+use App\Services\Evaluation\EvaluationWorkspaceService;
+use App\Services\Evaluation\EvaluationSubmissionService;
+use App\Services\Evaluation\SmartCalculationService;
+use App\Services\Evaluation\SawCalculationService;
+use App\Services\Evaluation\SmartAggregationPerDMService;
+use App\Services\Evaluation\SawAggregationPerDMService;
 
 class AlternativeEvaluationController extends Controller
 {
     /**
-     * Mengarahkan Decision Maker (DM) ke workspace penilaian alternatif.
+     * Display evaluation workspace
      */
-    public function index(DecisionSession $decisionSession)
-    {
-        $user = auth()->user();
+    public function index(
+        Request $request,
+        DecisionSession $decisionSession,
+        EvaluationWorkspaceService $workspaceService
+    ) {
+        $user = Auth::user();
         abort_if(!$user || !$user->hasRole('dm'), 403);
 
-        $isParticipant = $decisionSession->dms()
-            ->where('users.id', $user->id)
-            ->exists();
+        $data = $workspaceService->getWorkspace($decisionSession, $user);
 
-        abort_if(!$isParticipant, 403, 'Akses ditolak.');
-
-        return redirect()->route('dms.index', [
-            $decisionSession->id,
-            'tab' => 'evaluasi-alternatif'
-        ]);
+        return view('dms.evaluation', $data);
     }
 
     /**
-     * Menyimpan penilaian, transformasi nilai utilitas, dan kalkulasi skor SMART.
+     * Store evaluation data
      */
     public function store(
         Request $request,
         DecisionSession $decisionSession,
-        UtilityTransformService $utilityService,
-        SmartRankingService $smartService
-    ): RedirectResponse {
-        $user = auth()->user();
-        $dmId = auth()->id();
-
+        EvaluationSubmissionService $service,
+        SmartCalculationService $smartService,
+        SawCalculationService $sawService,
+        SmartAggregationPerDMService $smartAggService,
+        SawAggregationPerDMService $sawAggService
+    ) {
+        $user = Auth::user();
         abort_if(!$user || !$user->hasRole('dm'), 403);
 
-        $isParticipant = $decisionSession->dms()->where('users.id', $dmId)->exists();
-        abort_if(!$isParticipant, 403);
-
-        if ($decisionSession->status !== 'scoring') {
-            return back()->with('error', 'Sesi penilaian tidak aktif.');
-        }
-
-        $validated = $request->validate([
-            'evaluations'       => ['required', 'array', 'min:1'],
-            'evaluations.*'     => ['array', 'min:1'],
-            'evaluations.*.*'   => ['required', 'numeric'],
+        $request->validate([
+            'evaluations' => 'required|array|min:1',
         ]);
 
+        $evaluations = $request->input('evaluations');
+
+        // Get allowed criteria for this user
+        $allowedCriteriaIds = $decisionSession->assignments()
+            ->where('user_id', $user->id)
+            ->where('can_evaluate', true)
+            ->pluck('criteria_id')
+            ->toArray();
+
+        // Filter evaluations to only allowed criteria
+        $evaluations = collect($evaluations)
+            ->only($allowedCriteriaIds)
+            ->toArray();
+
         try {
-            // Menggunakan transaksi database melalui koneksi model
-            return $decisionSession->getConnection()->transaction(function () use ($validated, $decisionSession, $user, $utilityService, $smartService) {
+            DB::transaction(function () use ($service, $smartService, $sawService, $smartAggService, $sawAggService, $decisionSession, $user, $evaluations) {
+                $service->authorize(
+                    $decisionSession,
+                    $user,
+                    $evaluations
+                );
 
-                $criteriaIds = collect($validated['evaluations'])->flatMap(fn($item) => array_keys($item))->unique();
+                $service->submit(
+                    $decisionSession,
+                    $user,
+                    $evaluations
+                );
 
-                $scoringRules = CriteriaScoringRule::whereIn('criteria_id', $criteriaIds)
-                    ->where(function ($q) use ($decisionSession) {
-                        $q->whereNull('decision_session_id')
-                            ->orWhere('decision_session_id', $decisionSession->id);
-                    })
-                    ->get()
-                    ->keyBy('criteria_id');
+                // Trigger calculation
+                $smartService->calculate($decisionSession, $user->id);
+                $sawService->calculate($decisionSession, $user->id);
 
-                // 1. Persist data mentah dan nilai utilitas hasil transformasi
-                foreach ($validated['evaluations'] as $alternativeId => $criteriaValues) {
-                    foreach ($criteriaValues as $criteriaId => $rawValue) {
-
-                        $rule = $scoringRules->get($criteriaId);
-                        if (!$rule) continue;
-
-                        $utilityValue = $utilityService->transform($rule, $rawValue);
-
-                        AlternativeEvaluation::updateOrCreate(
-                            [
-                                'decision_session_id' => $decisionSession->id,
-                                'dm_id'               => $user->id,
-                                'alternative_id'      => $alternativeId,
-                                'criteria_id'         => $criteriaId,
-                            ],
-                            [
-                                'raw_value'     => $rawValue,
-                                'utility_value' => $utilityValue,
-                            ]
-                        );
-                    }
-                }
-
-                // 2. Kalkulasi dan simpan skor SMART (Persist mode aktif)
-                $smartService->calculate($decisionSession, $user, true);
-
-                return redirect()
-                    ->route('dms.index', [$decisionSession->id, 'tab' => 'evaluasi-alternatif'])
-                    ->with('success', 'Penilaian disimpan dan skor SMART berhasil diperbarui.');
+                // Trigger aggregation
+                $smartAggService->calculate($decisionSession);
+                $sawAggService->calculate($decisionSession);
             });
+
+            return back()->with('success', 'Evaluasi berhasil disimpan.');
         } catch (\Exception $e) {
-            Log::error('Evaluation Store Error: ' . $e->getMessage());
-            return back()->withInput()->with('error', 'Terjadi kesalahan sistem.');
+            Log::error('Gagal simpan evaluasi', [
+                'error' => $e->getMessage()
+            ]);
+
+            return back()->with('error', 'Terjadi kesalahan saat menyimpan evaluasi.');
         }
     }
 }

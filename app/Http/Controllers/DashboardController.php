@@ -47,11 +47,18 @@ class DashboardController extends Controller
         if ($user->hasRole('dm')) {
 
             // QUERY ASLI — TIDAK DIUBAH
-            $assignedSessions = $user->decisionSessions()
+            $assignedSessions = DecisionSession::whereHas('assignments', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
                 ->withCount(['criteriaWeights as has_weighted' => function ($query) use ($user) {
                     $query->where('dm_id', $user->id);
                 }])
-                ->with(['criteria'])
+                ->with([
+                    'criteria',
+                    'assignments' => function ($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    }
+                ])
                 ->get();
 
             // TAMBAHAN INFO SAJA

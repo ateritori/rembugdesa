@@ -60,24 +60,67 @@
             <div
                 class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm focus-within:border-primary/30 dark:border-slate-700 dark:bg-slate-800 {{ $decisionSession->status !== 'draft' ? 'opacity-50 grayscale pointer-events-none' : '' }}">
                 <form method="POST" action="{{ route('alternatives.store', $decisionSession->id) }}"
-                    class="flex flex-col gap-2 lg:flex-row">
+                    class="flex flex-col gap-3">
                     @csrf
-                    <div class="group relative w-full flex-1">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                            </svg>
+                    <div class="flex flex-col gap-1.5 w-full flex-1 pt-0.5">
+                        <span class="block ml-1 mb-0.5 text-[10px] font-semibold text-slate-500">Nama Alternatif</span>
+                        <div class="group relative w-full flex-1">
+                            <div class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                            </div>
+                            <input type="text" name="name" value="{{ old('name') }}" required
+                                class="w-full rounded-xl border-none bg-slate-50 py-3 pl-11 pr-4 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary/10 dark:bg-slate-900 dark:text-slate-200"
+                                placeholder="Nama alternatif...">
                         </div>
-                        <input type="text" name="name" required
-                            class="w-full rounded-xl border-none bg-slate-50 py-3 pl-11 pr-4 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary/10 dark:bg-slate-900 dark:text-slate-200"
-                            placeholder="Nama alternatif baru...">
                     </div>
-
-                    <button type="submit"
-                        class="w-full lg:w-auto flex-none rounded-xl bg-slate-800 px-8 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-black active:scale-95 dark:bg-primary-600 dark:hover:bg-primary-700">
-                        + Tambah
-                    </button>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                        <div class="flex flex-col gap-1.5 pt-0.5 w-full">
+                            <span class="block ml-1 mb-0.5 text-[10px] font-semibold text-slate-500">Cakupan</span>
+                            <select name="coverage" required
+                                class="rounded-xl bg-slate-50 px-3 py-2.5 text-xs font-semibold focus:bg-white dark:bg-slate-900">
+                                <option value="" disabled {{ old('coverage') === null ? 'selected' : '' }} hidden>
+                                    Pilih cakupan</option>
+                                <option value="0" {{ old('coverage') == 0 ? 'selected' : '' }}>RT</option>
+                                <option value="25" {{ old('coverage') == 25 ? 'selected' : '' }}>Antar RW</option>
+                                <option value="50" {{ old('coverage') == 50 ? 'selected' : '' }}>Padukuhan</option>
+                                <option value="75" {{ old('coverage') == 75 ? 'selected' : '' }}>Antar Padukuhan
+                                </option>
+                                <option value="100" {{ old('coverage') == 100 ? 'selected' : '' }}>Kalurahan</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5 pt-0.5 w-full">
+                            <span class="block ml-1 mb-0.5 text-[10px] font-semibold text-slate-500">Penerima (jiwa)</span>
+                            <input type="number" name="beneficiaries" value="{{ old('beneficiaries') }}"
+                                placeholder="Penerima (jiwa)" min="0" step="1" required
+                                class="rounded-xl bg-slate-50 px-3 py-2.5 text-xs font-semibold focus:bg-white dark:bg-slate-900">
+                        </div>
+                        <div class="flex flex-col gap-1.5 pt-0.5 w-full">
+                            <span class="block ml-1 mb-0.5 text-[10px] font-semibold text-slate-500">RAB (Rp)</span>
+                            <input type="text" name="rab" value="{{ old('rab') }}" placeholder="RAB (Rp)"
+                                required
+                                oninput="this.value = this.value.replace(/[^0-9]/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.')"
+                                class="rounded-xl bg-slate-50 px-3 py-2.5 text-xs font-semibold focus:bg-white dark:bg-slate-900">
+                        </div>
+                        <div class="flex flex-col gap-1.5 pt-0.5 w-full">
+                            <span class="block ml-1 mb-0.5 text-[10px] font-semibold text-slate-500">Sektor</span>
+                            <select name="criteria_id" required
+                                class="rounded-xl bg-slate-50 px-3 py-2.5 text-xs font-semibold focus:bg-white dark:bg-slate-900">
+                                <option value="" disabled {{ old('criteria_id') === null ? 'selected' : '' }} hidden>
+                                    Pilih Sektor</option>
+                                @foreach ($criteriaLevel1 as $c)
+                                    <option value="{{ $c->id }}"
+                                        {{ old('criteria_id') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit"
+                            class="w-full lg:w-auto flex-none justify-self-start rounded-xl bg-slate-800 px-8 py-2.5 mt-1 lg:mt-0 text-[10px] font-black uppercase tracking-widest text-white hover:bg-black active:scale-95 dark:bg-primary-600 dark:hover:bg-primary-700">
+                            + Tambah
+                        </button>
+                    </div>
                 </form>
             </div>
 
@@ -101,13 +144,34 @@
                                         class="text-[14px] font-black uppercase tracking-tight text-slate-800 dark:text-slate-100 break-words leading-tight {{ !$a->is_active ? 'line-through opacity-40' : '' }}">
                                         {{ $a->name }}
                                     </h3>
-
-                                    <span
-                                        class="mt-1 flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider {{ $a->is_active ? 'text-slate-400' : 'text-rose-500' }}">
+                                    <div class="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-semibold">
+                                        @php
+                                            $coverageLabel = match ($a->coverage) {
+                                                0 => 'RT',
+                                                25 => 'Antar RW',
+                                                50 => 'Padukuhan',
+                                                75 => 'Antar Padukuhan',
+                                                100 => 'Kalurahan',
+                                                default => '-',
+                                            };
+                                        @endphp
                                         <span
-                                            class="h-1 w-1 rounded-full {{ $a->is_active ? 'bg-primary/50' : 'bg-rose-500' }}"></span>
-                                        {{ $a->is_active ? 'Aktif' : 'Off' }}
-                                    </span>
+                                            class="px-2 py-[2px] rounded-md text-[9px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                                            {{ $coverageLabel }}
+                                        </span>
+                                        <span
+                                            class="px-2 py-[2px] rounded-md text-[9px] font-semibold bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                                            {{ $a->beneficiaries ? number_format($a->beneficiaries, 0, ',', '.') . ' jiwa' : '-' }}
+                                        </span>
+                                        <span
+                                            class="px-2 py-[2px] rounded-md text-[9px] font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                            {{ $a->rab ? 'Rp ' . number_format($a->rab, 0, ',', '.') : '-' }}
+                                        </span>
+                                        <span
+                                            class="px-2 py-[2px] rounded-md text-[9px] font-semibold bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300">
+                                            {{ $a->criteria->name ?? '-' }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -155,12 +219,57 @@
                         {{-- EDIT FORM --}}
                         <div x-show="openEdit" x-collapse
                             class="border-t border-slate-100 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-900/30">
-                            <form method="POST" action="{{ route('alternatives.update', $a->id) }}" class="flex gap-2">
+                            <form method="POST" action="{{ route('alternatives.update', $a->id) }}"
+                                class="grid grid-cols-1 gap-2">
                                 @csrf @method('PUT')
                                 <input type="text" name="name" value="{{ $a->name }}" required
-                                    class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold dark:bg-slate-800 dark:border-slate-700">
+                                    class="w-full flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold dark:bg-slate-800 dark:border-slate-700">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-[9px] font-semibold text-slate-500">Cakupan</span>
+                                        <select name="coverage" required
+                                            class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold dark:bg-slate-800 dark:border-slate-700">
+                                            <option value="0" {{ $a->coverage == 0 ? 'selected' : '' }}>RT</option>
+                                            <option value="25" {{ $a->coverage == 25 ? 'selected' : '' }}>Antar RW
+                                            </option>
+                                            <option value="50" {{ $a->coverage == 50 ? 'selected' : '' }}>Padukuhan
+                                            </option>
+                                            <option value="75" {{ $a->coverage == 75 ? 'selected' : '' }}>Antar
+                                                Padukuhan
+                                            </option>
+                                            <option value="100" {{ $a->coverage == 100 ? 'selected' : '' }}>Kalurahan
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-[9px] font-semibold text-slate-500">Penerima (jiwa)</span>
+                                        <input type="number" name="beneficiaries" value="{{ $a->beneficiaries }}"
+                                            min="0" required
+                                            class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold dark:bg-slate-800 dark:border-slate-700">
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-[9px] font-semibold text-slate-500">RAB (Rp)</span>
+                                        <input type="text" name="rab"
+                                            value="{{ $a->rab ? number_format($a->rab, 0, ',', '.') : '' }}" required
+                                            oninput="this.value = this.value.replace(/[^0-9]/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.')"
+                                            class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold dark:bg-slate-800 dark:border-slate-700">
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-[9px] font-semibold text-slate-500">Sektor</span>
+                                        <select name="criteria_id" required
+                                            class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold dark:bg-slate-800 dark:border-slate-700">
+                                            <option disabled>Pilih sektor</option>
+                                            @foreach ($criteriaLevel1 as $c)
+                                                <option value="{{ $c->id }}"
+                                                    {{ $a->criteria_id == $c->id ? 'selected' : '' }}>
+                                                    {{ $c->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
                                 <button type="submit"
-                                    class="rounded-lg bg-primary px-4 py-1.5 text-[9px] font-black uppercase text-white">Save</button>
+                                    class="w-full rounded-lg bg-primary px-4 py-1.5 text-[9px] font-black uppercase text-white">Save</button>
                             </form>
                         </div>
                     </div>

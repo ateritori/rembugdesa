@@ -4,32 +4,6 @@
 
 @section('content')
 
-    {{-- 1. HEADER LOGIC --}}
-    @php
-        $activeCriteriaCount = $decisionSession->criterias->where('is_active', true)->count();
-        $activeAlternativesCount = $decisionSession->alternatives->where('is_active', true)->count();
-
-        $dmPairwiseDone = $decisionSession->dms
-            ->filter(function ($dm) use ($decisionSession) {
-                return \Illuminate\Support\Facades\DB::table('criteria_weights')
-                    ->where('decision_session_id', $decisionSession->id)
-                    ->where('dm_id', $dm->id)
-                    ->exists();
-            })
-            ->count();
-
-        $dmAltDone = $decisionSession->dms
-            ->filter(function ($dm) use ($decisionSession) {
-                return \Illuminate\Support\Facades\DB::table('alternative_evaluations')
-                    ->where('decision_session_id', $decisionSession->id)
-                    ->where('dm_id', $dm->id)
-                    ->exists();
-            })
-            ->count();
-
-        $canActivate = $activeCriteriaCount >= 2 && $activeAlternativesCount >= 2 && $assignedDmCount >= 1;
-    @endphp
-
     {{-- TAB NAVIGASI SESI --}}
     @include('admin.partials.session-nav')
 
@@ -75,6 +49,7 @@
         {{-- SLIDE-OVER: DETAIL PROGRES DM --}}
         @include('control.partials.dm-slide', [
             'decisionSession' => $decisionSession,
+            'dmProgress' => $dmProgress,
         ])
 
     </div>

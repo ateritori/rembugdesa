@@ -1,5 +1,12 @@
 @php
     $smartScores = collect($smartScores ?? []);
+
+    if ($smartScores->isEmpty()) {
+        echo '<div class="text-center py-16 text-slate-400 text-sm font-bold uppercase tracking-widest">Belum ada hasil penilaian</div>';
+        return;
+    }
+
+    $smartScores = $smartScores->sortByDesc(fn($item) => $item['score'] ?? 0);
     $total = $smartScores->count();
 
     // Bagi data jadi 2 bagian (kiri & kanan) secara dinamis
@@ -56,9 +63,10 @@
                     <tbody class="divide-y divide-slate-100">
                         @foreach ($chunk as $altId => $data)
                             @php
-                                $originalRank = $smartScores->keys()->search($altId) + 1;
+                                $rankIndex = $smartScores->keys()->search($altId);
+                                $originalRank = $rankIndex !== false ? $rankIndex + 1 : '-';
                                 $alt = $alternatives->firstWhere('id', $altId);
-                                $isTop3 = $originalRank <= 3;
+                                $isTop3 = is_int($originalRank) && $originalRank <= 3;
                             @endphp
 
                             @if ($alt)
@@ -89,7 +97,7 @@
                                     <td class="px-4 py-4 text-right">
                                         <span
                                             class="font-mono font-black text-sm {{ $isTop3 ? 'text-primary' : 'text-slate-600' }} tabular-nums">
-                                            {{ number_format($data['score'], 4) }}
+                                            {{ number_format($data['score'] ?? 0, 4) }}
                                         </span>
                                     </td>
                                 </tr>

@@ -4,8 +4,25 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
+// 🔹 Import model relasi (biar eksplisit & aman)
 use App\Models\User;
 use App\Models\Alternative;
+use App\Models\Criteria;
+use App\Models\CriteriaPairwise;
+use App\Models\CriteriaWeight;
+use App\Models\CriteriaGroupWeight;
+use App\Models\CriteriaScoringRule;
+use App\Models\DecisionSessionAssignment;
+use App\Models\AlternativeEvaluation;
+use App\Models\DmScore;
+use App\Models\EvaluationScore;
+use App\Models\EvaluationResult;
+use App\Models\EvaluationAggregation;
 
 class DecisionSession extends Model
 {
@@ -20,7 +37,6 @@ class DecisionSession extends Model
 
     /**
      * SINGLE SOURCE OF TRUTH untuk status decision_sessions.
-     * HARUS sama persis dengan ENUM di migration.
      */
     public const STATUSES = [
         'draft',
@@ -31,7 +47,6 @@ class DecisionSession extends Model
 
     /**
      * Urutan lifecycle resmi Decision Session.
-     * Digunakan untuk validasi rollback-only oleh superadmin.
      */
     public const STATUS_ORDER = [
         'draft',
@@ -42,44 +57,98 @@ class DecisionSession extends Model
 
     /* ================= RELATIONS ================= */
 
-    public function criteria()
+    // 🔹 Kriteria
+    public function criteria(): HasMany
     {
         return $this->hasMany(Criteria::class);
     }
 
-    public function criterias()
-    {
-        return $this->criteria();
-    }
-
-    public function alternatives()
+    // 🔹 Alternatif
+    public function alternatives(): HasMany
     {
         return $this->hasMany(Alternative::class)
             ->orderBy('order');
     }
 
-    public function criteriaPairwise()
+    // 🔹 Pairwise (AHP)
+    public function criteriaPairwise(): HasMany
     {
-        return $this->hasMany(CriteriaPairwise::class);
+        return $this->hasMany(CriteriaPairwise::class, 'decision_session_id');
     }
 
-    public function criteriaWeights()
+    // 🔹 Bobot (JSON hasil AHP)
+    public function criteriaWeights(): HasMany
     {
-        return $this->hasMany(CriteriaWeight::class);
+        return $this->hasMany(CriteriaWeight::class, 'decision_session_id');
     }
 
-    public function creator()
+    // 🔹 Creator
+    public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function dms()
+    // 🔹 Assignment DM
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(DecisionSessionAssignment::class);
+    }
+
+    public function decisionMakers(): BelongsToMany
     {
         return $this->belongsToMany(
             User::class,
-            'decision_session_dm',
+            'decision_session_assignments',
             'decision_session_id',
             'user_id'
-        );
+        )->distinct();
+    }
+
+    // Alias
+    public function dms(): BelongsToMany
+    {
+        return $this->decisionMakers();
+    }
+
+    // 🔹 Evaluasi manual (optional legacy)
+    public function evaluations(): HasMany
+    {
+        return $this->hasMany(AlternativeEvaluation::class, 'decision_session_id');
+    }
+
+    // 🔹 Skor DM
+    public function dmScores(): HasMany
+    {
+        return $this->hasMany(DmScore::class, 'decision_session_id');
+    }
+
+    // 🔹 RAW VALUE (INI PENTING 🔥)
+    public function evaluationScores(): HasMany
+    {
+        return $this->hasMany(EvaluationScore::class, 'decision_session_id');
+    }
+
+    // 🔹 Group weight (kalau ada)
+    public function groupWeight(): HasOne
+    {
+        return $this->hasOne(CriteriaGroupWeight::class, 'decision_session_id');
+    }
+
+    // 🔹 HASIL PERHITUNGAN (SMART / SAW)
+    public function evaluationResults(): HasMany
+    {
+        return $this->hasMany(EvaluationResult::class, 'decision_session_id');
+    }
+
+    // 🔹 HASIL AGREGASI (FINAL PER DM & SYSTEM)
+    public function evaluationAggregations(): HasMany
+    {
+        return $this->hasMany(EvaluationAggregation::class, 'decision_session_id');
+    }
+
+    // 🔹 RULE KONVERSI (utility function)
+    public function criteriaScoringRules(): HasMany
+    {
+        return $this->hasMany(CriteriaScoringRule::class, 'decision_session_id');
     }
 }

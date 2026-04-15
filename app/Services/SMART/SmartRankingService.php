@@ -2,7 +2,7 @@
 
 namespace App\Services\SMART;
 
-use App\Models\{DecisionSession, User, AlternativeEvaluation, CriteriaWeight, SmartResultDm};
+use App\Models\{DecisionSession, User, AlternativeEvaluation, CriteriaWeight, DmScore};
 use InvalidArgumentException;
 
 class SmartRankingService
@@ -25,7 +25,9 @@ class SmartRankingService
         }
 
         $evaluations = AlternativeEvaluation::where('decision_session_id', $session->id)
-            ->where('dm_id', $dm->id)->get();
+            ->where('dm_id', auth()->id())
+            ->with('alternative')
+            ->get();
 
         if ($evaluations->isEmpty()) return [];
 
@@ -54,32 +56,34 @@ class SmartRankingService
         $scores = [];
         foreach ($evaluations as $eval) {
             $altId = $eval->alternative_id;
-            $critId = $eval->criteria_id;
-            if (!isset($normalizedWeights[$critId])) continue;
+            $sectorId = $eval->alternative->criteria_id ?? null;
+            if (!$sectorId || !isset($normalizedWeights[$sectorId])) continue;
 
             $utility = (float) $eval->utility_value;
 
             $rule = $eval->criteria->scoringRule ?? null;
-            if ($rule && $rule->input_type === 'numeric') {
 
-                // numeric bebas → hitung utility di sini (tidak disimpan)
+            if ($rule && $rule->input_type === 'numeric') {
+                // numeric bebas → hitung utility di sini (0–1)
                 if ($rule->getParameter('value_min') === null || $rule->getParameter('value_max') === null) {
-                    if (isset($numericStats[$critId])) {
-                        $min = $numericStats[$critId]['min'];
-                        $max = $numericStats[$critId]['max'];
+                    if (isset($numericStats[$eval->criteria_id])) {
+                        $min = $numericStats[$eval->criteria_id]['min'];
+                        $max = $numericStats[$eval->criteria_id]['max'];
 
                         if ($max > $min) {
-                            // default: benefit
                             $utility = ($eval->raw_value - $min) / ($max - $min);
                         } else {
                             $utility = 1.0;
                         }
                     }
                 }
+            } else {
+                // scale (0–100) → normalisasi ke 0–1
+                $utility = $utility / 100;
             }
 
             $scores[$altId] = ($scores[$altId] ?? 0)
-                + ($normalizedWeights[$critId] * (float) $utility);
+                + ($normalizedWeights[$sectorId] * (float) $utility);
         }
 
         // Deterministic sorting: smart_score DESC, alternative_id ASC
@@ -114,8 +118,8 @@ class SmartRankingService
                     'decision_session_id' => $session->id,
                     'dm_id' => $dm->id,
                     'alternative_id' => $altId,
-                    'smart_score' => $finalScore,
-                    'rank_dm' => $rank,
+                    'method' => 'smart',
+                    'score' => $finalScore,
                     'updated_at' => now(),
                 ];
             }
@@ -123,7 +127,7 @@ class SmartRankingService
         }
 
         if ($persist && !empty($upsertData)) {
-            SmartResultDm::upsert($upsertData, ['decision_session_id', 'dm_id', 'alternative_id'], ['smart_score', 'rank_dm', 'updated_at']);
+            DmScore::upsert($upsertData, ['decision_session_id', 'dm_id', 'alternative_id', 'method'], ['score', 'updated_at']);
         }
 
         return $ranked;

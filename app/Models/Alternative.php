@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\EvaluationAggregation;
 
 class Alternative extends Model
 {
@@ -15,6 +16,10 @@ class Alternative extends Model
         'name',
         'order',
         'is_active',
+        'rab',
+        'coverage',
+        'beneficiaries',
+        'criteria_id',
     ];
 
     /* ================= RELATIONS ================= */
@@ -22,5 +27,15 @@ class Alternative extends Model
     public function decisionSession()
     {
         return $this->belongsTo(DecisionSession::class);
+    }
+
+    public function evaluationResults()
+    {
+        return $this->hasMany(EvaluationResult::class);
+    }
+
+    public function evaluationAggregations()
+    {
+        return $this->hasMany(EvaluationAggregation::class);
     }
 }

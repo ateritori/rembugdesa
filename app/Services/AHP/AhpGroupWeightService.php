@@ -2,87 +2,164 @@
 
 namespace App\Services\AHP;
 
-use App\Models\DecisionSession;
-use App\Models\CriteriaWeight;
-use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class AhpGroupWeightService
 {
     /**
-     * Agregasi bobot kriteria kelompok menggunakan Geometric Mean
+     * Aggregate multiple pairwise matrices (AIJ method) and compute group weights.
      */
-    public function aggregate(DecisionSession $decisionSession): array
+    public function aggregate(array $matrices): array
     {
-        $individualWeights = CriteriaWeight::where('decision_session_id', $decisionSession->id)
-            ->whereNotNull('dm_id')
-            ->get();
-
-        if ($individualWeights->isEmpty()) {
-            throw new InvalidArgumentException('Belum ada bobot individu untuk diagregasi.');
+        if (empty($matrices)) {
+            throw new InvalidArgumentException('Matrices cannot be empty.');
         }
 
-        $criteriaIds = collect();
+        $this->validateMatrices($matrices);
 
-        foreach ($individualWeights as $row) {
-            $criteriaIds = $criteriaIds->merge(array_keys($row->weights));
-        }
+        $k = count($matrices);
+        $n = count($matrices[0]);
 
-        $criteriaIds = $criteriaIds->unique()->values();
+        // Step 1: Aggregate matrices using geometric mean (AIJ)
+        $aggregated = $this->aggregateMatrices($matrices, $n, $k);
 
-        $groupWeights = [];
+        // Step 2: Compute weights from aggregated matrix
+        $weights = $this->calculateWeights($aggregated, $n);
 
-        foreach ($criteriaIds as $criteriaId) {
-            $product = 1;
-            $count = 0;
+        // Step 3: Compute consistency ratio (CR) from aggregated matrix
+        $cr = $this->calculateConsistency($aggregated, $weights, $n);
 
-            foreach ($individualWeights as $row) {
-                if (!isset($row->weights[$criteriaId])) {
-                    continue;
-                }
+        return [
+            'matrix'        => $aggregated,
+            'weights'       => $weights,
+            'cr'            => round($cr, 4),
+            'is_consistent' => $cr <= 0.1,
+        ];
+    }
 
-                $value = (float) $row->weights[$criteriaId];
+    /**
+     * Ensure all matrices are valid n x n.
+     */
+    private function validateMatrices(array $matrices): void
+    {
+        $n = count($matrices[0]);
 
-                if ($value <= 0) {
-                    throw new InvalidArgumentException(
-                        "Bobot tidak valid pada kriteria ID {$criteriaId}"
-                    );
-                }
-
-                $product *= $value;
-                $count++;
+        foreach ($matrices as $matrix) {
+            if (count($matrix) !== $n) {
+                throw new InvalidArgumentException('Inconsistent matrix size.');
             }
 
-            if ($count === 0) {
-                continue;
+            foreach ($matrix as $row) {
+                if (count($row) !== $n) {
+                    throw new InvalidArgumentException('Matrix must be square.');
+                }
+            }
+        }
+    }
+
+    /**
+     * Aggregate matrices using geometric mean (AIJ).
+     */
+    private function aggregateMatrices(array $matrices, int $n, int $k): array
+    {
+        $result = [];
+
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = 0; $j < $n; $j++) {
+
+                $product = 1.0;
+
+                foreach ($matrices as $matrix) {
+                    $value = (float) $matrix[$i][$j];
+
+                    if ($value <= 0) {
+                        throw new InvalidArgumentException("Invalid value at [$i][$j].");
+                    }
+
+                    $product *= $value;
+                }
+
+                $result[$i][$j] = pow($product, 1 / $k);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Compute priority vector using geometric mean.
+     */
+    private function calculateWeights(array $matrix, int $n): array
+    {
+        $weights = [];
+
+        for ($i = 0; $i < $n; $i++) {
+            $rowProduct = 1.0;
+
+            for ($j = 0; $j < $n; $j++) {
+                $rowProduct *= $matrix[$i][$j];
             }
 
-            $groupWeights[$criteriaId] = pow($product, 1 / $count);
+            $weights[$i] = pow($rowProduct, 1 / $n);
         }
 
-        $total = array_sum($groupWeights);
+        $sum = array_sum($weights);
 
-        if ($total <= 0) {
-            throw new InvalidArgumentException('Total bobot hasil agregasi tidak valid.');
+        if ($sum <= 0) {
+            throw new InvalidArgumentException('Invalid weight sum.');
         }
 
-        foreach ($groupWeights as $criteriaId => $value) {
-            $groupWeights[$criteriaId] = $value / $total;
+        foreach ($weights as $i => $value) {
+            $weights[$i] = $value / $sum;
         }
 
-        DB::transaction(function () use ($decisionSession, $groupWeights) {
-            CriteriaWeight::updateOrCreate(
-                [
-                    'decision_session_id' => $decisionSession->id,
-                    'dm_id' => null,
-                ],
-                [
-                    'weights' => $groupWeights,
-                    'cr' => null,
-                ]
-            );
-        });
+        return $weights;
+    }
+    /**
+     * Compute Consistency Ratio (CR) for aggregated matrix.
+     */
+    private function calculateConsistency(array $matrix, array $weights, int $n): float
+    {
+        $lambdaSum = 0.0;
 
-        return $groupWeights;
+        for ($i = 0; $i < $n; $i++) {
+            $rowSum = 0.0;
+
+            for ($j = 0; $j < $n; $j++) {
+                $rowSum += $matrix[$i][$j] * $weights[$j];
+            }
+
+            if ($weights[$i] > 0) {
+                $ratio = $rowSum / $weights[$i];
+                if (is_finite($ratio)) {
+                    $lambdaSum += $ratio;
+                }
+            }
+        }
+
+        $lambdaMax = $lambdaSum / $n;
+
+        $CI = ($lambdaMax - $n) / ($n - 1);
+
+        $RI_TABLE = [
+            1 => 0.00,
+            2 => 0.00,
+            3 => 0.58,
+            4 => 0.90,
+            5 => 1.12,
+            6 => 1.24,
+            7 => 1.32,
+            8 => 1.41,
+            9 => 1.45,
+            10 => 1.49,
+        ];
+
+        $RI = $RI_TABLE[$n] ?? 1.49;
+
+        if ($RI == 0 || $CI < 0) {
+            return 0.0;
+        }
+
+        return $CI / $RI;
     }
 }

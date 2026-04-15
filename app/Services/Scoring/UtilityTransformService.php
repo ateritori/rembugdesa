@@ -110,8 +110,15 @@ class UtilityTransformService
             throw new InvalidArgumentException('Numeric value out of range');
         }
 
-        // Normalisasi numeric → 0–1
-        $normalized = ($value - $min) / ($max - $min);
+        // Tentukan tipe (benefit / cost) dari relasi kriteria
+        $type = $rule->criteria->type ?? 'benefit';
+
+        // Normalisasi numeric → 0–1 (sesuai benefit / cost)
+        if ($type === 'cost') {
+            $normalized = ($max - $value) / ($max - $min);
+        } else {
+            $normalized = ($value - $min) / ($max - $min);
+        }
 
         return $this->applyPreference(
             $normalized,
@@ -133,10 +140,10 @@ class UtilityTransformService
         $value = max(0, min(1, $value)); // safety clamp
 
         return match ($type) {
-            'linear'  => $value,
-            'concave' => pow($value, $param ?? 0.5),
-            'convex'  => pow($value, $param ?? 2.0),
-            default   => $value,
+            'linear'  => $value * 100,
+            'concave' => pow($value, $param ?? 0.5) * 100,
+            'convex'  => pow($value, $param ?? 2.0) * 100,
+            default   => $value * 100,
         };
     }
 }

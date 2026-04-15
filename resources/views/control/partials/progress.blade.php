@@ -1,8 +1,12 @@
 {{-- SECTION 2: PROGRES BAR (Firm & Aligned) --}}
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     @php
-        $pairwisePercent = $assignedDmCount > 0 ? ($dmPairwiseDone / $assignedDmCount) * 100 : 0;
-        $altPercent = $assignedDmCount > 0 ? ($dmAltDone / $assignedDmCount) * 100 : 0;
+        $pairwisePercent = $pairwiseEligible > 0 ? ($dmPairwiseDone / $pairwiseEligible) * 100 : 0;
+        $altPercent = $totalExpectedActions > 0 ? ($totalActualActions / $totalExpectedActions) * 100 : 0;
+
+        // Clamp 0–100 to avoid overflow UI
+        $pairwisePercent = max(0, min(100, $pairwisePercent));
+        $altPercent = max(0, min(100, $altPercent));
     @endphp
 
     {{-- PROGRES PAIRWISE --}}
@@ -21,7 +25,7 @@
 
             <div class="flex items-center gap-2">
                 <span class="text-2xl font-black tracking-tighter text-slate-800 dark:text-white">
-                    {{ round($pairwisePercent) }}%
+                    {{ (int) round($pairwisePercent) }}%
                 </span>
 
                 <button type="button" @click="dmMode = 'criteria'; openDmProgress = true"
@@ -41,7 +45,7 @@
         </div>
 
         <div class="mt-3 flex justify-between text-[9px] font-bold uppercase tracking-widest text-slate-400">
-            <span>Status: {{ $dmPairwiseDone }} / {{ $assignedDmCount }} DM</span>
+            <span>Status: {{ $dmPairwiseDone }} / {{ $pairwiseEligible }} Evaluator</span>
         </div>
     </div>
 
@@ -61,7 +65,7 @@
 
             <div class="flex items-center gap-2">
                 <span class="text-2xl font-black tracking-tighter text-slate-800 dark:text-white">
-                    {{ round($altPercent) }}%
+                    {{ (int) round($altPercent) }}%
                 </span>
 
                 <button type="button" @click="dmMode = 'alternative'; openDmProgress = true"
@@ -80,7 +84,7 @@
         </div>
 
         <div class="mt-3 flex justify-between text-[9px] font-bold uppercase tracking-widest text-slate-400">
-            <span>Status: {{ $dmAltDone }} / {{ $assignedDmCount }} DM</span>
+            <span>Status: {{ $totalActualActions }} / {{ $totalExpectedActions }} Aksi (berdasarkan assignment)</span>
         </div>
 
         <div class="mt-2 text-right">

@@ -4,8 +4,8 @@ namespace App\Services\Result;
 
 use App\Models\DecisionSession;
 use App\Models\User;
-use App\Models\SmartResultDm;
-use App\Models\BordaResult;
+use App\Models\DmScore;
+use App\Models\DecisionResult;
 use App\Models\AlternativeEvaluation;
 use App\Models\CriteriaWeight;
 use App\Services\SAW\SawRankingService;
@@ -16,11 +16,12 @@ class DecisionResultService
     /**
      * Mengambil hasil final kelompok yang sudah dihitung via Borda (Persisted)
      */
-    public function borda(DecisionSession $session): Collection
+    public function borda(DecisionSession $session, string $pipeline = 'SMART+FINAL'): Collection
     {
-        return BordaResult::where('decision_session_id', $session->id)
+        return DecisionResult::where('decision_session_id', $session->id)
+            ->where('pipeline', $pipeline)
             ->with('alternative')
-            ->orderBy('final_rank')
+            ->orderBy('rank')
             ->get();
     }
 
@@ -29,12 +30,14 @@ class DecisionResultService
      */
     public function smartByDm(DecisionSession $session): Collection
     {
-        return SmartResultDm::where('decision_session_id', $session->id)
+        return $session->dmScores()
+            ->where('method', DmScore::METHOD_SMART)
             ->with(['alternative', 'dm'])
-            ->orderBy('dm_id')
-            ->orderBy('rank_dm')
             ->get()
-            ->groupBy('dm_id');
+            ->groupBy('dm_id')
+            ->map(function ($rows) {
+                return $rows->sortByDesc('score')->values();
+            });
     }
 
     /**
@@ -42,12 +45,11 @@ class DecisionResultService
      */
     public function smartForDm(DecisionSession $session, User $dm): Collection
     {
-        return SmartResultDm::where([
-            'decision_session_id' => $session->id,
-            'dm_id'               => $dm->id,
-        ])
+        return $session->dmScores()
+            ->where('method', DmScore::METHOD_SMART)
+            ->where('dm_id', $dm->id)
             ->with('alternative')
-            ->orderBy('rank_dm')
+            ->orderByDesc('score')
             ->get();
     }
 
@@ -136,20 +138,30 @@ class DecisionResultService
     /**
      * Membandingkan kontribusi/preferensi DM tertentu terhadap hasil akhir kelompok
      */
-    public function dmContribution(DecisionSession $session, User $dm): Collection
+    public function dmContribution(DecisionSession $session, User $dm, string $pipeline = 'SMART+FINAL'): Collection
     {
-        $smart = $this->smartForDm($session, $dm)->keyBy('alternative_id');
-        $borda = $this->borda($session);
+        $smartRows = $this->smartForDm($session, $dm)->values();
 
-        return $borda->map(function ($row) use ($smart) {
+        // Build rank map for SMART (dynamic rank from score)
+        $smartRankMap = [];
+        foreach ($smartRows as $index => $row) {
+            $smartRankMap[$row->alternative_id] = [
+                'score' => $row->score,
+                'rank'  => $index + 1,
+            ];
+        }
+
+        $borda = $this->borda($session, $pipeline);
+
+        return $borda->map(function ($row) use ($smartRankMap) {
             $altId = $row->alternative_id;
 
             return (object) [
                 'alternative' => $row->alternative,
-                'smart_score' => $smart[$altId]->smart_score ?? 0,
-                'smart_rank'  => $smart[$altId]->rank_dm ?? '-',
-                'borda_score' => $row->borda_score,
-                'final_rank'  => $row->final_rank,
+                'smart_score' => $smartRankMap[$altId]['score'] ?? 0,
+                'smart_rank'  => $smartRankMap[$altId]['rank'] ?? '-',
+                'borda_score' => $row->score,
+                'final_rank'  => $row->rank,
             ];
         });
     }

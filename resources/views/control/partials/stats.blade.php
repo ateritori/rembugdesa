@@ -27,8 +27,8 @@
                 'shadow' => 'shadow-purple-500/20',
             ],
             [
-                'label' => 'Total DM',
-                'value' => $assignedDmCount,
+                'label' => 'Decision Maker',
+                'value' => $assignedDmCount . ' DM',
                 'icon' =>
                     'M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18.75a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75ZM5.106 17.834a.75.75 0 0 0 1.06 1.06l1.591-1.59a.75.75 0 1 0-1.06-1.061l-1.591 1.59ZM3 12a.75.75 0 0 1 .75-.75h2.25a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12Zm3.166-5.894a.75.75 0 0 0 1.06 1.06l1.59-1.591a.75.75 0 1 0-1.06-1.061l-1.591 1.59Z',
                 'color' => 'from-emerald-600 to-teal-600',
@@ -55,6 +55,12 @@
                     <p class="text-lg font-black uppercase tracking-tight text-slate-800 dark:text-slate-100">
                         {{ $stat['value'] }}
                     </p>
+
+                    @if ($stat['label'] === 'Decision Maker')
+                        <p class="text-[9px] font-bold text-slate-400 mt-1">
+                            {{ $totalExpectedActions ?? 0 }} Total Actions
+                        </p>
+                    @endif
                 </div>
             </div>
         </div>

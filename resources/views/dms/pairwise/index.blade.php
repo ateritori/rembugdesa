@@ -304,20 +304,33 @@
                 });
 
                 console.log("JS Matrix:", JSON.stringify(M));
-                let W = Array(n).fill(1 / n);
-                for (let i = 0; i < 100; i++) {
-                    let nextW = M.map(row => row.reduce((acc, v, j) => acc + v * W[j], 0));
-                    let sum = nextW.reduce((a, b) => a + b, 0);
+                let W = [];
 
-                    if (sum > 0) {
-                        W = nextW.map(v => v / sum);
+                // RGMM (log-based for numerical stability)
+                for (let i = 0; i < n; i++) {
+                    let logSum = 0;
+
+                    for (let j = 0; j < n; j++) {
+                        // matrix AHP selalu > 0, jadi tidak perlu fallback 1e-9
+                        logSum += Math.log(M[i][j]);
                     }
+
+                    W[i] = Math.exp(logSum / n);
+                }
+
+                // normalisasi
+                let sum = W.reduce((a, b) => a + b, 0);
+                if (sum > 0) {
+                    W = W.map(v => v / sum);
                 }
                 this.weightsMap = {};
                 this.criteriaIds.forEach((id, i) => this.weightsMap[id] = W[i]);
 
                 const Aw = M.map((row, i) => row.reduce((acc, v, j) => acc + v * W[j], 0));
-                const lambdaMax = Aw.reduce((acc, val, i) => acc + (val / W[i]), 0) / n;
+                const lambdaMax = Aw.reduce((acc, val, i) => {
+                    if (W[i] === 0) return acc;
+                    return acc + (val / W[i]);
+                }, 0) / n;
                 const CI = (lambdaMax - n) / (Math.max(1, n - 1));
                 const RI = [0, 0, 0, 0.58, 0.9, 1.12, 1.24, 1.32, 1.41, 1.45, 1.49][n] || 1.49;
                 this.cr = RI === 0 ? 0 : CI / RI;

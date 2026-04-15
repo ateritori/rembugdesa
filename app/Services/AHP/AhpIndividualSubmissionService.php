@@ -10,141 +10,161 @@ use Illuminate\Support\Facades\DB;
 
 class AhpIndividualSubmissionService
 {
-    /**
-     * Menyimpan hasil perbandingan berpasangan dan menghitung bobot AHP.
-     */
-    /**
-     * Menyimpan hasil perbandingan dan bobot (Menerima hasil hitung dari JS).
-     */
-    public function submit(DecisionSession $session, User $user, array $pairwiseData, $passedCr = null, $passedWeights = null)
+    protected $calculator;
+
+    public function __construct(AhpCalculationService $calculator)
     {
-        return DB::transaction(function () use ($session, $user, $pairwiseData, $passedCr, $passedWeights) {
+        $this->calculator = $calculator;
+    }
 
-            // 1. Bersihkan data lama
-            CriteriaPairwise::where('decision_session_id', $session->id)
-                ->where('dm_id', $user->id)
-                ->delete();
+    public function authorizeSubmission(DecisionSession $session, User $user): void
+    {
+        $assignment = $session->assignments()
+            ->where('user_id', $user->id)
+            ->first();
 
-            // 2. Simpan perbandingan ke database
-            foreach ($pairwiseData as $idI => $targets) {
-                foreach ($targets as $idJ => $values) {
-                    $valAIJ = isset($values['a_ij']) ? (float)$values['a_ij'] : 0;
+        abort_if(!$assignment, 403, 'User is not assigned to this session.');
 
-                    // Skip invalid or zero values (safety guard)
-                    if ($valAIJ == 0) {
-                        continue;
-                    }
+        abort_if(
+            !$assignment->can_pairwise || $session->status !== 'configured',
+            403,
+            'User is not allowed to submit pairwise data.'
+        );
+    }
 
-                    // Tentukan arah berdasarkan nilai asli dari JS
-                    $direction = ($valAIJ >= 1) ? 'left' : 'right';
+    public function submit(DecisionSession $session, User $user, array $pairwiseData)
+    {
+        return DB::transaction(function () use ($session, $user, $pairwiseData) {
 
-                    // Simpan value sebagai angka positif 1–9 (tanpa menebak ulang reciprocal)
-                    $finalValue = ($valAIJ >= 1)
-                        ? $valAIJ
-                        : (1 / $valAIJ);
+            // Remove existing pairwise data for current user
+            $this->deleteExistingPairwise($session, $user);
 
-                    CriteriaPairwise::create([
-                        'decision_session_id' => $session->id,
-                        'dm_id'               => $user->id,
-                        'criteria_id_1'       => $idI,
-                        'criteria_id_2'       => $idJ,
-                        'value'               => $finalValue,
-                        'direction'           => $direction,
-                    ]);
-                }
-            }
+            // Persist new pairwise data
+            $this->storePairwise($session, $user, $pairwiseData);
 
-            // 3. Tentukan Bobot & CR
-            // Jika dilempar dari JS, pakai itu. Jika tidak (misal hitung manual), baru jalankan rumus PHP.
-            $finalWeights = $passedWeights;
-            $finalCr = $passedCr;
+            // Load active criteria once
+            $criteria = $this->getActiveCriteria($session);
 
-            if (is_null($finalWeights) || is_null($finalCr)) {
-                // Fallback jika tidak dikirim dari JS (Misal testing/seeder)
-                // Anda tetap butuh matriks jika mau hitung ulang di sini
-                $analysis = $this->calculateAHP($this->buildMatrix($session, $pairwiseData), $session->criteria->count());
-                $finalWeights = $analysis['weights'];
-                $finalCr = $analysis['cr'];
-            }
+            // Build comparison matrix
+            $matrix = $this->buildMatrix($criteria, $pairwiseData);
 
-            // 4. Update Tabel Bobot
-            CriteriaWeight::updateOrCreate(
-                ['decision_session_id' => $session->id, 'dm_id' => $user->id],
-                [
-                    'weights'    => $finalWeights,
-                    'cr'         => (float)$finalCr,
-                    'updated_at' => now()
-                ]
-            );
+            // Calculate AHP result using dedicated service
+            $analysis = $this->calculator->calculate($matrix);
 
-            return ['weights' => $finalWeights, 'cr' => $finalCr];
+            // Map weights to criteria IDs
+            $mappedWeights = $this->mapWeights($criteria, $analysis['weights']);
+
+            // Store result
+            $this->storeWeights($session, $user, $mappedWeights, $analysis['cr']);
+
+            return [
+                'weights' => $mappedWeights,
+                'cr'      => $analysis['cr'],
+            ];
         });
     }
 
-    /**
-     * Algoritma Perhitungan AHP (Metode Normalisasi Kolom)
-     */
-    private function calculateAHP($matrix, $n)
+    private function deleteExistingPairwise($session, $user)
     {
-        if ($n <= 0) return ['weights' => [], 'cr' => 0];
+        $session->criteriaPairwise()
+            ->where('dm_id', $user->id)
+            ->delete();
+    }
 
-        // 1. Power Method (Eigenvector)
-        $weights = array_fill(0, $n, 1 / $n);
+    private function storePairwise($session, $user, $pairwiseData)
+    {
+        $rows = [];
+        $now = now();
 
-        for ($iter = 0; $iter < 100; $iter++) {
-            $nextWeights = array_fill(0, $n, 0);
+        foreach ($pairwiseData as $idI => $targets) {
+            foreach ($targets as $idJ => $values) {
 
-            for ($i = 0; $i < $n; $i++) {
-                for ($j = 0; $j < $n; $j++) {
-                    $nextWeights[$i] += (float)$matrix[$i][$j] * (float)$weights[$j];
-                }
-            }
+                $val = (float) ($values['a_ij'] ?? 0);
+                if ($val == 0) continue;
 
-            $sumNext = array_sum($nextWeights);
-            if ($sumNext > 0) {
-                for ($i = 0; $i < $n; $i++) {
-                    $nextWeights[$i] /= $sumNext;
-                }
-            }
+                $direction = $val >= 1 ? 'left' : 'right';
+                $value = $val >= 1 ? $val : (1 / $val);
 
-            $weights = $nextWeights;
-        }
-
-        // 2. Hitung Lambda Max
-        $lambdaMax = 0;
-        for ($i = 0; $i < $n; $i++) {
-            $rowSum = 0;
-            for ($j = 0; $j < $n; $j++) {
-                $rowSum += (float)$matrix[$i][$j] * (float)$weights[$j];
-            }
-            if ($weights[$i] != 0) {
-                $lambdaMax += $rowSum / $weights[$i];
+                $rows[] = [
+                    'decision_session_id' => $session->id,
+                    'dm_id'               => $user->id,
+                    'criteria_id_1'       => $idI,
+                    'criteria_id_2'       => $idJ,
+                    'value'               => $value,
+                    'direction'           => $direction,
+                    'created_at'          => $now,
+                    'updated_at'          => $now,
+                ];
             }
         }
-        $lambdaMax /= $n;
 
-        // 3. Hitung CI & CR
-        $ci = ($n > 1) ? ($lambdaMax - $n) / ($n - 1) : 0;
+        if (!empty($rows)) {
+            CriteriaPairwise::insert($rows);
+        }
+    }
 
-        $riTable = [
-            1 => 0,
-            2 => 0,
-            3 => 0.58,
-            4 => 0.9,
-            5 => 1.12,
-            6 => 1.24,
-            7 => 1.32,
-            8 => 1.41,
-            9 => 1.45,
-            10 => 1.49
-        ];
+    private function getActiveCriteria($session)
+    {
+        return $session->criteria()
+            ->where('is_active', true)
+            ->where('level', 1)
+            ->orderBy('order')
+            ->get()
+            ->values();
+    }
 
-        $ri = $riTable[$n] ?? 1.49;
-        $cr = ($ri > 0) ? ($ci / $ri) : 0;
+    private function buildMatrix($criteria, $pairwiseData)
+    {
+        $n = $criteria->count();
+        $matrix = array_fill(0, $n, array_fill(0, $n, 1));
 
-        return [
-            'weights' => $weights,
-            'cr' => (float)max(0, $cr)
-        ];
+        // Create fast lookup map
+        $indexMap = $criteria->pluck('id')->flip();
+
+        foreach ($pairwiseData as $idI => $targets) {
+            foreach ($targets as $idJ => $values) {
+
+                $val = (float) ($values['a_ij'] ?? 0);
+                if ($val <= 0) continue;
+
+                if (!isset($indexMap[$idI]) || !isset($indexMap[$idJ])) continue;
+
+                $i = $indexMap[$idI];
+                $j = $indexMap[$idJ];
+
+                $matrix[$i][$j] = $val;
+                $matrix[$j][$i] = 1 / $val;
+            }
+        }
+
+        return $matrix;
+    }
+
+    private function mapWeights($criteria, $weights)
+    {
+        $mapped = [];
+
+        foreach ($weights as $i => $value) {
+            if (isset($criteria[$i])) {
+                $mapped[$criteria[$i]->id] = $value;
+            }
+        }
+
+        return $mapped;
+    }
+
+    private function storeWeights($session, $user, $weights, $cr)
+    {
+        $session->criteriaWeights()->updateOrCreate(
+            [
+                'decision_session_id' => $session->id,
+                'dm_id' => $user->id
+            ],
+            [
+                'weights' => $weights,
+                'cr'      => (float) $cr,
+                'updated_at' => now()
+            ]
+        );
     }
 }

@@ -19,7 +19,11 @@ class CriteriaController extends Controller
     {
         $criteria = $decisionSession->criteria()
             ->orderBy('order')
-            ->get();
+            ->get()
+            ->map(function ($c) use ($decisionSession) {
+                $c->ui_locked = ($decisionSession->status !== 'draft') || !$c->is_active;
+                return $c;
+            });
 
         $scoringRules = CriteriaScoringRule::with('parameters')
             ->whereIn('criteria_id', $criteria->pluck('id'))
@@ -47,6 +51,8 @@ class CriteriaController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:benefit,cost',
+            'level' => 'required|integer|min:1|max:5',
+            'evaluator_type' => 'required|in:system,human',
         ]);
 
         try {
@@ -54,7 +60,9 @@ class CriteriaController extends Controller
 
             $decisionSession->criteria()->create([
                 'name'  => $request->name,
+                'level' => $request->level,
                 'type'  => $request->type,
+                'evaluator_type' => $request->evaluator_type,
                 'order' => $order,
             ]);
 
@@ -77,10 +85,12 @@ class CriteriaController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:benefit,cost',
+            'level' => 'required|integer|min:1|max:5',
+            'evaluator_type' => 'required|in:system,human',
         ]);
 
         try {
-            $criteria->update($request->only('name', 'type'));
+            $criteria->update($request->only('name', 'type', 'level', 'evaluator_type'));
 
             return redirect()
                 ->route('criteria.index', $criteria->decision_session_id)

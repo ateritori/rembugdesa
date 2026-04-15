@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Alternative;
+use App\Models\Criteria;
 use App\Models\DecisionSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +20,12 @@ class AlternativeController extends Controller
             ->orderBy('order')
             ->get();
 
-        return view('alternatives.index', compact('decisionSession', 'alternatives'));
+        $criteriaLevel1 = Criteria::where('decision_session_id', $decisionSession->id)
+            ->where('level', 1)
+            ->orderBy('order')
+            ->get();
+
+        return view('alternatives.index', compact('decisionSession', 'alternatives', 'criteriaLevel1'));
     }
 
     /**
@@ -33,17 +39,27 @@ class AlternativeController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
+            'rab' => 'required',
+            'coverage' => 'required|integer',
+            'beneficiaries' => 'required|integer|min:0',
+            'criteria_id' => 'required|exists:criteria,id',
         ]);
 
         try {
             $lastOrder = $decisionSession->alternatives()->max('order') ?? 0;
             $order = $lastOrder + 1;
 
+            $rab = str_replace('.', '', $request->rab);
+
             $decisionSession->alternatives()->create([
                 'code' => 'A' . $order,
                 'name' => $request->name,
                 'order' => $order,
                 'is_active' => true,
+                'rab' => $rab,
+                'coverage' => $request->coverage,
+                'beneficiaries' => $request->beneficiaries,
+                'criteria_id' => $request->criteria_id,
             ]);
 
             return redirect()
@@ -66,10 +82,22 @@ class AlternativeController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
+            'rab' => 'required',
+            'coverage' => 'required|integer',
+            'beneficiaries' => 'required|integer|min:0',
+            'criteria_id' => 'required|exists:criteria,id',
         ]);
 
         try {
-            $alternative->update($request->only('name'));
+            $rab = str_replace('.', '', $request->rab);
+
+            $alternative->update([
+                'name' => $request->name,
+                'rab' => $rab,
+                'coverage' => $request->coverage,
+                'beneficiaries' => $request->beneficiaries,
+                'criteria_id' => $request->criteria_id,
+            ]);
 
             return redirect()
                 ->route('alternatives.index', $alternative->decision_session_id)

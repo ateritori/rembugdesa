@@ -7,19 +7,7 @@
     {{-- TAB NAVIGASI SESI --}}
     @include('admin.partials.session-nav')
 
-    <div class="animate-in fade-in slide-in-from-bottom-2 w-full px-4 py-4 md:px-6 md:py-6 duration-500 dark:bg-slate-900"
-        x-data="{
-            selected: {{ json_encode($assignedDmIds ?? []) }},
-            search: '',
-            toggleDm(id) {
-                const index = this.selected.indexOf(id);
-                if (index > -1) {
-                    this.selected.splice(index, 1);
-                } else {
-                    this.selected.push(id);
-                }
-            }
-        }">
+    <div class="animate-in fade-in slide-in-from-bottom-2 w-full px-4 py-4 md:px-6 md:py-6 duration-500 dark:bg-slate-900">
 
         <div class="w-full space-y-4 md:space-y-6">
 
@@ -33,7 +21,7 @@
                     </div>
                     <h1
                         class="adaptive-text-main text-xl md:text-2xl font-black uppercase tracking-tight transition-all duration-300">
-                        Penugasan Decision Maker
+                        Penugasan
                     </h1>
                 </div>
 
@@ -57,68 +45,95 @@
                             d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
                     </svg>
                 </div>
-                <input type="text" x-model.debounce.300ms="search" placeholder="Cari DM..."
+                <input type="text" onkeyup="filterDM(this.value)" placeholder="Cari DM..."
                     class="w-full rounded-xl border-none bg-white py-2.5 pl-11 pr-4 text-xs font-bold ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-800 dark:ring-slate-700 dark:text-white">
             </div>
 
-            <form method="POST" action="{{ route('decision-sessions.assign-dms.store', $decisionSession->id) }}">
+            <form method="POST" onsubmit="prepareDmIds()"
+                action="{{ route('decision-sessions.assign-dms.store', $decisionSession->id) }}">
                 @csrf
 
-                {{-- GRID DM: Slim Cards --}}
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                    @forelse ($dms as $dm)
-                        <div x-show="search === '' || '{{ strtolower($dm->name) }}'.includes(search.toLowerCase())"
-                            @click="{{ $decisionSession->status === 'draft' ? "toggleDm($dm->id)" : '' }}"
-                            :class="selected.includes({{ $dm->id }}) ?
-                                'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-500/5 ring-1 ring-indigo-500/20 shadow-sm' :
-                                'border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700'"
-                            class="group relative flex cursor-pointer select-none flex-col gap-3 rounded-xl border p-4 transition-all duration-200 {{ $decisionSession->status !== 'draft' ? 'opacity-60 pointer-events-none' : 'hover:border-slate-400 hover:shadow-sm' }}">
+                <div class="space-y-4">
 
-                            <input type="checkbox" name="dm_ids[]" value="{{ $dm->id }}" class="hidden"
-                                :checked="selected.includes({{ $dm->id }})">
-
-                            <div class="flex items-center justify-between">
-                                <div :class="selected.includes({{ $dm->id }}) ? 'bg-indigo-600 text-white' :
-                                    'bg-slate-100 text-slate-400 dark:bg-slate-700'"
-                                    class="flex h-9 w-9 items-center justify-center rounded-lg transition-colors shadow-sm">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
-                                </div>
-
-                                <div class="flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all"
-                                    :class="selected.includes({{ $dm->id }}) ?
-                                        'bg-indigo-500 border-indigo-500 text-white' :
-                                        'border-slate-200 dark:border-slate-600'">
-                                    <svg x-show="selected.includes({{ $dm->id }})" class="h-3 w-3" fill="none"
-                                        stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                            d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </div>
-                            </div>
-
-                            <div class="min-w-0">
-                                <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                    D{{ $loop->iteration }}</p>
-                                <h3 :class="selected.includes({{ $dm->id }}) ? 'text-indigo-600' : 'adaptive-text-main'"
-                                    class="truncate text-[13px] font-black uppercase tracking-tight transition-colors">
-                                    {{ $dm->name }}
-                                </h3>
-                                <p class="truncate text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                                    {{ $dm->email }}
-                                </p>
-                            </div>
+                    {{-- ARAH PEMBANGUNAN --}}
+                    <div
+                        class="rounded-2xl border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 p-4 shadow-sm">
+                        <h3 class="text-[11px] font-black uppercase tracking-widest text-indigo-500 mb-3">
+                            Arah Pembangunan
+                        </h3>
+                        <div class="flex gap-2 mb-2">
+                            <button type="button" onclick="checkAllPairwise(true)"
+                                {{ $decisionSession->status !== 'draft' ? 'disabled' : '' }}
+                                class="text-[9px] font-bold text-indigo-500">All</button>
+                            <button type="button" onclick="checkAllPairwise(false)"
+                                {{ $decisionSession->status !== 'draft' ? 'disabled' : '' }}
+                                class="text-[9px] font-bold text-slate-400">Clear</button>
                         </div>
-                    @empty
-                        <div
-                            class="col-span-full py-20 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-100 dark:border-slate-800">
-                            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Data Source Empty
-                            </p>
+
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-80 overflow-y-auto pr-2">
+                            @foreach ($dms as $dm)
+                                <div data-name="{{ strtolower($dm->name) }}">
+                                    <label class="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                                        <input type="checkbox" name="pairwise[]" value="{{ $dm->id }}"
+                                            {{ $decisionSession->status !== 'draft' ? 'disabled' : '' }}
+                                            {{ in_array($dm->id, old('pairwise', $assignedDmIds ?? [])) ? 'checked' : '' }}
+                                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                        {{ $dm->name }}
+                                    </label>
+                                </div>
+                            @endforeach
                         </div>
-                    @endforelse
+                    </div>
+
                 </div>
+
+                <div class="pt-2">
+                    <div class="h-[1px] w-full bg-slate-200 dark:bg-slate-700"></div>
+                </div>
+
+                {{-- PARAMETER EVALUATION ASSIGNMENT --}}
+                <div class="mt-6 rounded-2xl border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 p-4">
+                    <h3 class="text-[11px] font-black uppercase tracking-widest text-emerald-500 mb-4">
+                        Penugasan Evaluator Parameter
+                    </h3>
+
+                    <div class="space-y-4 max-h-96 overflow-y-auto pr-2">
+                        @foreach ($criteria->where('level', 2)->where('evaluator_type', 'human') as $param)
+                            <div
+                                class="rounded-xl border border-slate-100 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-900/40">
+                                <p class="text-[11px] font-black text-slate-700 dark:text-slate-200 mb-2">
+                                    {{ $param->name }}
+                                </p>
+                                <div class="flex gap-2 mb-2">
+                                    <button type="button" onclick="checkAllParam({{ $param->id }}, true)"
+                                        {{ $decisionSession->status !== 'draft' ? 'disabled' : '' }}
+                                        class="text-[9px] font-bold text-emerald-500">All</button>
+                                    <button type="button" onclick="checkAllParam({{ $param->id }}, false)"
+                                        {{ $decisionSession->status !== 'draft' ? 'disabled' : '' }}
+                                        class="text-[9px] font-bold text-slate-400">Clear</button>
+                                </div>
+
+                                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                    @foreach ($dms as $dm)
+                                        <div data-name="{{ strtolower($dm->name) }}">
+                                            <label class="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                                                <input type="checkbox" name="param_assign[{{ $param->id }}][]"
+                                                    value="{{ $dm->id }}"
+                                                    {{ $decisionSession->status !== 'draft' ? 'disabled' : '' }}
+                                                    {{ in_array($dm->id, old('param_assign.' . $param->id, $assignedParam[$param->id] ?? [])) ? 'checked' : '' }}
+                                                    class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                                {{ $dm->name }}
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- hidden dm_ids (union) --}}
+                <div id="dm_ids_container"></div>
 
                 {{-- ACTION FOOTER: Sticky & Slim --}}
                 <div
@@ -126,21 +141,17 @@
                     <div class="flex items-center gap-4 pl-2">
                         <div class="flex flex-col">
                             <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">Selected</p>
-                            <p class="text-xl font-black leading-none text-indigo-600 dark:text-indigo-400"
-                                x-text="selected.length"></p>
+                            <p id="counter" class="text-xl font-black leading-none text-indigo-600 dark:text-indigo-400">0
+                            </p>
                         </div>
                         <div class="h-8 w-[1px] bg-slate-200 dark:bg-slate-700"></div>
                         <p class="hidden text-[9px] font-bold uppercase text-slate-400 lg:block">
-                            Klik kartu user untuk memberikan hak akses penilaian.
+                            Pilih DM berdasarkan tugas. Gunakan search & tombol cepat untuk efisiensi.
                         </p>
                     </div>
 
                     @if ($decisionSession->status === 'draft')
                         <div class="flex gap-2">
-                            <button type="button" @click="selected = []"
-                                class="rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-all">
-                                Clear
-                            </button>
                             <button type="submit"
                                 class="rounded-xl bg-slate-900 px-8 py-2.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-black active:scale-95 transition-all dark:bg-indigo-600">
                                 Confirm Assignment
@@ -149,7 +160,56 @@
                     @endif
                 </div>
             </form>
+
         </div>
     </div>
+
+    <script>
+        function filterDM(q) {
+            q = q.toLowerCase();
+            document.querySelectorAll('[data-name]').forEach(el => {
+                el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+            });
+        }
+
+        function checkAllPairwise(val) {
+            document.querySelectorAll('input[name="pairwise[]"]').forEach(el => el.checked = val);
+            updateCounter();
+        }
+
+        function checkAllParam(paramId, val) {
+            document.querySelectorAll(`input[name="param_assign[${paramId}][]"]`).forEach(el => el.checked = val);
+            updateCounter();
+        }
+
+        function updateCounter() {
+            const pairwise = document.querySelectorAll('input[name="pairwise[]"]:checked').length;
+            const param = document.querySelectorAll('input[name^="param_assign"]:checked').length;
+            document.getElementById('counter').innerText = pairwise + param;
+        }
+
+        document.addEventListener('change', function(e) {
+            if (e.target.matches('input[type="checkbox"]')) updateCounter();
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCounter();
+        });
+
+        function prepareDmIds() {
+            const ids = new Set();
+            document.querySelectorAll('input[name="pairwise[]"]:checked').forEach(el => ids.add(el.value));
+            document.querySelectorAll('input[name^="param_assign"]:checked').forEach(el => ids.add(el.value));
+            const container = document.getElementById('dm_ids_container');
+            container.innerHTML = '';
+            ids.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'dm_ids[]';
+                input.value = id;
+                container.appendChild(input);
+            });
+        }
+    </script>
 
 @endsection

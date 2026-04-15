@@ -148,6 +148,7 @@
                 preferenceType: cfg.preferenceType || 'linear',
                 min: Number(cfg.min || 1),
                 max: Number(cfg.max || 5),
+                type: cfg.type || 'benefit',
 
                 // FUNGSI PEMBERSIH DATA (Kunci Utama)
                 parseData(data) {
@@ -191,11 +192,26 @@
                     let min = Number(this.min),
                         max = Number(this.max),
                         d = max - min;
-                    if (d <= 0) return "1.00";
-                    let x = Math.max(0, Math.min(1, (i - min) / d));
+
+                    if (d <= 0) return "100.00";
+
+                    let x;
+
+                    // Benefit vs Cost handling
+                    if (this.type === 'cost') {
+                        x = (max - i) / d;
+                    } else {
+                        x = (i - min) / d;
+                    }
+
+                    x = Math.max(0, Math.min(1, x));
+
+                    // Preference curve (α)
                     let v = (this.preferenceType === 'concave') ? Math.sqrt(x) :
                         (this.preferenceType === 'convex') ? Math.pow(x, 2) : x;
-                    return parseFloat(v).toFixed(2);
+
+                    // Scale to 0–100
+                    return Math.round(v * 100);
                 },
 
                 syncUtilities() {
