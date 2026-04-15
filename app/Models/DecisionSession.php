@@ -23,6 +23,7 @@ use App\Models\DmScore;
 use App\Models\EvaluationScore;
 use App\Models\EvaluationResult;
 use App\Models\EvaluationAggregation;
+use App\Models\BordaAggregation;
 
 class DecisionSession extends Model
 {
@@ -150,5 +151,11 @@ class DecisionSession extends Model
     public function criteriaScoringRules(): HasMany
     {
         return $this->hasMany(CriteriaScoringRule::class, 'decision_session_id');
+    }
+
+    // 🔹 HASIL AGREGASI BORDA (GROUP, SYSTEM, FINAL)
+    public function bordaAggregations(): HasMany
+    {
+        return $this->hasMany(BordaAggregation::class, 'decision_session_id');
     }
 }
