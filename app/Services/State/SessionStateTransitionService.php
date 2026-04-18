@@ -5,6 +5,9 @@ namespace App\Services\State;
 use App\Models\DecisionSession;
 use App\Services\AHP\AhpGroupSubmissionService;
 use App\Services\Borda\BordaPipelineService;
+use App\Services\Evaluation\SystemSmartService;
+use App\Services\Evaluation\FinalSmartAggregationService;
+use App\Services\Evaluation\SystemEvaluationService;
 
 class SessionStateTransitionService
 {
@@ -13,28 +16,16 @@ class SessionStateTransitionService
         AhpGroupSubmissionService $groupService
     ) {
         $validStatuses = ['draft', 'configured'];
-
         abort_unless(in_array($decisionSession->status, $validStatuses), 403);
 
-        // HITUNG BOBOT AHP (GROUP)
         $groupService->calculateAndStore($decisionSession);
 
-        $nextStatus = ($decisionSession->status === 'draft')
-            ? 'configured'
-            : 'scoring';
-
+        $nextStatus = ($decisionSession->status === 'draft') ? 'configured' : 'scoring';
         $decisionSession->update(['status' => $nextStatus]);
 
-        /**
-         * 🔵 SYSTEM INPUT TRIGGER (CLEAN VERSION)
-         * hanya generate evaluation_scores (system)
-         */
         if ($nextStatus === 'scoring') {
-
             $sessionFresh = $decisionSession->fresh();
-
-            app(\App\Services\Evaluation\SystemEvaluationService::class)
-                ->generate($sessionFresh);
+            app(SystemEvaluationService::class)->generate($sessionFresh);
         }
     }
 
@@ -46,31 +37,11 @@ class SessionStateTransitionService
 
         $decisionSession->getConnection()->transaction(function () use ($decisionSession, $bordaPipelineService) {
 
-            /**
-             * 🔴 PROCESS LAYER (WAJIB URUT)
-             */
+            // 1. Hitung Utility SMART (Eceran)
+            app(SystemSmartService::class)->calculate($decisionSession);
 
-            // 1. SMART
-            app(\App\Services\Evaluation\SmartScoringService::class)
-                ->calculate($decisionSession);
-
-            // 2. SAW
-            app(\App\Services\Evaluation\SawScoringService::class)
-                ->calculate($decisionSession);
-
-            // 3. WEIGHTED (AHP + SMART + SAW)
-            app(\App\Services\Evaluation\AHPWeightedScoringService::class)
-                ->calculate($decisionSession);
-
-            // 4. FINAL AGGREGATION
-            app(\App\Services\Evaluation\EvaluationAggregationService::class)
-                ->calculate($decisionSession);
-
-            /**
-             * 🔵 BORDA LAYER (OPTIONAL DECISION METHOD)
-             */
-            $bordaPipelineService->run($decisionSession, 'smart');
-            $bordaPipelineService->run($decisionSession, 'saw');
+            // 2. Agregasi Final & Bobot Sektor AHP
+            app(FinalSmartAggregationService::class)->calculate($decisionSession);
 
             $decisionSession->update(['status' => 'closed']);
         });

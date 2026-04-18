@@ -9,11 +9,40 @@ class SystemSmartService
 {
     public function calculate(DecisionSession $session): void
     {
-        $scores = DB::table('evaluation_scores')
+        $rawScores = DB::table('evaluation_scores')
             ->where('decision_session_id', $session->id)
-            ->where('source', 'system')
-            ->get()
-            ->groupBy('criteria_id');
+            ->whereIn('source', ['system', 'human'])
+            ->get();
+
+        // Keep human rows per user (NO early average). System remains single.
+        $scores = $rawScores
+            ->groupBy('criteria_id')
+            ->map(function ($items) {
+                $grouped = $items->groupBy('alternative_id')->map(function ($rows) {
+                    $source = $rows->first()->source;
+
+                    if ($source === 'human') {
+                        // return all rows (per user) for this alternative
+                        return $rows->map(function ($r) {
+                            return (object)[
+                                'alternative_id' => $r->alternative_id,
+                                'value' => $r->value,
+                                // optional: keep user_id for future debugging
+                                'user_id' => $r->user_id ?? null,
+                            ];
+                        });
+                    }
+
+                    // system: single value
+                    return collect([(object)[
+                        'alternative_id' => $rows->first()->alternative_id,
+                        'value' => $rows->first()->value,
+                    ]]);
+                });
+
+                // flatten per-criteria list so downstream loops see each row (including per-user rows)
+                return $grouped->flatten(1)->values();
+            });
 
         $criteria = DB::table('criteria')
             ->where('decision_session_id', $session->id)
@@ -52,19 +81,25 @@ class SystemSmartService
                 // UTILITY
                 $utility = $this->utility($normalized, $rule);
 
-                // SMART murni (tanpa bobot sektor)
-                $score = $utility;
-
+                // SMART: accumulate utility and count
                 if (!isset($aggregatedScores[$item->alternative_id])) {
-                    $aggregatedScores[$item->alternative_id] = 0;
+                    $aggregatedScores[$item->alternative_id] = [
+                        'sum' => 0,
+                        'count' => 0,
+                    ];
                 }
 
-                $aggregatedScores[$item->alternative_id] += $score;
+                $aggregatedScores[$item->alternative_id]['sum'] += $utility;
+                $aggregatedScores[$item->alternative_id]['count']++;
             }
         }
 
-        // Simpan sebagai hasil SMART (siap untuk weighted)
-        foreach ($aggregatedScores as $alternativeId => $score) {
+        foreach ($aggregatedScores as $alternativeId => $data) {
+
+            $avg = $data['count'] > 0
+                ? $data['sum'] / $data['count']
+                : 0;
+
             DB::table('evaluation_results')->updateOrInsert(
                 [
                     'decision_session_id' => $session->id,
@@ -73,7 +108,7 @@ class SystemSmartService
                     'user_id'             => null,
                 ],
                 [
-                    'evaluation_score' => $score,
+                    'evaluation_score' => $avg,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]

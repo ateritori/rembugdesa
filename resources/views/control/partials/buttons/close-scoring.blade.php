@@ -1,7 +1,6 @@
 <form method="POST" action="{{ route('decision-sessions.close', $decisionSession) }}"
     onsubmit="return confirm('Akhiri penilaian dan hitung hasil agregasi?')">
     @csrf
-    @method('PATCH')
 
     @php
         // Logika: Tombol aktif jika jumlah DM yang ditugaskan > 0

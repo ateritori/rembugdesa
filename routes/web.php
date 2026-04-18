@@ -5,7 +5,6 @@ use App\Http\Controllers\{
     ProfileController,
     DashboardController
 };
-use App\Http\Controllers\Admin\BordaLogController;
 use App\Http\Controllers\Admin\{
     DecisionSessionController as AdminDecisionSessionController,
     DecisionControlController,
@@ -154,7 +153,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::controller(DecisionControlController::class)->group(function () {
             Route::get('/decision-sessions/{decisionSession}/control', 'index')->name('control.index');
             Route::patch('/decision-sessions/{decisionSession}/activate', 'activate')->name('decision-sessions.activate');
-            Route::patch('/decision-sessions/{decisionSession}/close', 'close')->name('decision-sessions.close');
+            Route::post('/decision-sessions/{decisionSession}/close', 'close')->name('decision-sessions.close');
         });
 
         // DM Assignment
@@ -191,15 +190,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/decision-sessions/{decisionSession}/lock-criteria', [AdminCriteriaAggregationController::class, 'lock'])
             ->name('decision-sessions.lock-criteria');
 
-        // BORDA Log Routes (Admin)
-        Route::get('/decision-sessions/{decisionSession}/borda-log', [BordaLogController::class, 'show'])
-            ->name('decision-sessions.borda-log.index');
 
         // Decision Provenance (Admin)
         Route::get(
             '/decision-sessions/{decisionSession}/provenance',
             [\App\Http\Controllers\Admin\DecisionProvenanceController::class, 'show']
         )->name('decision-sessions.provenance.index');
+
+        // DM Detail (SMART - Urgensi & Dampak Modal)
+        Route::get(
+            '/admin/smart-dm-detail',
+            [\App\Http\Controllers\Admin\SmartDmDetailController::class, 'index']
+        )->name('admin.smart-dm-detail');
     });
 
     /*
