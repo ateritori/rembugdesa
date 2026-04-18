@@ -11,10 +11,6 @@ use Illuminate\Support\Facades\DB;
 
 use App\Services\Evaluation\EvaluationWorkspaceService;
 use App\Services\Evaluation\EvaluationSubmissionService;
-use App\Services\Evaluation\SmartCalculationService;
-use App\Services\Evaluation\SawCalculationService;
-use App\Services\Evaluation\SmartAggregationPerDMService;
-use App\Services\Evaluation\SawAggregationPerDMService;
 
 class AlternativeEvaluationController extends Controller
 {
@@ -35,16 +31,12 @@ class AlternativeEvaluationController extends Controller
     }
 
     /**
-     * Store evaluation data
+     * Store evaluation data (INPUT ONLY)
      */
     public function store(
         Request $request,
         DecisionSession $decisionSession,
-        EvaluationSubmissionService $service,
-        SmartCalculationService $smartService,
-        SawCalculationService $sawService,
-        SmartAggregationPerDMService $smartAggService,
-        SawAggregationPerDMService $sawAggService
+        EvaluationSubmissionService $service
     ) {
         $user = Auth::user();
         abort_if(!$user || !$user->hasRole('dm'), 403);
@@ -68,30 +60,26 @@ class AlternativeEvaluationController extends Controller
             ->toArray();
 
         try {
-            DB::transaction(function () use ($service, $smartService, $sawService, $smartAggService, $sawAggService, $decisionSession, $user, $evaluations) {
+            DB::transaction(function () use ($service, $decisionSession, $user, $evaluations) {
+
+                // authorize input
                 $service->authorize(
                     $decisionSession,
                     $user,
                     $evaluations
                 );
 
+                // store HUMAN evaluation only
                 $service->submit(
                     $decisionSession,
                     $user,
                     $evaluations
                 );
-
-                // Trigger calculation
-                $smartService->calculate($decisionSession, $user->id);
-                $sawService->calculate($decisionSession, $user->id);
-
-                // Trigger aggregation
-                $smartAggService->calculate($decisionSession);
-                $sawAggService->calculate($decisionSession);
             });
 
             return back()->with('success', 'Evaluasi berhasil disimpan.');
         } catch (\Exception $e) {
+
             Log::error('Gagal simpan evaluasi', [
                 'error' => $e->getMessage()
             ]);

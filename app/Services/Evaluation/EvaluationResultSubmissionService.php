@@ -20,6 +20,11 @@ class EvaluationResultSubmissionService
      */
     public function calculateAndStore(DecisionSession $session, string $method = 'smart'): void
     {
+        if ($method === 'weighted') {
+            // weighted should not be stored in evaluation_results
+            return;
+        }
+
         DB::transaction(function () use ($session, $method) {
 
             // 1. Calculate weighted scores
@@ -44,8 +49,7 @@ class EvaluationResultSubmissionService
                     'decision_session_id' => $session->id,
                     'alternative_id'      => $row['alternative_id'],
                     'method'              => $method,
-                    'score'               => $row['final_score'],
-                    'rank'                => $rank++,
+                    'evaluation_score'    => $row['final_score'],
                     'created_at'          => $now,
                     'updated_at'          => $now,
                 ];

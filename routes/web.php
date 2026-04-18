@@ -5,9 +5,6 @@ use App\Http\Controllers\{
     ProfileController,
     DashboardController
 };
-use App\Http\Controllers\Admin\AhpLogController;
-use App\Http\Controllers\Admin\SmartLogController;
-use App\Http\Controllers\Admin\SawLogController;
 use App\Http\Controllers\Admin\BordaLogController;
 use App\Http\Controllers\Admin\{
     DecisionSessionController as AdminDecisionSessionController,
@@ -194,21 +191,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/decision-sessions/{decisionSession}/lock-criteria', [AdminCriteriaAggregationController::class, 'lock'])
             ->name('decision-sessions.lock-criteria');
 
-        // AHP Log Routes (Admin)
-        Route::get('/decision-sessions/{decisionSession}/ahp-log', [AhpLogController::class, 'index'])
-            ->name('decision-sessions.ahp-log.index');
-
-        // SMART Log Routes (Admin)
-        Route::get('/decision-sessions/{decisionSession}/smart-log', [SmartLogController::class, 'index'])
-            ->name('decision-sessions.smart-log.index');
-
-        // SAW Log Routes (Admin)
-        Route::get('/decision-sessions/{decisionSession}/saw-log', [SawLogController::class, 'index'])
-            ->name('decision-sessions.saw-log.index');
-
         // BORDA Log Routes (Admin)
         Route::get('/decision-sessions/{decisionSession}/borda-log', [BordaLogController::class, 'show'])
             ->name('decision-sessions.borda-log.index');
+
+        // Decision Provenance (Admin)
+        Route::get(
+            '/decision-sessions/{decisionSession}/provenance',
+            [\App\Http\Controllers\Admin\DecisionProvenanceController::class, 'show']
+        )->name('decision-sessions.provenance.index');
     });
 
     /*

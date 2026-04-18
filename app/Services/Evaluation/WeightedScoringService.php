@@ -3,15 +3,10 @@
 namespace App\Services\Evaluation;
 
 use App\Models\DecisionSession;
+use Illuminate\Support\Facades\DB;
 
 class WeightedScoringService
 {
-    protected SmartCalculationService $smartService;
-
-    public function __construct(SmartCalculationService $smartService)
-    {
-        $this->smartService = $smartService;
-    }
 
     /**
      * Apply AHP sector weights to SMART scores
@@ -19,7 +14,12 @@ class WeightedScoringService
     public function calculate(DecisionSession $session): array
     {
         // 1. Get SMART scores (level 2)
-        $smartScores = $this->smartService->calculate($session);
+        $smartScores = DB::table('evaluation_results')
+            ->where('decision_session_id', $session->id)
+            ->where('method', 'smart')
+            ->whereNull('user_id')
+            ->pluck('evaluation_score', 'alternative_id')
+            ->toArray();
 
         // 2. Get AHP group weights (level 1)
         $groupWeight = $session->groupWeight;

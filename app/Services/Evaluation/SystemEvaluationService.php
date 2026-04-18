@@ -3,48 +3,45 @@
 namespace App\Services\Evaluation;
 
 use App\Models\DecisionSession;
+use App\Models\Alternative;
 use App\Models\EvaluationScore;
 use Illuminate\Support\Facades\DB;
 
 class SystemEvaluationService
 {
+    /**
+     * Generate system evaluation scores from alternatives
+     */
     public function generate(DecisionSession $session): void
     {
         DB::transaction(function () use ($session) {
 
-            // Ambil hanya kriteria system
-            $criteria = $session->criteria()
-                ->where('level', 2)
-                ->where('evaluator_type', 'system')
-                ->get();
-
-            if ($criteria->isEmpty()) {
-                return;
-            }
-
-            $alternatives = $session->alternatives()
+            $alternatives = Alternative::where('decision_session_id', $session->id)
                 ->where('is_active', true)
                 ->get();
 
-            // Hapus data system lama
-            $session->evaluationScores()
-                ->where('source', 'system')
-                ->delete();
+            $criteria = $session->criteria()
+                ->where('is_active', true)
+                ->get();
 
             $rows = [];
             $now = now();
 
-            foreach ($criteria as $c) {
-                foreach ($alternatives as $a) {
+            foreach ($alternatives as $alternative) {
+                foreach ($criteria as $criterion) {
 
-                    $value = $this->calculate($c, $a);
+                    $value = $this->mapValue($alternative, $criterion);
+
+                    if ($value === null) {
+                        continue;
+                    }
 
                     $rows[] = [
                         'decision_session_id' => $session->id,
                         'user_id'             => null,
-                        'criteria_id'         => $c->id,
-                        'alternative_id'      => $a->id,
-                        'value'               => $value,
+                        'criteria_id'         => $criterion->id,
+                        'alternative_id'      => $alternative->id,
+                        'value'               => (float) $value,
                         'source'              => 'system',
                         'created_at'          => $now,
                         'updated_at'          => $now,
@@ -52,28 +49,20 @@ class SystemEvaluationService
                 }
             }
 
-            if (!empty($rows)) {
-                EvaluationScore::insert($rows);
-            }
+            EvaluationScore::insert($rows);
         });
     }
 
-    protected function calculate($criteria, $alternative): float
+    /**
+     * ONLY mapping real fields from alternatives
+     */
+    protected function mapValue($alternative, $criterion)
     {
-        // Mapping sederhana (bisa kamu kembangkan nanti)
-        switch ($criteria->id) {
-
-            case 6: // RAB
-                return $alternative->rab ?? 0;
-
-            case 7: // Penerima Manfaat
-                return $alternative->beneficiaries ?? 0;
-
-            case 8: // Cakupan Wilayah
-                return $alternative->coverage ?? 0;
-
-            default:
-                return 0;
-        }
+        return match ($criterion->code ?? null) {
+            'rab'            => $alternative->rab,
+            'coverage'       => $alternative->coverage,
+            'beneficiaries'  => $alternative->beneficiaries,
+            default          => null,
+        };
     }
 }
