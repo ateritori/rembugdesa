@@ -16,67 +16,45 @@ class DecisionProvenanceController extends Controller
 {
     public function show(Request $request, $sessionId)
     {
-        $userId = $request->user()->id ?? null;
-
-        if (!$userId) {
+        // optional: specific user or all DM
+        if (!$request->user()) {
             return response()->json([
                 'message' => 'User tidak terautentikasi'
             ], 401);
         }
 
+        if (method_exists($request->user(), 'isAdmin') && !$request->user()->isAdmin()) {
+            abort(403);
+        }
+
         $session = DecisionSession::findOrFail($sessionId);
 
-        // === PIPELINE ===
-        // SMART (existing calculation)
-        $smartResults = app(SmartCalculationService::class)
-            ->calculate($session, $userId);
+        // 🔥 gunakan SmartTraceService sebagai sumber kebenaran (detail per kriteria)
+        $traceService = new SmartTraceService();
 
-        // SMART TRACE (provenance)
-        $smartTrace = app(SmartTraceService::class)
-            ->build($session, $userId, $smartResults);
+        // ambil semua user (DM + system/null)
+        $userIds = \App\Models\EvaluationScore::where('decision_session_id', $session->id)
+            ->whereNotNull('user_id')
+            ->pluck('user_id')
+            ->unique()
+            ->values()
+            ->toArray();
 
-        // === EXTENSION POINT ===
-        // nanti tinggal aktifkan:
-        /*
-        $sawResults = app(SawCalculationService::class)
-            ->calculate($session, $userId);
+        $traces = [];
 
-        $sawTrace = app(SawTraceService::class)
-            ->build($session, $userId, $sawResults);
-        */
+        foreach ($userIds as $userId) {
+            $traces[$userId] = $traceService->buildUserFullTrace($session, $userId);
+        }
+
+        $traces['system'] = $traceService->build(
+            $session,
+            null,
+            []
+        );
 
         return view('admin.provenance.index', [
-            'data' => [
-                'meta' => [
-                    'decision_session_id' => $session->id,
-                    'user_id' => $userId,
-                ],
-                'pipeline' => [
-                    'smart' => [
-                        'results' => $smartResults,
-                        'trace' => $smartTrace,
-                    ],
-                ],
-                'trace' => $this->flattenTrace($smartTrace),
-            ]
+            'traces' => $traces,
+            'session' => $session
         ]);
-    }
-
-    /**
-     * Flatten trace supaya mudah ditampilkan (opsional)
-     */
-    protected function flattenTrace(array $trace)
-    {
-        return collect($trace)->map(function ($item) {
-
-            return [
-                'alternative_id' => $item['alternative_id'],
-                'name' => $item['name'],
-                'final_score' => $item['final_score'],
-                'reconstructed_score' => $item['reconstructed_score'],
-                'delta' => $item['delta'],
-                'steps_count' => count($item['steps']),
-            ];
-        })->values();
     }
 }

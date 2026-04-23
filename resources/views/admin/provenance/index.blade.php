@@ -35,61 +35,88 @@
             </div>
         </div>
 
-        {{-- SUMMARY --}}
-        <div class="adaptive-card p-5 border shadow-sm rounded-2xl bg-white dark:bg-slate-900/50">
-            <h3 class="text-xs font-black uppercase tracking-widest mb-3">
-                Ringkasan
-            </h3>
 
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div>
-                    <div class="text-lg font-black text-primary">
-                        {{ count($data['trace'] ?? []) }}
-                    </div>
-                    <div class="text-[10px] uppercase text-slate-400">
-                        Alternatif
-                    </div>
-                </div>
+        @if (isset($traces) && count($traces) > 0)
+            <div class="adaptive-card p-5 border shadow-sm rounded-2xl bg-white dark:bg-slate-900/50">
+                <h3 class="text-xs font-black uppercase tracking-widest mb-3">
+                    SMART Trace (Detail Per Kriteria)
+                </h3>
 
-                <div>
-                    <div class="text-lg font-black text-indigo-500">
-                        {{ isset($data['pipeline']['smart']) ? count($data['pipeline']['smart']['results']) : 0 }}
-                    </div>
-                    <div class="text-[10px] uppercase text-slate-400">
-                        SMART Result
-                    </div>
-                </div>
+                @foreach ($traces as $userId => $alternatives)
+                    <div class="mb-6">
+                        <h4 class="text-xs font-bold mb-2">
+                            {{ $userId ? 'DM ' . $userId : 'SYSTEM' }}
+                        </h4>
 
-                <div>
-                    <div class="text-lg font-black text-orange-500">
-                        {{ isset($data['pipeline']['smart']['trace']) ? count($data['pipeline']['smart']['trace']) : 0 }}
-                    </div>
-                    <div class="text-[10px] uppercase text-slate-400">
-                        Trace
-                    </div>
-                </div>
+                        <div class="overflow-auto">
+                            <table class="w-full text-xs border">
+                                <thead>
+                                    <tr class="bg-slate-100">
+                                        <th class="p-2 border text-left">Alternatif</th>
+                                        <th class="p-2 border text-right">Skor</th>
+                                        <th class="p-2 border text-left">Kriteria</th>
+                                        <th class="p-2 border text-left">Raw</th>
+                                        <th class="p-2 border text-left">Min</th>
+                                        <th class="p-2 border text-left">Max</th>
+                                        <th class="p-2 border text-left">Normalisasi</th>
+                                        <th class="p-2 border text-left">Jenis</th>
+                                        <th class="p-2 border text-left">Transformasi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($alternatives as $altId => $data)
+                                        @php $rowspan = count($data['steps']); @endphp
 
-                <div>
-                    <div class="text-lg font-black text-emerald-500">
-                        {{ number_format(collect($data['trace'] ?? [])->avg('delta'), 6) }}
+                                        @foreach ($data['steps'] as $index => $step)
+                                            <tr class="border-t">
+                                                @if ($index === 0)
+                                                    <td class="p-2 border font-bold align-top"
+                                                        rowspan="{{ $rowspan }}">
+                                                        {{ $data['code'] ?? 'A' . $altId }}
+                                                    </td>
+                                                    <td class="p-2 border text-right font-mono align-top"
+                                                        rowspan="{{ $rowspan }}">
+                                                        {{ number_format($data['smart_score'] ?? 0, 4) }}
+                                                    </td>
+                                                @endif
+
+                                                <td class="p-2 border font-bold">
+                                                    C{{ $step['criteria_id'] }}
+                                                </td>
+                                                <td class="p-2 border font-mono text-right">
+                                                    {{ $step['raw_value'] }}
+                                                </td>
+                                                <td class="p-2 border font-mono text-right">
+                                                    {{ $step['min'] }}
+                                                </td>
+                                                <td class="p-2 border font-mono text-right">
+                                                    {{ $step['max'] }}
+                                                </td>
+                                                <td class="p-2 border font-mono text-right">
+                                                    {{ number_format($step['normalized'] ?? 0, 4) }}
+                                                </td>
+                                                <td class="p-2 border text-gray-500">
+                                                    {{ $step['utility_function'] ?? 'linear' }}
+                                                </td>
+                                                <td class="p-2 border font-mono text-right">
+                                                    {{ number_format($step['utility'] ?? ($step['normalized'] ?? 0), 4) }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="text-[10px] uppercase text-slate-400">
-                        Avg Delta
-                    </div>
-                </div>
+                @endforeach
             </div>
-        </div>
-
-        {{-- SMART TRACE --}}
-        @if (!empty($data['pipeline']['smart']['trace']))
-            @include('admin.provenance.partials.smart', ['data' => $data])
         @endif
 
         {{-- EMPTY --}}
-        @if (empty($data['trace']))
+        @if (isset($results) && $results->isEmpty())
             <div class="adaptive-card p-20 text-center border-dashed border-2 rounded-3xl opacity-50">
                 <p class="text-slate-500 font-black uppercase tracking-widest text-xs">
-                    Belum ada data provenance.
+                    Tidak ada data SMART.
                 </p>
             </div>
         @endif

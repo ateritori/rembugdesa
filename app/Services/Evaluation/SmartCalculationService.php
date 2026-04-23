@@ -10,10 +10,10 @@ class SmartCalculationService
     /**
      * Calculate SMART score per alternative (level 2 only)
      */
-    public function calculate(DecisionSession $session, int $userId): array
+    public function calculate(DecisionSession $session, ?int $userId): array
     {
-        if (!$userId) {
-            throw new \Exception('User ID wajib dikirim ke SmartCalculationService');
+        if ($userId === 0) {
+            throw new \Exception('User ID tidak valid');
         }
 
         // Load alternatives
@@ -23,12 +23,21 @@ class SmartCalculationService
             ->keyBy('id');
 
         // Load criteria level 2 assigned to this user
-        $assignedCriteriaIds = $session->assignments()
-            ->where('user_id', $userId)
-            ->where('can_evaluate', true)
-            ->pluck('criteria_id')
-            ->filter()
-            ->toArray();
+        if ($userId === null) {
+            // System evaluates all level 2 criteria
+            $assignedCriteriaIds = $session->criteria()
+                ->where('is_active', true)
+                ->where('level', 2)
+                ->pluck('id')
+                ->toArray();
+        } else {
+            $assignedCriteriaIds = $session->assignments()
+                ->where('user_id', $userId)
+                ->where('can_evaluate', true)
+                ->pluck('criteria_id')
+                ->filter()
+                ->toArray();
+        }
 
         $criteria = $session->criteria()
             ->where('is_active', true)
@@ -71,15 +80,22 @@ class SmartCalculationService
             }
         }
 
-        // Load evaluation scores
-        $scores = $session->evaluationScores()
-            ->where('user_id', $userId)
-            ->whereIn('criteria_id', $assignedCriteriaIds)
-            ->get()
-            ->groupBy('criteria_id');
+        // Scores for this DM (for utility calculation)
+        $scoresQuery = $session->evaluationScores()
+            ->whereIn('criteria_id', $assignedCriteriaIds);
+
+        if ($userId === null) {
+            $scoresQuery->whereNull('user_id');
+        } else {
+            $scoresQuery->where('user_id', $userId);
+        }
+
+        $scores = $scoresQuery->get()->groupBy('criteria_id');
+
 
         // Step 1: Normalize values per criteria
         $normalized = [];
+        $debug = [];
 
         foreach ($scores as $criteriaId => $rows) {
 
@@ -87,6 +103,7 @@ class SmartCalculationService
                 continue;
             }
 
+            // Use LOCAL values (per DM) for normalization (Excel mode)
             $values = $rows->pluck('value')->toArray();
 
             if (empty($values)) {
@@ -96,8 +113,9 @@ class SmartCalculationService
             $rule = $rules[$criteriaId] ?? null;
 
             if ($rule && $rule->input_type === 'scale') {
-                $min = $rule->scale_min;
-                $max = $rule->scale_max;
+                // Excel logic: skala selalu 1–5
+                $min = 1;
+                $max = 5;
             } else {
                 $min = min($values);
                 $max = max($values);
@@ -107,8 +125,8 @@ class SmartCalculationService
 
                 $type = $criteria[$criteriaId]->type ?? 'benefit';
 
-                if ($max == $min) {
-                    $norm = 1;
+                if ($max == $min || ($max - $min) == 0) {
+                    $norm = 0;
                 } else {
                     if ($type === 'cost') {
                         $norm = ($max - $row->value) / ($max - $min);
@@ -117,25 +135,41 @@ class SmartCalculationService
                     }
                 }
 
-                // Apply utility function
-                if ($rule) {
-                    $r = $rule->curve_degree;
+                $norm = max(0, min(1, $norm));
+
+                $normalizedValue = $norm;
+
+                // Apply utility function (SOURCE OF TRUTH)
+                $utilityValue = $normalizedValue;
+
+                if ($rule && $normalizedValue !== null) {
+                    $deg = $rule->curve_degree;
 
                     if ($rule->utility_function === 'concave') {
-                        $r = $r ?? 0.5;
-                        $norm = pow($norm, $r);
+                        $deg = $deg ?? 0.2;
+                        $utilityValue = pow($normalizedValue, $deg);
                     } elseif ($rule->utility_function === 'convex') {
-                        $r = $r ?? 2;
-                        $norm = pow($norm, $r);
+                        $deg = $deg ?? 4;
+                        $utilityValue = pow($normalizedValue, $deg);
                     }
                 }
 
-                $normalized[$row->alternative_id][$criteriaId] = $norm;
+                $normalized[$row->alternative_id][$criteriaId] = $utilityValue;
+
+                $debug[$userId][$row->alternative_id][] = [
+                    'criteria_id' => $criteriaId,
+                    'raw_value' => $row->value,
+                    'min' => $min,
+                    'max' => $max,
+                    'normalized' => $normalizedValue,
+                    'utility' => $utilityValue,
+                ];
             }
         }
 
 
         // Step 2: Aggregate (equal weight per criteria)
+        // NOTE: debug mode active → per-criteria detail returned
         $upserts = [];
 
         $results = [];
@@ -152,13 +186,8 @@ class SmartCalculationService
                     continue;
                 }
 
-                // Use sector (level 1) weight based on alternative
-                $sectorId = $alt->criteria_id;
-                $w = $weights[$sectorId] ?? 1;
-
-                if (!$userId) {
-                    throw new \Exception('User ID hilang saat proses penyimpanan SMART');
-                }
+                // weight tidak digunakan di Excel mode
+                $w = 0;
 
                 $upserts[] = [
                     'decision_session_id' => $session->id,
@@ -172,12 +201,30 @@ class SmartCalculationService
                     'created_at' => now(),
                 ];
 
-                $total += $value * $w;
+                // $total += $value * $w; // Removed as per instructions
             }
+
+            // Simple average (Excel mode, equal weight)
+            $vals = array_values($normalized[$altId] ?? []);
+
+            $total = count($vals) > 0 ? array_sum($vals) / count($vals) : 0;
 
             $score = $total;
 
-            $results[$altId] = round($score, 6);
+            $results[$altId] = round($score, 4);
+
+            // Save final SMART score (criteria_id = null)
+            $upserts[] = [
+                'decision_session_id' => $session->id,
+                'user_id' => $userId,
+                'alternative_id' => $altId,
+                'criteria_id' => null,
+                'method' => 'smart',
+                'evaluation_score' => $score,
+                'weighted_score' => $score,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ];
         }
 
         if (!empty($upserts)) {
@@ -188,6 +235,10 @@ class SmartCalculationService
             );
         }
 
-        return $results;
+        return [
+            'results' => $results,
+            'normalized' => $normalized,
+            'debug' => $debug,
+        ];
     }
 }

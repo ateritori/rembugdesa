@@ -61,9 +61,19 @@ class SystemSmartService
             $rule = $rules[$criteriaId] ?? null;
             $crit = $criteria[$criteriaId];
 
-            $values = $items->pluck('value');
+            // 🔥 ambil hanya nilai dari system untuk min-max
+            $systemValues = $items
+                ->filter(fn($r) => !isset($r->user_id)) // system tidak punya user_id
+                ->pluck('value');
+
+            // fallback jika tidak ada system (safety)
+            $values = $systemValues->isNotEmpty()
+                ? $systemValues
+                : $items->pluck('value');
+
             $min = $values->min();
             $max = $values->max();
+
 
             foreach ($items as $item) {
 
