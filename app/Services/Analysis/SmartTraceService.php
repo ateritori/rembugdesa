@@ -130,8 +130,12 @@ class SmartTraceService
             }
         }
 
+        // normalize keys strictly and prevent mismatch
         $weights = collect($weights)
-            ->mapWithKeys(fn($v, $k) => [(int)$k => (float)$v])
+            ->mapWithKeys(function ($v, $k) {
+                $key = is_numeric($k) ? (int)$k : $k;
+                return [$key => (float)$v];
+            })
             ->all();
 
         // RAW USER INPUT
@@ -153,11 +157,26 @@ class SmartTraceService
         $rules = DB::table('criteria_scoring_rules')
             ->where('decision_session_id', $session->id)
             ->get()
-            ->keyBy('criteria_id');
+            ->mapWithKeys(function ($r) {
+                return [(int)$r->criteria_id => $r];
+            });
 
         $globalMinMax = [];
         foreach ($criteria as $criteriaId => $c) {
+            $criteriaId = (int) $criteriaId;
             $rule = $rules[$criteriaId] ?? null;
+
+            if (!$rule) {
+                throw new \Exception("Missing scoring rule for criteria_id={$criteriaId}");
+            }
+
+            if (!$rule->utility_function) {
+                throw new \Exception("utility_function kosong untuk criteria_id={$criteriaId}");
+            }
+
+            if ($rule->curve_degree === null) {
+                throw new \Exception("curve_degree kosong untuk criteria_id={$criteriaId}");
+            }
             // 👉 jika skala → pakai rule (bukan data)
             if ($rule && $rule->input_type === 'scale') {
                 $globalMinMax[$criteriaId] = [
@@ -208,7 +227,12 @@ class SmartTraceService
 
                 $normalized = null;
 
-                if ($rawValue !== null && $min !== null && $max !== null && $max != $min) {
+                if ($rawValue !== null && $min !== null && $max !== null) {
+
+                    if ($max == $min) {
+                        throw new \Exception("Invalid min/max for criteria_id={$criteriaId}");
+                    }
+
                     if ($c->type === 'cost') {
                         $normalized = ($max - $rawValue) / ($max - $min);
                     } else {
@@ -227,6 +251,7 @@ class SmartTraceService
                 $steps[] = [
                     'criteria_id'   => $criteriaId,
                     'criteria_name' => $c->name ?? null,
+                    'domain_id'     => $c->domain_id,
                     'type'          => $c->type,
 
                     'raw_value' => $rawValue,
@@ -248,8 +273,14 @@ class SmartTraceService
                 ? $totalUtility / $count
                 : 0;
 
-            $sectorId = (int) ($alt->criteria_id ?? 0);
-            $weight   = (float) ($weights[$sectorId] ?? 0);
+            // STRICT mapping: must match SmartCalculationService (source of truth)
+            $sectorId = (int) $alt->criteria_id;
+
+            if (!isset($weights[$sectorId])) {
+                throw new \Exception("Sector weight not found for sector_id={$sectorId}");
+            }
+
+            $weight = (float) $weights[$sectorId];
 
             $finalScore = $smartScore * $weight;
 
@@ -258,9 +289,10 @@ class SmartTraceService
                 'code' => $alt->code ?? null,
                 'name' => $alt->name ?? null,
 
-                'smart_score' => round($smartScore, 6),
+                // keep full precision (round only in Blade / presentation)
+                'smart_score' => $smartScore,
                 'sector_weight' => $weight,
-                'final_score' => round($finalScore, 6),
+                'final_score' => $finalScore,
 
                 'steps' => $steps,
             ];
@@ -275,21 +307,27 @@ class SmartTraceService
     private function transformUtility($normalized, $rule)
     {
         if ($normalized === null) {
-            return 0;
+            throw new \Exception("Normalized value is null");
         }
 
-        if (!$rule) {
-            return $normalized;
+        $u = max(0, min(1, (float) $normalized));
+
+        $k = (float) $rule->curve_degree;
+
+        if ($k <= 0) {
+            throw new \Exception("Invalid curve_degree: {$k}");
         }
 
-        if ($rule->utility_function === 'concave') {
-            return pow($normalized, $rule->curve_degree ?? 0.2);
+        $function = strtolower(trim($rule->utility_function));
+
+        if (!in_array($function, ['linear', 'convex', 'concave'])) {
+            throw new \Exception("Invalid utility_function: {$function}");
         }
 
-        if ($rule->utility_function === 'convex') {
-            return pow($normalized, $rule->curve_degree ?? 4);
-        }
-
-        return $normalized;
+        return match ($function) {
+            'linear'  => $u,
+            'convex'  => pow($u, $k),
+            'concave' => 1 - pow((1 - $u), $k),
+        };
     }
 }

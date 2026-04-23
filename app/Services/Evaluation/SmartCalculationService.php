@@ -68,6 +68,33 @@ class SmartCalculationService
             $weights = [];
         }
 
+        // Load sector/group weights (AHP level sektor)
+        $groupWeightRecord = $session->groupWeight;
+
+        if ($groupWeightRecord) {
+            $rawGroup = $groupWeightRecord->weights;
+
+            if (is_string($rawGroup)) {
+                $groupWeights = json_decode($rawGroup, true) ?: [];
+            } elseif (is_array($rawGroup)) {
+                $groupWeights = $rawGroup;
+            } else {
+                $groupWeights = [];
+            }
+        } else {
+            $groupWeights = [];
+        }
+
+        // Normalize JSON keys → integer sector_id (STRICT)
+        $groupWeights = collect($groupWeights)
+            ->mapWithKeys(function ($v, $k) {
+                if (!is_numeric($k)) {
+                    throw new \Exception("Invalid sector key in JSON: {$k}");
+                }
+                return [(int)$k => (float)$v];
+            })
+            ->all();
+
         // Normalize weight keys to int
         $weights = collect($weights)
             ->mapWithKeys(fn($v, $k) => [(int)$k => (float)$v])
@@ -176,6 +203,16 @@ class SmartCalculationService
 
         foreach ($alternatives as $altId => $alt) {
 
+            // STRICT mapping: alternative.criteria_id MUST match JSON key
+            $sectorId = (int) $alt->criteria_id;
+
+            if (!isset($groupWeights[$sectorId])) {
+                // debug safeguard: force visibility if mapping fails
+                throw new \Exception("Sector weight not found for sector_id={$sectorId}");
+            }
+
+            $sectorWeight = (float) $groupWeights[$sectorId];
+
             $total = 0;
 
             foreach ($criteria as $criteriaId => $c) {
@@ -209,9 +246,11 @@ class SmartCalculationService
 
             $total = count($vals) > 0 ? array_sum($vals) / count($vals) : 0;
 
-            $score = $total;
+            // Apply sector weight
+            $score = $total * $sectorWeight;
 
-            $results[$altId] = round($score, 4);
+            // keep full precision (round only at presentation layer)
+            $results[$altId] = $score;
 
             // Save final SMART score (criteria_id = null)
             $upserts[] = [
@@ -222,6 +261,8 @@ class SmartCalculationService
                 'method' => 'smart',
                 'evaluation_score' => $score,
                 'weighted_score' => $score,
+                'sector_id' => $sectorId,
+                'sector_weight' => $sectorWeight,
                 'updated_at' => now(),
                 'created_at' => now(),
             ];

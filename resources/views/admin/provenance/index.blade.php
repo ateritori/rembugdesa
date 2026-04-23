@@ -36,81 +36,38 @@
         </div>
 
 
-        @if (isset($traces) && count($traces) > 0)
-            <div class="adaptive-card p-5 border shadow-sm rounded-2xl bg-white dark:bg-slate-900/50">
-                <h3 class="text-xs font-black uppercase tracking-widest mb-3">
-                    SMART Trace (Detail Per Kriteria)
-                </h3>
 
-                @foreach ($traces as $userId => $alternatives)
-                    <div class="mb-6">
-                        <h4 class="text-xs font-bold mb-2">
-                            {{ $userId ? 'DM ' . $userId : 'SYSTEM' }}
-                        </h4>
+        <div class="adaptive-card p-6 border rounded-2xl bg-white dark:bg-slate-900/50">
+            <h3 class="text-xs font-black uppercase tracking-widest mb-4">
+                Pilih Metode
+            </h3>
 
-                        <div class="overflow-auto">
-                            <table class="w-full text-xs border">
-                                <thead>
-                                    <tr class="bg-slate-100">
-                                        <th class="p-2 border text-left">Alternatif</th>
-                                        <th class="p-2 border text-right">Skor</th>
-                                        <th class="p-2 border text-left">Kriteria</th>
-                                        <th class="p-2 border text-left">Raw</th>
-                                        <th class="p-2 border text-left">Min</th>
-                                        <th class="p-2 border text-left">Max</th>
-                                        <th class="p-2 border text-left">Normalisasi</th>
-                                        <th class="p-2 border text-left">Jenis</th>
-                                        <th class="p-2 border text-left">Transformasi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($alternatives as $altId => $data)
-                                        @php $rowspan = count($data['steps']); @endphp
+            <div class="flex border-b mb-4">
+                <a href="#" onclick="setTab('smart')" data-tab="smart"
+                    class="px-4 py-2 text-xs font-black border-b-2 {{ request()->routeIs('provenance.smart') ? 'border-primary text-primary' : 'border-transparent text-slate-500' }}">
+                    SMART Trace
+                </a>
 
-                                        @foreach ($data['steps'] as $index => $step)
-                                            <tr class="border-t">
-                                                @if ($index === 0)
-                                                    <td class="p-2 border font-bold align-top"
-                                                        rowspan="{{ $rowspan }}">
-                                                        {{ $data['code'] ?? 'A' . $altId }}
-                                                    </td>
-                                                    <td class="p-2 border text-right font-mono align-top"
-                                                        rowspan="{{ $rowspan }}">
-                                                        {{ number_format($data['smart_score'] ?? 0, 4) }}
-                                                    </td>
-                                                @endif
-
-                                                <td class="p-2 border font-bold">
-                                                    C{{ $step['criteria_id'] }}
-                                                </td>
-                                                <td class="p-2 border font-mono text-right">
-                                                    {{ $step['raw_value'] }}
-                                                </td>
-                                                <td class="p-2 border font-mono text-right">
-                                                    {{ $step['min'] }}
-                                                </td>
-                                                <td class="p-2 border font-mono text-right">
-                                                    {{ $step['max'] }}
-                                                </td>
-                                                <td class="p-2 border font-mono text-right">
-                                                    {{ number_format($step['normalized'] ?? 0, 4) }}
-                                                </td>
-                                                <td class="p-2 border text-gray-500">
-                                                    {{ $step['utility_function'] ?? 'linear' }}
-                                                </td>
-                                                <td class="p-2 border font-mono text-right">
-                                                    {{ number_format($step['utility'] ?? ($step['normalized'] ?? 0), 4) }}
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                @endforeach
+                <a href="#" onclick="setTab('borda')" data-tab="borda"
+                    class="px-4 py-2 text-xs font-black border-b-2 {{ request()->routeIs('provenance.borda') ? 'border-primary text-primary' : 'border-transparent text-slate-500' }}">
+                    Borda Aggregation
+                </a>
             </div>
-        @endif
+
+            <div id="tab-smart" class="tab-content">
+                @include('admin.provenance.partials.smart')
+            </div>
+
+            <div id="tab-borda" class="tab-content hidden">
+                @include('admin.provenance.partials.borda')
+            </div>
+
+            <div>
+                <p class="text-xs text-slate-500">
+                    Pilih tab untuk melihat detail proses perhitungan.
+                </p>
+            </div>
+        </div>
 
         {{-- EMPTY --}}
         @if (isset($results) && $results->isEmpty())
@@ -141,5 +98,18 @@
             }
         }
     </style>
+    <script>
+        function setTab(tab) {
+            document.getElementById('tab-smart').classList.add('hidden');
+            document.getElementById('tab-borda').classList.add('hidden');
+
+            document.querySelectorAll('[data-tab]').forEach(el => {
+                el.classList.remove('border-primary', 'text-primary');
+                el.classList.add('border-transparent', 'text-slate-500');
+            });
+
+            document.getElementById('tab-' + tab).classList.remove('hidden');
+        }
+    </script>
 
 @endsection

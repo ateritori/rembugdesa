@@ -191,11 +191,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('decision-sessions.lock-criteria');
 
 
+
         // Decision Provenance (Admin)
         Route::get(
             '/decision-sessions/{decisionSession}/provenance',
             [\App\Http\Controllers\Admin\DecisionProvenanceController::class, 'show']
         )->name('decision-sessions.provenance.index');
+
+        // SMART Trace
+        Route::get(
+            '/decision-sessions/{decisionSession}/provenance/smart',
+            [\App\Http\Controllers\Admin\DecisionProvenanceController::class, 'smart']
+        )->name('provenance.smart');
+
+        // BORDA Aggregation
+        Route::get(
+            '/decision-sessions/{decisionSession}/provenance/borda',
+            [\App\Http\Controllers\Admin\DecisionProvenanceController::class, 'borda']
+        )->name('provenance.borda');
 
         // DM Detail (SMART - Urgensi & Dampak Modal)
         Route::get(

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\DecisionSession;
 
-use App\Services\Evaluation\SmartCalculationService;
 use App\Services\Analysis\SmartTraceService;
+use App\Services\Borda\NestedBordaService;
 // nanti tinggal tambah:
 // use App\Services\Analysis\SawCalculationService;
 // use App\Services\Analysis\SawTraceService;
@@ -29,10 +29,38 @@ class DecisionProvenanceController extends Controller
 
         $session = DecisionSession::findOrFail($sessionId);
 
-        // 🔥 gunakan SmartTraceService sebagai sumber kebenaran (detail per kriteria)
+        // Load sector/group weights
+        $groupWeightRecord = $session->groupWeight;
+
+        if ($groupWeightRecord) {
+            $rawGroup = $groupWeightRecord->weights;
+
+            if (is_string($rawGroup)) {
+                $sectorWeights = json_decode($rawGroup, true) ?: [];
+            } elseif (is_array($rawGroup)) {
+                $sectorWeights = $rawGroup;
+            } else {
+                $sectorWeights = [];
+            }
+
+            // STRICT normalization: keys must be integer sector_id
+            $sectorWeights = collect($sectorWeights)
+                ->mapWithKeys(function ($v, $k) {
+                    if (!is_numeric($k)) {
+                        throw new \Exception("Invalid sector key in JSON: {$k}");
+                    }
+                    return [(int)$k => (float)$v];
+                })
+                ->all();
+        } else {
+            $sectorWeights = [];
+        }
+
+        // ================================
+        // SMART TRACE (ALL DM + SYSTEM)
+        // ================================
         $traceService = new SmartTraceService();
 
-        // ambil semua user (DM + system/null)
         $userIds = \App\Models\EvaluationScore::where('decision_session_id', $session->id)
             ->whereNotNull('user_id')
             ->pluck('user_id')
@@ -46,15 +74,19 @@ class DecisionProvenanceController extends Controller
             $traces[$userId] = $traceService->buildUserFullTrace($session, $userId);
         }
 
-        $traces['system'] = $traceService->build(
-            $session,
-            null,
-            []
-        );
+        $traces['system'] = $traceService->build($session, null, []);
 
-        return view('admin.provenance.index', [
-            'traces' => $traces,
-            'session' => $session
-        ]);
+        // ================================
+        // NESTED BORDA (DM → DOMAIN → FINAL)
+        // ================================
+        $bordaService = new NestedBordaService();
+        $borda = $bordaService->calculateFromTraces($traces);
+
+        return view('admin.provenance.index', compact(
+            'session',
+            'traces',
+            'sectorWeights',
+            'borda'
+        ));
     }
 }
