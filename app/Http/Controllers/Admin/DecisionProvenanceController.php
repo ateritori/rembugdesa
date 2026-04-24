@@ -10,7 +10,7 @@ use App\Services\Analysis\SmartTraceService;
 use App\Services\Borda\NestedBordaService;
 // nanti tinggal tambah:
 // use App\Services\Analysis\SawCalculationService;
-// use App\Services\Analysis\SawTraceService;
+use App\Services\Analysis\SawTraceService;
 
 class DecisionProvenanceController extends Controller
 {
@@ -77,16 +77,34 @@ class DecisionProvenanceController extends Controller
         $traces['system'] = $traceService->build($session, null, []);
 
         // ================================
+        // SAW TRACE (ALL DM + SYSTEM) - PARALLEL
+        // ================================
+        $sawTraceService = new SawTraceService();
+
+        $sawTraces = [];
+
+        foreach ($userIds as $userId) {
+            $sawTraces[$userId] = $sawTraceService->buildUserFullTrace($session, $userId);
+        }
+
+        $sawTraces['system'] = $sawTraceService->build($session, null, []);
+
+        // ================================
         // NESTED BORDA (DM → DOMAIN → FINAL)
         // ================================
         $bordaService = new NestedBordaService();
         $borda = $bordaService->calculateFromTraces($traces);
 
+        // SAW BORDA (parallel result)
+        $sawBorda = $bordaService->calculateFromTraces($sawTraces);
+
         return view('admin.provenance.index', compact(
             'session',
             'traces',
+            'sawTraces',
             'sectorWeights',
-            'borda'
+            'borda',
+            'sawBorda'
         ));
     }
 }

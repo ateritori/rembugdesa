@@ -52,6 +52,11 @@
                     class="px-4 py-2 text-xs font-black border-b-2 {{ request()->routeIs('provenance.borda') ? 'border-primary text-primary' : 'border-transparent text-slate-500' }}">
                     Borda Aggregation
                 </a>
+
+                <a href="#" onclick="setTab('saw')" data-tab="saw"
+                    class="px-4 py-2 text-xs font-black border-b-2 border-transparent text-slate-500">
+                    SAW Trace
+                </a>
             </div>
 
             <div id="tab-smart" class="tab-content">
@@ -60,6 +65,10 @@
 
             <div id="tab-borda" class="tab-content hidden">
                 @include('admin.provenance.partials.borda')
+            </div>
+
+            <div id="tab-saw" class="tab-content hidden">
+                @include('admin.provenance.partials.saw')
             </div>
 
             <div>
@@ -102,6 +111,7 @@
         function setTab(tab) {
             document.getElementById('tab-smart').classList.add('hidden');
             document.getElementById('tab-borda').classList.add('hidden');
+            document.getElementById('tab-saw').classList.add('hidden');
 
             document.querySelectorAll('[data-tab]').forEach(el => {
                 el.classList.remove('border-primary', 'text-primary');
