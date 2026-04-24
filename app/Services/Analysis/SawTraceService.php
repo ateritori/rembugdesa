@@ -149,11 +149,11 @@ class SawTraceService
                     throw new \Exception("Invalid min/max for criteria_id={$criteriaId}");
                 }
 
-                // 🔥 NORMALISASI SAW
+                // 🔥 NORMALISASI SAW (min-max, konsisten dengan SMART & Excel)
                 if ($c->type === 'cost') {
-                    $normalized = $min / $rawValue;
+                    $normalized = ($max - $rawValue) / ($max - $min);
                 } else {
-                    $normalized = $rawValue / $max;
+                    $normalized = ($rawValue - $min) / ($max - $min);
                 }
 
                 // clamp biar aman
@@ -183,10 +183,8 @@ class SawTraceService
 
             $count = count($steps);
 
-            // 🔹 SAW SCORE (rata-rata atau langsung sum juga bisa)
-            $sawScore = $count > 0
-                ? $total / $count
-                : 0;
+            // 🔹 SAW SCORE (weighted sum, identik dengan Excel)
+            $sawScore = $total;
 
             // 🔹 mapping weight (SAMA seperti SMART)
             $sectorId = (int) $alt->criteria_id;

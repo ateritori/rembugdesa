@@ -50,12 +50,20 @@
 
                 <a href="#" onclick="setTab('borda')" data-tab="borda"
                     class="px-4 py-2 text-xs font-black border-b-2 {{ request()->routeIs('provenance.borda') ? 'border-primary text-primary' : 'border-transparent text-slate-500' }}">
-                    Borda Aggregation
+                    SMART Borda
                 </a>
 
                 <a href="#" onclick="setTab('saw')" data-tab="saw"
                     class="px-4 py-2 text-xs font-black border-b-2 border-transparent text-slate-500">
                     SAW Trace
+                </a>
+                <a href="#" onclick="setTab('sawborda')" data-tab="sawborda"
+                    class="px-4 py-2 text-xs font-black border-b-2 border-transparent text-slate-500">
+                    SAW Borda
+                </a>
+                <a href="#" onclick="setTab('compare')" data-tab="compare"
+                    class="px-4 py-2 text-xs font-black border-b-2 border-transparent text-slate-500">
+                    Perbandingan
                 </a>
             </div>
 
@@ -64,11 +72,19 @@
             </div>
 
             <div id="tab-borda" class="tab-content hidden">
-                @include('admin.provenance.partials.borda')
+                @include('admin.provenance.partials.smartborda')
             </div>
 
             <div id="tab-saw" class="tab-content hidden">
                 @include('admin.provenance.partials.saw')
+            </div>
+
+            <div id="tab-sawborda" class="tab-content hidden">
+                @include('admin.provenance.partials.sawborda')
+            </div>
+
+            <div id="tab-compare" class="tab-content hidden">
+                @include('admin.provenance.partials.compare')
             </div>
 
             <div>
@@ -112,6 +128,8 @@
             document.getElementById('tab-smart').classList.add('hidden');
             document.getElementById('tab-borda').classList.add('hidden');
             document.getElementById('tab-saw').classList.add('hidden');
+            document.getElementById('tab-sawborda').classList.add('hidden');
+            document.getElementById('tab-compare').classList.add('hidden');
 
             document.querySelectorAll('[data-tab]').forEach(el => {
                 el.classList.remove('border-primary', 'text-primary');

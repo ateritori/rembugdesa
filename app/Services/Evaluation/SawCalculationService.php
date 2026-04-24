@@ -105,6 +105,7 @@ class SawCalculationService
         foreach ($alternatives as $altId => $alt) {
 
             $total = 0;
+            $count = 0;
 
             foreach ($criteria as $criteriaId => $c) {
 
@@ -114,10 +115,6 @@ class SawCalculationService
                     continue;
                 }
 
-                // Ambil bobot sektor (level 1 dari alternative)
-                $sectorId = $alt->criteria_id;
-                $w = $weights[$sectorId] ?? 1;
-
                 $upserts[] = [
                     'decision_session_id' => $session->id,
                     'user_id' => $userId,
@@ -125,15 +122,25 @@ class SawCalculationService
                     'criteria_id' => $criteriaId,
                     'method' => 'saw',
                     'evaluation_score' => $value,
-                    'weighted_score' => $value * $w,
+                    'weighted_score' => null,
                     'updated_at' => now(),
                     'created_at' => now(),
                 ];
 
-                $total += $value * $w;
+                $total += $value;
+                $count++;
             }
 
-            $results[$altId] = round($total, 6);
+            // 🔹 SAW score = rata-rata normalized (sama seperti trace)
+            $sawScore = $count > 0 ? $total / $count : 0;
+
+            // 🔹 weight sektor diaplikasikan SEKALI di akhir
+            $sectorId = (int) $alt->criteria_id;
+            $weight = $weights[$sectorId] ?? 1;
+
+            $finalScore = $sawScore * $weight;
+
+            $results[$altId] = round($finalScore, 6);
         }
 
         if (!empty($upserts)) {
