@@ -140,7 +140,7 @@ class SawCalculationService
 
             $finalScore = $sawScore * $weight;
 
-            $results[$altId] = round($finalScore, 6);
+            $results[$altId] = (float) sprintf('%.10f', $finalScore);
         }
 
         if (!empty($upserts)) {

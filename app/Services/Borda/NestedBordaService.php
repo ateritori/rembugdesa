@@ -31,7 +31,7 @@ class NestedBordaService
                 if (!isset($altData['final_score'])) continue;
 
                 // Rounding di awal untuk menghindari noise floating point (standard Excel)
-                $score = round((float) $altData['final_score'], 4);
+                $score = (float) sprintf('%.10f', $altData['final_score']);
                 $domainDM[$domainId][$userId][$altId] = $score;
 
                 // Simpan ID alternatif yang muncul secara global
@@ -58,19 +58,19 @@ class NestedBordaService
 
             // 2. Ambil semua value dan urutkan dari BESAR ke KECIL untuk referensi rank
             $allValues = array_map(function ($v) {
-                return round((float)$v, 4);
+                return (float) sprintf('%.10f', $v);
             }, array_values($scores));
             rsort($allValues);
 
             $borda = [];
             foreach ($scores as $altId => $val) {
-                $val = round((float)$val, 4);
+                $val = (float) sprintf('%.10f', $val);
 
                 // 3. Logika RANK.EQ: Cari posisi pertama nilai ini di array yang sudah di-sort DESC
                 // PHP array index mulai dari 0, jadi rank adalah index + 1
                 $rank = 1;
                 foreach ($allValues as $index => $v) {
-                    if (round($v, 4) > $val) {
+                    if ($v > $val) {
                         $rank++;
                     } else {
                         break; // Karena sudah di-sort DESC, jika tidak lebih besar, hentikan
@@ -122,19 +122,26 @@ class NestedBordaService
         }
 
         // ================================
-        // 5. Ranking Akhir (RANK.EQ)
+        // 5. Ranking Akhir — Unique ranking (no tie, no jump) with deterministic epsilon
         // ================================
+        // 🔥 Unique ranking (no tie, no jump) with deterministic epsilon
+        $adjustedScores = [];
+
+        foreach ($finalScores as $altId => $score) {
+            // tambah epsilon kecil berbasis altId agar stabil & deterministik
+            $adjustedScores[$altId] = (float) sprintf('%.10f', $score) + ($altId * 1e-12);
+        }
+
+        // sort descending secara numerik
+        arsort($adjustedScores, SORT_NUMERIC);
+
         $ranking = [];
-        ksort($finalScores); // Konsistensi urutan alternatif
+        $rank = 1;
 
-        // Hitung rank akhir menggunakan logika yang sama dengan Excel
-        $finalBordaCalculated = $rankAndBorda($finalScores);
-
-        foreach ($finalScores as $altId => $totalScore) {
+        foreach ($adjustedScores as $altId => $adjScore) {
             $ranking[$altId] = [
-                'score' => round($totalScore, 4),
-                // Kita ambil rank dari helper, tapi n - borda + 1 untuk mendapatkan rank aslinya
-                'rank' => (count($finalScores) - $finalBordaCalculated[$altId] + 1)
+                'score' => (float) sprintf('%.10f', $finalScores[$altId]), // gunakan score asli
+                'rank'  => $rank++,
             ];
         }
 

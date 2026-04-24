@@ -4,7 +4,6 @@ namespace App\Services\State;
 
 use App\Models\DecisionSession;
 use App\Services\AHP\AhpGroupSubmissionService;
-use App\Services\Borda\BordaPipelineService;
 use App\Services\Evaluation\SystemSmartService;
 use App\Services\Evaluation\FinalSmartAggregationService;
 use App\Services\Evaluation\SystemEvaluationService;
@@ -30,12 +29,11 @@ class SessionStateTransitionService
     }
 
     public function close(
-        DecisionSession $decisionSession,
-        BordaPipelineService $bordaPipelineService
+        DecisionSession $decisionSession
     ) {
         abort_if($decisionSession->status !== 'scoring', 403);
 
-        $decisionSession->getConnection()->transaction(function () use ($decisionSession, $bordaPipelineService) {
+        $decisionSession->getConnection()->transaction(function () use ($decisionSession) {
 
             // 1. Hitung Utility SMART (Eceran)
             app(SystemSmartService::class)->calculate($decisionSession);

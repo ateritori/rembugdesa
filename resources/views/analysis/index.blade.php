@@ -15,14 +15,25 @@
             </p>
         </div>
 
-        @if (!is_null($rhoPercentage ?? null))
+        @if (!is_null($spearman ?? null))
             <div class="border-2 border-black p-3 bg-white flex flex-col items-center min-w-[180px]">
                 <span class="text-[10px] font-bold uppercase tracking-widest mb-1">Korelasi Spearman (ρ)</span>
                 <div class="flex items-baseline gap-2">
-                    <span class="text-3xl font-bold text-black">{{ number_format($rhoPercentage, 1) }}%</span>
+                    <span class="text-3xl font-bold text-black">{{ number_format($spearman * 100, 1) }}%</span>
                 </div>
                 <span class="text-[10px] font-bold px-2 py-0.5 bg-black text-white uppercase mt-1">
-                    {{ $rhoInterpretation ?? '-' }}
+                    @php
+                        $interp =
+                            $rhoInterpretation ??
+                            ($spearman >= 0.8
+                                ? 'Sangat kuat'
+                                : ($spearman >= 0.6
+                                    ? 'Kuat'
+                                    : ($spearman >= 0.4
+                                        ? 'Sedang'
+                                        : 'Lemah')));
+                    @endphp
+                    {{ $interp }}
                 </span>
             </div>
         @endif
@@ -46,17 +57,17 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-black/20">
-                    @foreach ($smartResults as $row)
+                    @foreach (collect($smartBorda['ranking'])->sortBy('rank')->values() as $altId => $row)
                         <tr class="text-black">
                             <td
                                 class="px-4 py-2 font-bold bg-slate-50 border-r border-black/20 w-16 text-center text-lg">
                                 {{ $row['rank'] }}
                             </td>
                             <td class="px-4 py-2 font-bold uppercase border-r border-black/20 text-xs">
-                                {{ $row['name'] }}
+                                A{{ $row['alternative_id'] }}
                             </td>
                             <td class="px-4 py-2 text-right font-mono font-bold text-black">
-                                {{ number_format($row['score'], 0) }}
+                                {{ number_format($row['score'], 6) }}
                             </td>
                         </tr>
                     @endforeach
@@ -79,17 +90,17 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-black/20">
-                    @foreach ($sawResults as $row)
+                    @foreach (collect($sawBorda['ranking'])->sortBy('rank')->values() as $altId => $row)
                         <tr class="text-black">
                             <td
                                 class="px-4 py-2 font-bold bg-slate-50 border-r border-black/20 w-16 text-center text-lg italic">
                                 {{ $row['rank'] }}
                             </td>
                             <td class="px-4 py-2 font-medium uppercase border-r border-black/20 text-xs">
-                                {{ $row['name'] }}
+                                A{{ $row['alternative_id'] }}
                             </td>
                             <td class="px-4 py-2 text-right font-mono text-black">
-                                {{ number_format($row['score'], 0) }}
+                                {{ number_format($row['score'], 6) }}
                             </td>
                         </tr>
                     @endforeach
@@ -117,7 +128,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-black/20">
-                    @foreach ($comparisonMatrix as $row)
+                    @foreach (collect($comparisonMatrix)->sortBy('rank_smart')->values() as $row)
                         <tr class="text-black">
                             <td class="px-4 py-3 text-center border-r border-black/20 font-bold bg-slate-50">
                                 A{{ $row['alternative_id'] }}

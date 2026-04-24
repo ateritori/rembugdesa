@@ -250,7 +250,7 @@ class SmartCalculationService
             $score = $total * $sectorWeight;
 
             // keep full precision (round only at presentation layer)
-            $results[$altId] = $score;
+            $results[$altId] = (float) sprintf('%.10f', $score);
 
             // Save final SMART score (criteria_id = null)
             $upserts[] = [
