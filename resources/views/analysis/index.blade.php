@@ -19,7 +19,7 @@
             <div class="border-2 border-black p-3 bg-white flex flex-col items-center min-w-[180px]">
                 <span class="text-[10px] font-bold uppercase tracking-widest mb-1">Korelasi Spearman (ρ)</span>
                 <div class="flex items-baseline gap-2">
-                    <span class="text-3xl font-bold text-black">{{ number_format($spearman * 100, 1) }}%</span>
+                    <span class="text-3xl font-bold text-black">{{ number_format($spearman, 4) }}</span>
                 </div>
                 <span class="text-[10px] font-bold px-2 py-0.5 bg-black text-white uppercase mt-1">
                     @php
@@ -71,7 +71,7 @@
                                 {{ $row['name'] ?? '-' }}
                             </td>
                             <td class="px-4 py-2 text-right font-mono font-bold text-black">
-                                {{ number_format($row['score'], 0) }}
+                                {{ number_format($row['score'], 1) }}
                             </td>
                         </tr>
                     @endforeach
@@ -108,7 +108,7 @@
                                 {{ $row['name'] ?? '-' }}
                             </td>
                             <td class="px-4 py-2 text-right font-mono text-black">
-                                {{ number_format($row['score'], 0) }}
+                                {{ number_format($row['score'], 1) }}
                             </td>
                         </tr>
                     @endforeach

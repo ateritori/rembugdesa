@@ -327,7 +327,7 @@ class SmartTraceService
         return match ($function) {
             'linear'  => $u,
             'convex'  => pow($u, $k),
-            'concave' => 1 - pow((1 - $u), $k),
+            'concave' => pow($u, $k),
         };
     }
 }

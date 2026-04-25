@@ -6,16 +6,48 @@
     <div class="space-y-4">
 
         @php
-            // 🔥 Hitung Spearman Rank Correlation
-            $n = count($borda['ranking']);
+            // 🔥 Hitung Spearman Rank Correlation (RANK.AVG - tie safe)
+
+            // helper rank avg
+            $rankAvg = function ($ranking) {
+                // ambil skor borda
+                $scores = collect($ranking)->mapWithKeys(fn($v, $k) => [$k => $v['score']])->toArray();
+
+                arsort($scores);
+
+                $ranks = [];
+                $i = 1;
+
+                while (!empty($scores)) {
+                    $value = current($scores);
+
+                    $ties = array_keys($scores, $value, true);
+                    $count = count($ties);
+
+                    $avgRank = ($i + ($i + $count - 1)) / 2;
+
+                    foreach ($ties as $key) {
+                        $ranks[$key] = $avgRank;
+                        unset($scores[$key]);
+                    }
+
+                    $i += $count;
+                }
+
+                return $ranks;
+            };
+
+            $rankSmartAvg = $rankAvg($borda['ranking']);
+            $rankSawAvg = $rankAvg($sawBorda['ranking']);
+
+            $n = count($rankSmartAvg);
             $sum_d2 = 0;
 
-            foreach ($borda['ranking'] as $altId => $smart) {
-                $rankSmart = $smart['rank'];
-                $rankSaw = $sawBorda['ranking'][$altId]['rank'] ?? null;
+            foreach ($rankSmartAvg as $altId => $r1) {
+                $r2 = $rankSawAvg[$altId] ?? null;
 
-                if ($rankSaw !== null) {
-                    $d = $rankSmart - $rankSaw;
+                if ($r2 !== null) {
+                    $d = $r1 - $r2;
                     $sum_d2 += pow($d, 2);
                 }
             }

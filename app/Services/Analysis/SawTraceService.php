@@ -78,33 +78,11 @@ class SawTraceService
             ->get()
             ->groupBy('alternative_id');
 
-        // 🔥 MIN-MAX mengikuti SmartTraceService (rules-aware)
-        $rules = DB::table('criteria_scoring_rules')
-            ->where('decision_session_id', $session->id)
-            ->get()
-            ->mapWithKeys(fn($r) => [(int)$r->criteria_id => $r]);
-
+        // 🔥 SAW: MIN-MAX dari DATA AKTUAL (bukan skala)
         $globalMinMax = [];
 
         foreach ($criteria as $criteriaId => $c) {
 
-            $criteriaId = (int) $criteriaId;
-            $rule = $rules[$criteriaId] ?? null;
-
-            if (!$rule) {
-                throw new \Exception("Missing scoring rule for criteria_id={$criteriaId}");
-            }
-
-            // 👉 jika skala → pakai rule (bukan data)
-            if ($rule->input_type === 'scale') {
-                $globalMinMax[$criteriaId] = [
-                    'min' => (float) $rule->scale_min,
-                    'max' => (float) $rule->scale_max,
-                ];
-                continue;
-            }
-
-            // 👉 numeric → ambil dari data aktual (GLOBAL, bukan per user)
             $values = EvaluationScore::where('decision_session_id', $session->id)
                 ->where('criteria_id', $criteriaId)
                 ->pluck('value')
@@ -149,15 +127,20 @@ class SawTraceService
                     throw new \Exception("Invalid min/max for criteria_id={$criteriaId}");
                 }
 
-                // 🔥 NORMALISASI SAW (min-max, konsisten dengan SMART & Excel)
+                // 🔥 NORMALISASI SAW MURNI
                 if ($c->type === 'cost') {
-                    $normalized = ($max - $rawValue) / ($max - $min);
+                    if ($rawValue == 0) {
+                        $normalized = 0;
+                    } else {
+                        $normalized = $min / $rawValue;
+                    }
                 } else {
-                    $normalized = ($rawValue - $min) / ($max - $min);
+                    if ($max == 0) {
+                        $normalized = 0;
+                    } else {
+                        $normalized = $rawValue / $max;
+                    }
                 }
-
-                // clamp biar aman
-                $normalized = max(0, min(1, $normalized));
 
                 $total += $normalized;
 
@@ -183,8 +166,12 @@ class SawTraceService
 
             $count = count($steps);
 
-            // 🔹 SAW SCORE (weighted sum, identik dengan Excel)
-            $sawScore = $total;
+            // 🔹 SAW SCORE (rata-rata, bukan penjumlahan)
+            if ($count > 0) {
+                $sawScore = $total / $count;
+            } else {
+                $sawScore = 0;
+            }
 
             // 🔹 mapping weight (SAMA seperti SMART)
             $sectorId = (int) $alt->criteria_id;
