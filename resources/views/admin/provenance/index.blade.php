@@ -23,10 +23,6 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <button onclick="window.print()"
-                    class="px-4 py-2 text-xs font-black rounded-xl bg-primary text-white hover:opacity-90">
-                    Print / Export PDF
-                </button>
 
                 <a href="{{ route('decision-sessions.index') }}"
                     class="group flex items-center gap-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-black text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
@@ -105,24 +101,6 @@
 
     </div>
 
-    {{-- PRINT STYLE --}}
-    <style>
-        @media print {
-
-            button,
-            a {
-                display: none !important;
-            }
-
-            .print-section {
-                page-break-inside: avoid;
-            }
-
-            table {
-                font-size: 10px;
-            }
-        }
-    </style>
     <script>
         function setTab(tab) {
             document.getElementById('tab-smart').classList.add('hidden');

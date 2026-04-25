@@ -8,26 +8,30 @@ use App\Models\DecisionSession;
 
 use App\Services\Analysis\SmartTraceService;
 use App\Services\Borda\NestedBordaService;
-// nanti tinggal tambah:
-// use App\Services\Analysis\SawCalculationService;
 use App\Services\Analysis\SawTraceService;
 
 class DecisionProvenanceController extends Controller
 {
     public function show(Request $request, $sessionId)
     {
-        // optional: specific user or all DM
-        if (!$request->user()) {
+        try {
+            if (!$request->user()) {
+                return response()->json([
+                    'message' => 'User tidak terautentikasi'
+                ], 401);
+            }
+
+            if (method_exists($request->user(), 'isAdmin') && !$request->user()->isAdmin()) {
+                abort(403);
+            }
+
+            $session = DecisionSession::findOrFail($sessionId);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => 'User tidak terautentikasi'
-            ], 401);
+                'message' => 'Gagal memuat sesi keputusan',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        if (method_exists($request->user(), 'isAdmin') && !$request->user()->isAdmin()) {
-            abort(403);
-        }
-
-        $session = DecisionSession::findOrFail($sessionId);
 
         // Load sector/group weights
         $groupWeightRecord = $session->groupWeight;
@@ -68,13 +72,27 @@ class DecisionProvenanceController extends Controller
             ->values()
             ->toArray();
 
-        $traces = [];
-
-        foreach ($userIds as $userId) {
-            $traces[$userId] = $traceService->buildUserFullTrace($session, $userId);
+        // Validasi: pastikan ada DM scores
+        if (empty($userIds)) {
+            return response()->json([
+                'message' => 'Tidak ada data evaluasi dari Decision Maker untuk sesi ini'
+            ], 422);
         }
 
-        $traces['system'] = $traceService->build($session, null, []);
+        $traces = [];
+
+        try {
+            foreach ($userIds as $userId) {
+                $traces[$userId] = $traceService->buildUserFullTrace($session, $userId);
+            }
+
+            $traces['system'] = $traceService->buildUserFullTrace($session, null);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal memproses SMART trace',
+                'error' => $e->getMessage()
+            ], 422);
+        }
 
         // ================================
         // SAW TRACE (ALL DM + SYSTEM) - PARALLEL
@@ -83,20 +101,42 @@ class DecisionProvenanceController extends Controller
 
         $sawTraces = [];
 
-        foreach ($userIds as $userId) {
-            $sawTraces[$userId] = $sawTraceService->buildUserFullTrace($session, $userId);
-        }
+        try {
+            foreach ($userIds as $userId) {
+                $sawTraces[$userId] = $sawTraceService->buildUserFullTrace($session, $userId);
+            }
 
-        $sawTraces['system'] = $sawTraceService->build($session, null, []);
+            $sawTraces['system'] = $sawTraceService->buildUserFullTrace($session, null);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal memproses SAW trace',
+                'error' => $e->getMessage()
+            ], 422);
+        }
 
         // ================================
         // NESTED BORDA (DM → DOMAIN → FINAL)
         // ================================
         $bordaService = new NestedBordaService();
-        $borda = $bordaService->calculateFromTraces($traces);
+
+        try {
+            $borda = $bordaService->calculateFromTraces($traces);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal menghitung SMART Borda',
+                'error' => $e->getMessage()
+            ], 422);
+        }
 
         // SAW BORDA (parallel result)
-        $sawBorda = $bordaService->calculateFromTraces($sawTraces);
+        try {
+            $sawBorda = $bordaService->calculateFromTraces($sawTraces);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal menghitung SAW Borda',
+                'error' => $e->getMessage()
+            ], 422);
+        }
 
         return view('admin.provenance.index', compact(
             'session',

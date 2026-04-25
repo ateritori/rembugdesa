@@ -174,10 +174,10 @@ class SawTraceService
                     'max' => $max,
                     'normalized' => $normalized,
 
-                    // ❗ beda dari SMART
-                    'utility' => null,
+                    // SAW: tidak menggunakan utility function
+                    'utility' => $normalized,
                     'contribution' => $normalized,
-                    'utility_function' => null,
+                    'utility_function' => 'linear',
                 ];
             }
 
@@ -202,7 +202,6 @@ class SawTraceService
                 'code' => $alt->code ?? null,
                 'name' => $alt->name ?? null,
 
-                'smart_score' => null, // biar kompatibel
                 'saw_score'   => $sawScore,
                 'sector_weight' => $weight,
                 'final_score' => $finalScore,

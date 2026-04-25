@@ -53,6 +53,7 @@
                     <tr class="bg-white border-b border-black text-[10px] font-bold uppercase">
                         <th class="px-4 py-2 text-left border-r border-black">Rank</th>
                         <th class="px-4 py-2 text-left border-r border-black">Alternatif</th>
+                        <th class="px-4 py-2 text-left border-r border-black">Nama</th>
                         <th class="px-4 py-2 text-right">Skor Borda</th>
                     </tr>
                 </thead>
@@ -66,8 +67,11 @@
                             <td class="px-4 py-2 font-bold uppercase border-r border-black/20 text-xs">
                                 A{{ $row['alternative_id'] }}
                             </td>
+                            <td class="px-4 py-2 border-r border-black/20 text-xs font-medium uppercase">
+                                {{ $row['name'] ?? '-' }}
+                            </td>
                             <td class="px-4 py-2 text-right font-mono font-bold text-black">
-                                {{ number_format($row['score'], 6) }}
+                                {{ number_format($row['score'], 0) }}
                             </td>
                         </tr>
                     @endforeach
@@ -86,6 +90,7 @@
                     <tr class="bg-white border-b border-black text-[10px] font-bold uppercase">
                         <th class="px-4 py-2 text-left border-r border-black">Rank</th>
                         <th class="px-4 py-2 text-left border-r border-black">Alternatif</th>
+                        <th class="px-4 py-2 text-left border-r border-black">Nama</th>
                         <th class="px-4 py-2 text-right">Skor Borda</th>
                     </tr>
                 </thead>
@@ -99,8 +104,11 @@
                             <td class="px-4 py-2 font-medium uppercase border-r border-black/20 text-xs">
                                 A{{ $row['alternative_id'] }}
                             </td>
+                            <td class="px-4 py-2 border-r border-black/20 text-xs font-medium uppercase">
+                                {{ $row['name'] ?? '-' }}
+                            </td>
                             <td class="px-4 py-2 text-right font-mono text-black">
-                                {{ number_format($row['score'], 6) }}
+                                {{ number_format($row['score'], 0) }}
                             </td>
                         </tr>
                     @endforeach
