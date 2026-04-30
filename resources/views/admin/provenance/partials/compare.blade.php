@@ -78,7 +78,10 @@
                     @php
                         $saw = $sawBorda['ranking'][$altId] ?? null;
 
-                        $delta = ($saw['rank'] ?? 0) - $smart['rank'];
+                        $r1 = $rankSmartAvg[$altId] ?? null;
+                        $r2 = $rankSawAvg[$altId] ?? null;
+
+                        $delta = $r2 !== null && $r1 !== null ? $r2 - $r1 : null;
                     @endphp
 
                     <tr>
@@ -96,9 +99,10 @@
 
                         <td
                             class="p-2 border text-center
-                            @if ($delta < 0) text-green-600
-                            @elseif($delta > 0) text-red-600 @endif">
-                            {{ $delta }}
+                            @if (!is_null($delta)) @if ($delta < 0) text-green-600
+                                @elseif($delta > 0) text-red-600 @endif
+                            @endif">
+                            {{ $delta !== null ? number_format($delta, 2) : '-' }}
                         </td>
 
                     </tr>

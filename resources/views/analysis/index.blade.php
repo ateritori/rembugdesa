@@ -146,19 +146,26 @@
                             </td>
                             <td
                                 class="px-4 py-3 text-center border-r border-black/20 text-xl font-bold text-indigo-700">
-                                {{ $row['rank_smart'] }}
+                                {{ isset($row['rank_smart']) ? number_format($row['rank_smart'], 2) : '-' }}
                             </td>
                             <td class="px-4 py-3 text-center border-r border-black/20 text-xl font-bold">
-                                {{ $row['rank_saw'] }}
+                                {{ isset($row['rank_saw']) ? number_format($row['rank_saw'], 2) : '-' }}
                             </td>
                             <td class="px-4 py-3 text-center border-r border-black/20 bg-slate-50">
+                                @php
+                                    $delta = $row['diff'] ?? null;
+                                @endphp
                                 <span
-                                    class="text-xl font-bold {{ $row['diff'] === 0 ? 'text-black' : 'text-rose-700' }}">
-                                    {{ abs($row['diff']) }}
+                                    class="text-xl font-bold
+                                    @if (!is_null($delta)) @if ($delta < 0) text-green-700
+                                        @elseif($delta > 0) text-rose-700
+                                        @else text-black @endif
+                                    @endif">
+                                    {{ $delta !== null ? number_format($delta, 2) : '-' }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-center">
-                                @if ($row['diff'] === 0)
+                                @if (!is_null($delta) && $delta == 0)
                                     <span
                                         class="text-[10px] font-bold border border-black px-2 py-0.5 uppercase bg-white">Match</span>
                                 @else

@@ -81,22 +81,6 @@ class DecisionControlController extends Controller
         }
         unset($row); // Avoid reference issues
 
-        // 🔥 Build comparison matrix (SYNC dengan Nested Borda)
-        $comparisonMatrix = [];
-
-        foreach ($smartBorda['ranking'] as $altId => $smart) {
-            $rankSmart = $smart['rank'];
-            $rankSaw   = $sawBorda['ranking'][$altId]['rank'] ?? null;
-
-            $comparisonMatrix[] = [
-                'alternative_id' => $altId,
-                'name' => $smart['name'] ?? null,
-                'rank_smart' => $rankSmart,
-                'rank_saw'   => $rankSaw,
-                'diff' => $rankSaw !== null ? $rankSmart - $rankSaw : null,
-            ];
-        }
-
         // 🔥 Spearman Rank Correlation (pakai RANK.AVG)
 
         // Ambil skor Borda (bukan rank)
@@ -139,6 +123,22 @@ class DecisionControlController extends Controller
         $rankSmartAvg = $computeRankAvg($smartScores);
         $rankSawAvg   = $computeRankAvg($sawScores);
 
+        // 🔥 Build comparison matrix (pakai RANK.AVG)
+        $comparisonMatrix = [];
+
+        foreach ($smartBorda['ranking'] as $altId => $smart) {
+            $r1 = $rankSmartAvg[$altId] ?? null;
+            $r2 = $rankSawAvg[$altId] ?? null;
+
+            $comparisonMatrix[] = [
+                'alternative_id' => $altId,
+                'name' => $smart['name'] ?? null,
+                'rank_smart' => $r1,
+                'rank_saw'   => $r2,
+                'diff' => ($r2 !== null && $r1 !== null) ? $r2 - $r1 : null,
+            ];
+        }
+
         // Hitung Spearman
         $n = count($rankSmartAvg);
         $sum_d2 = 0;
@@ -153,7 +153,7 @@ class DecisionControlController extends Controller
         }
 
         $spearman = $n > 1
-            ? 1 - ((6 * $sum_d2) / ($n * (pow($n, 2) - 1)))
+            ? 1 - ((6 * $sum_d2) / ($n * (($n * $n) - 1)))
             : null;
 
         return view(
