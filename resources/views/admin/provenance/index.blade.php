@@ -39,13 +39,18 @@
             </h3>
 
             <div class="flex border-b mb-4">
+                <a href="#" onclick="setTab('ahp')" data-tab="ahp"
+                    class="px-4 py-2 text-xs font-black border-b-2 border-primary text-primary">
+                    AHP
+                </a>
+
                 <a href="#" onclick="setTab('smart')" data-tab="smart"
-                    class="px-4 py-2 text-xs font-black border-b-2 {{ request()->routeIs('provenance.smart') ? 'border-primary text-primary' : 'border-transparent text-slate-500' }}">
+                    class="px-4 py-2 text-xs font-black border-b-2 border-transparent text-slate-500">
                     SMART Trace
                 </a>
 
                 <a href="#" onclick="setTab('borda')" data-tab="borda"
-                    class="px-4 py-2 text-xs font-black border-b-2 {{ request()->routeIs('provenance.borda') ? 'border-primary text-primary' : 'border-transparent text-slate-500' }}">
+                    class="px-4 py-2 text-xs font-black border-b-2 border-transparent text-slate-500">
                     SMART Borda
                 </a>
 
@@ -63,7 +68,7 @@
                 </a>
             </div>
 
-            <div id="tab-smart" class="tab-content">
+            <div id="tab-smart" class="tab-content hidden">
                 @include('admin.provenance.partials.smart')
             </div>
 
@@ -83,9 +88,13 @@
                 @include('admin.provenance.partials.compare')
             </div>
 
+            <div id="tab-ahp" class="tab-content">
+                @include('admin.provenance.partials.ahp')
+            </div>
+
             <div>
                 <p class="text-xs text-slate-500">
-                    Pilih tab untuk melihat detail proses perhitungan.
+                    Alur: AHP (penentuan bobot) → SMART/SAW (evaluasi alternatif) → Borda (agregasi keputusan).
                 </p>
             </div>
         </div>
@@ -108,6 +117,7 @@
             document.getElementById('tab-saw').classList.add('hidden');
             document.getElementById('tab-sawborda').classList.add('hidden');
             document.getElementById('tab-compare').classList.add('hidden');
+            document.getElementById('tab-ahp').classList.add('hidden');
 
             document.querySelectorAll('[data-tab]').forEach(el => {
                 el.classList.remove('border-primary', 'text-primary');
@@ -116,6 +126,9 @@
 
             document.getElementById('tab-' + tab).classList.remove('hidden');
         }
+        document.addEventListener('DOMContentLoaded', function() {
+            setTab('ahp');
+        });
     </script>
 
 @endsection
