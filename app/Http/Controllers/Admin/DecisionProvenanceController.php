@@ -9,11 +9,10 @@ use App\Models\DecisionSession;
 use App\Services\Analysis\SmartTraceService;
 use App\Services\Borda\NestedBordaService;
 use App\Services\Analysis\SawTraceService;
-use App\Services\AHP\AhpProvenanceService;
 
 class DecisionProvenanceController extends Controller
 {
-    public function show(Request $request, int $sessionId)
+    public function show(Request $request, $sessionId)
     {
         try {
             if (!$request->user()) {
@@ -60,16 +59,6 @@ class DecisionProvenanceController extends Controller
         } else {
             $sectorWeights = [];
         }
-
-        // ================================
-        // AHP PROVENANCE (SERVICE-BASED)
-        // ================================
-        $ahpService = new AhpProvenanceService();
-
-        $ahp = $ahpService->build($session);
-
-        $individualProvenance = $ahp['individual'] ?? [];
-        $groupProvenance = $ahp['group'] ?? [];
 
         // ================================
         // SMART TRACE (ALL DM + SYSTEM)
@@ -155,9 +144,7 @@ class DecisionProvenanceController extends Controller
             'sawTraces',
             'sectorWeights',
             'borda',
-            'sawBorda',
-            'groupProvenance',
-            'individualProvenance'
+            'sawBorda'
         ));
     }
 }

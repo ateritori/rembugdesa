@@ -7,14 +7,10 @@ use App\Models\CriteriaPairwise;
 use App\Models\CriteriaWeight;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Collection;
 
 class AhpIndividualSubmissionService
 {
-    /**
-     * @var AhpCalculationService
-     */
-    protected AhpCalculationService $calculator;
+    protected $calculator;
 
     public function __construct(AhpCalculationService $calculator)
     {
@@ -36,7 +32,7 @@ class AhpIndividualSubmissionService
         );
     }
 
-    public function submit(DecisionSession $session, User $user, array $pairwiseData): array
+    public function submit(DecisionSession $session, User $user, array $pairwiseData)
     {
         return DB::transaction(function () use ($session, $user, $pairwiseData) {
 
@@ -55,37 +51,27 @@ class AhpIndividualSubmissionService
             // Calculate AHP result using dedicated service
             $analysis = $this->calculator->calculate($matrix);
 
-            // Build provenance (explainability layer) without affecting main calculation
-            $provenance = [
-                'input_pairwise' => $pairwiseData,
-                'matrix' => $matrix,
-                'method' => 'geometric_mean',
-                'weights' => $analysis['weights'],
-                'cr' => $analysis['cr'],
-            ];
-
             // Map weights to criteria IDs
             $mappedWeights = $this->mapWeights($criteria, $analysis['weights']);
 
             // Store result
-            $this->storeWeights($session, $user, $mappedWeights, $analysis['cr'], $provenance);
+            $this->storeWeights($session, $user, $mappedWeights, $analysis['cr']);
 
             return [
                 'weights' => $mappedWeights,
                 'cr'      => $analysis['cr'],
-                'provenance' => $provenance,
             ];
         });
     }
 
-    private function deleteExistingPairwise(DecisionSession $session, User $user): void
+    private function deleteExistingPairwise($session, $user)
     {
         $session->criteriaPairwise()
             ->where('dm_id', $user->id)
             ->delete();
     }
 
-    private function storePairwise(DecisionSession $session, User $user, array $pairwiseData): void
+    private function storePairwise($session, $user, $pairwiseData)
     {
         $rows = [];
         $now = now();
@@ -117,7 +103,7 @@ class AhpIndividualSubmissionService
         }
     }
 
-    private function getActiveCriteria(DecisionSession $session): Collection
+    private function getActiveCriteria($session)
     {
         return $session->criteria()
             ->where('is_active', true)
@@ -127,7 +113,7 @@ class AhpIndividualSubmissionService
             ->values();
     }
 
-    private function buildMatrix(Collection $criteria, array $pairwiseData): array
+    private function buildMatrix($criteria, $pairwiseData)
     {
         $n = $criteria->count();
         $matrix = array_fill(0, $n, array_fill(0, $n, 1));
@@ -154,7 +140,7 @@ class AhpIndividualSubmissionService
         return $matrix;
     }
 
-    private function mapWeights(Collection $criteria, array $weights): array
+    private function mapWeights($criteria, $weights)
     {
         $mapped = [];
 
@@ -167,7 +153,7 @@ class AhpIndividualSubmissionService
         return $mapped;
     }
 
-    private function storeWeights(DecisionSession $session, User $user, array $weights, float $cr, ?array $provenance = null): void
+    private function storeWeights($session, $user, $weights, $cr)
     {
         $session->criteriaWeights()->updateOrCreate(
             [
@@ -177,7 +163,6 @@ class AhpIndividualSubmissionService
             [
                 'weights' => $weights,
                 'cr'      => (float) $cr,
-                'provenance' => $provenance,
                 'updated_at' => now()
             ]
         );

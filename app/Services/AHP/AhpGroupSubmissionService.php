@@ -8,10 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class AhpGroupSubmissionService
 {
-    /**
-     * @var AhpGroupWeightService
-     */
-    protected AhpGroupWeightService $groupWeightService;
+    protected $groupWeightService;
 
     public function __construct(AhpGroupWeightService $groupWeightService)
     {
@@ -78,7 +75,7 @@ class AhpGroupSubmissionService
                     }
                 }
 
-                $matrices[$dmId] = $matrix;
+                $matrices[] = $matrix;
             }
 
             // Aggregate matrices (group AHP)
@@ -93,15 +90,6 @@ class AhpGroupSubmissionService
                 }
             }
 
-            // Build provenance (non-intrusive, does not affect main logic)
-            $provenance = [
-                'dm_ids' => $dmIds->values(),
-                'criteria_ids' => $criteria->pluck('id')->values(),
-                'matrices_per_dm' => $matrices,
-                'aggregation_method' => 'geometric_mean',
-                'result' => $result,
-            ];
-
             // Store group result (including CR)
             $session->groupWeight()->updateOrCreate(
                 [
@@ -110,14 +98,12 @@ class AhpGroupSubmissionService
                 [
                     'weights' => $mappedWeights,
                     'cr'      => $result['cr'] ?? null,
-                    'provenance' => $provenance,
                     'updated_at' => now()
                 ]
             );
 
             return [
                 'weights' => $mappedWeights,
-                'provenance' => $provenance,
             ];
         });
     }

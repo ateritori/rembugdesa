@@ -3,23 +3,18 @@
         ⚠️ Tidak ada data Borda (belum dihitung / kosong)
     </div>
 @else
-    <div class="space-y-8 antialiased text-slate-800">
+    <div class="space-y-8">
 
         {{-- 🔥 FINAL RANKING --}}
-        <div class="bg-white border border-slate-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)] p-4 space-y-4">
-            <div class="flex items-baseline gap-4 border-b border-slate-200 pb-2">
-                <h3 class="text-lg font-black text-slate-900">
-                    Final Ranking (Nested Borda)
-                </h3>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Borda Analysis
-                </span>
-            </div>
+        <div class="border rounded-xl p-4 bg-white dark:bg-slate-900/50">
+            <h3 class="text-xs font-black mb-3 uppercase tracking-widest">
+                Final Ranking (Nested Borda)
+            </h3>
 
             <div class="overflow-x-auto">
-                <table class="w-full text-[12px] border-collapse">
+                <table class="w-full text-xs border">
                     <thead>
-                        <tr class="bg-slate-900 text-white uppercase tracking-wider text-[11px]">
+                        <tr class="bg-slate-100">
                             <th class="p-2 border text-left">Rank</th>
                             <th class="p-2 border text-left">Alternatif</th>
                             <th class="p-2 border text-right">Final Score</th>
@@ -27,14 +22,14 @@
                     </thead>
                     <tbody>
                         @foreach (collect($borda['ranking'])->sortBy('rank') as $altId => $data)
-                            <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="p-3 font-black text-slate-900 border-r border-slate-200 bg-slate-50/50">
+                            <tr class="border-t">
+                                <td class="p-2 border font-bold">
                                     {{ $data['rank'] }}
                                 </td>
-                                <td class="p-3 font-black text-slate-900 border-r border-slate-200 bg-slate-50/50">
+                                <td class="p-2 border font-bold">
                                     A{{ $altId }}
                                 </td>
-                                <td class="p-3 text-right font-mono border-r border-slate-100">
+                                <td class="p-2 border text-right font-mono">
                                     {{ rtrim(rtrim(number_format($data['score'], 2), '0'), '.') }}
                                 </td>
                             </tr>
@@ -45,38 +40,32 @@
         </div>
 
         {{-- 🔥 DOMAIN LEVEL --}}
-        <div class="bg-white border border-slate-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)] p-4 space-y-4">
-            <div class="flex items-baseline gap-4 border-b border-slate-200 pb-2">
-                <h3 class="text-lg font-black text-slate-900">
-                    Borda per Domain
-                </h3>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Borda Analysis
-                </span>
-            </div>
+        <div class="border rounded-xl p-4 bg-white dark:bg-slate-900/50">
+            <h3 class="text-xs font-black mb-3 uppercase tracking-widest">
+                Borda per Domain
+            </h3>
 
             @foreach ($borda['domain_borda'] as $domainId => $alts)
                 <div class="mb-6">
-                    <h4 class="text-sm font-black text-slate-900 mb-2">
+                    <h4 class="text-xs font-bold mb-2">
                         Domain {{ $domainId }}
                     </h4>
 
                     <div class="overflow-x-auto">
-                        <table class="w-full text-[12px] border-collapse">
+                        <table class="w-full text-xs border">
                             <thead>
-                                <tr class="bg-slate-900 text-white uppercase tracking-wider text-[11px]">
+                                <tr class="bg-slate-100">
                                     <th class="p-2 border text-left">Alternatif</th>
                                     <th class="p-2 border text-right">Score</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (collect($alts)->sortKeys() as $altId => $score)
-                                    <tr class="hover:bg-slate-50 transition-colors">
-                                        <td
-                                            class="p-3 font-black text-slate-900 border-r border-slate-200 bg-slate-50/50">
+                                    <tr class="border-t">
+                                        <td class="p-2 border font-bold">
                                             A{{ $altId }}
                                         </td>
-                                        <td class="p-3 text-right font-mono border-r border-slate-100">
+                                        <td class="p-2 border text-right font-mono">
                                             {{ rtrim(rtrim(number_format($score, 2), '0'), '.') }}
                                         </td>
                                     </tr>
@@ -89,19 +78,14 @@
         </div>
 
         {{-- 🔥 DM LEVEL (SMART RESULT BASE) --}}
-        <div class="bg-white border border-slate-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)] p-4 space-y-4">
-            <div class="flex items-baseline gap-4 border-b border-slate-200 pb-2">
-                <h3 class="text-lg font-black text-slate-900">
-                    Skor per Domain (Input Borda)
-                </h3>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Borda Analysis
-                </span>
-            </div>
+        <div class="border rounded-xl p-4 bg-white dark:bg-slate-900/50">
+            <h3 class="text-xs font-black mb-3 uppercase tracking-widest">
+                Skor per Domain (Input Borda)
+            </h3>
 
             @foreach ($borda['domain_dm'] as $domainId => $dms)
                 <div class="mb-6">
-                    <h4 class="text-sm font-black text-slate-900 mb-2">
+                    <h4 class="text-xs font-bold mb-1">
                         Domain {{ $domainId }}
                     </h4>
                     <div class="text-[11px] text-slate-500 mb-2">
@@ -111,26 +95,25 @@
 
                     @foreach ($dms as $userId => $alts)
                         <div class="mb-4">
-                            <div class="text-[11px] font-black mb-1 text-slate-700">
+                            <div class="text-[11px] font-semibold mb-1 text-slate-600">
                                 {{ $userId ? 'DM ' . $userId : 'SYSTEM' }}
                             </div>
 
                             <div class="overflow-x-auto">
-                                <table class="w-full text-[12px] border-collapse">
+                                <table class="w-full text-xs border">
                                     <thead>
-                                        <tr class="bg-slate-900 text-white uppercase tracking-wider text-[11px]">
+                                        <tr class="bg-slate-100">
                                             <th class="p-2 border text-left">Alternatif</th>
                                             <th class="p-2 border text-right">SMART Score</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach (collect($alts)->sortKeys() as $altId => $score)
-                                            <tr class="hover:bg-slate-50 transition-colors">
-                                                <td
-                                                    class="p-3 font-black text-slate-900 border-r border-slate-200 bg-slate-50/50">
+                                            <tr class="border-t">
+                                                <td class="p-2 border font-bold">
                                                     A{{ $altId }}
                                                 </td>
-                                                <td class="p-3 text-right font-mono border-r border-slate-100">
+                                                <td class="p-2 border text-right font-mono">
                                                     {{ number_format($score, 4) }}
                                                 </td>
                                             </tr>
