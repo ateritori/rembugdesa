@@ -9,6 +9,7 @@ use App\Models\DecisionSession;
 use App\Services\Analysis\SmartTraceService;
 use App\Services\Borda\NestedBordaService;
 use App\Services\Analysis\SawTraceService;
+use App\Services\AHP\AhpProvenanceService;
 
 class DecisionProvenanceController extends Controller
 {
@@ -26,6 +27,8 @@ class DecisionProvenanceController extends Controller
             }
 
             $session = DecisionSession::findOrFail($sessionId);
+            $ahpService = new AhpProvenanceService();
+            $ahp = $ahpService->build($session);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Gagal memuat sesi keputusan',
@@ -144,7 +147,8 @@ class DecisionProvenanceController extends Controller
             'sawTraces',
             'sectorWeights',
             'borda',
-            'sawBorda'
+            'sawBorda',
+            'ahp'
         ));
     }
 }

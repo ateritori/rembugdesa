@@ -39,6 +39,11 @@
             </h3>
 
             <div class="flex border-b mb-4">
+                <a href="#" onclick="setTab('ahp')" data-tab="ahp"
+                    class="px-4 py-2 text-xs font-black border-b-2 border-primary text-primary">
+                    AHP
+                </a>
+
                 <a href="#" onclick="setTab('smart')" data-tab="smart"
                     class="px-4 py-2 text-xs font-black border-b-2 {{ request()->routeIs('provenance.smart') ? 'border-primary text-primary' : 'border-transparent text-slate-500' }}">
                     SMART Trace
@@ -63,7 +68,11 @@
                 </a>
             </div>
 
-            <div id="tab-smart" class="tab-content">
+            <div id="tab-ahp" class="tab-content">
+                @include('admin.provenance.partials.ahp')
+            </div>
+
+            <div id="tab-smart" class="tab-content hidden">
                 @include('admin.provenance.partials.smart')
             </div>
 
@@ -103,11 +112,9 @@
 
     <script>
         function setTab(tab) {
-            document.getElementById('tab-smart').classList.add('hidden');
-            document.getElementById('tab-borda').classList.add('hidden');
-            document.getElementById('tab-saw').classList.add('hidden');
-            document.getElementById('tab-sawborda').classList.add('hidden');
-            document.getElementById('tab-compare').classList.add('hidden');
+            ['ahp', 'smart', 'borda', 'saw', 'sawborda', 'compare'].forEach(t => {
+                document.getElementById('tab-' + t)?.classList.add('hidden');
+            });
 
             document.querySelectorAll('[data-tab]').forEach(el => {
                 el.classList.remove('border-primary', 'text-primary');
@@ -116,6 +123,9 @@
 
             document.getElementById('tab-' + tab).classList.remove('hidden');
         }
+        document.addEventListener('DOMContentLoaded', () => {
+            setTab('ahp');
+        });
     </script>
 
 @endsection
