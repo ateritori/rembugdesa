@@ -209,12 +209,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             '/decision-sessions/{decisionSession}/provenance/borda',
             [\App\Http\Controllers\Admin\DecisionProvenanceController::class, 'borda']
         )->name('provenance.borda');
-
-        // DM Detail (SMART - Urgensi & Dampak Modal)
-        Route::get(
-            '/admin/smart-dm-detail',
-            [\App\Http\Controllers\Admin\SmartDmDetailController::class, 'index']
-        )->name('admin.smart-dm-detail');
     });
 
     /*

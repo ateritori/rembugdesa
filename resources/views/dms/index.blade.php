@@ -34,7 +34,9 @@
             {{-- 3. TAB EVALUASI ALTERNATIF --}}
         @elseif ($tab === 'evaluasi-alternatif')
             <div class="animate-in slide-in-from-right-5">
-                @if ($hasCompletedEvaluation && !$isEditing)
+                @if ($decisionSession->status === 'closed')
+                    @include('dms.alternative-evaluations.results')
+                @elseif ($hasCompletedEvaluation && !$isEditing)
                     @include('dms.alternative-evaluations.results')
                 @else
                     @include('dms.alternative-evaluations.index')
@@ -44,7 +46,7 @@
             {{-- 4. TAB HASIL AKHIR --}}
         @elseif ($tab === 'hasil-akhir')
             <div class="animate-in slide-in-from-bottom-5">
-                @include('dms.partials.result')
+                @include('dms.results.index')
             </div>
         @endif
     </div>

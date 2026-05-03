@@ -9,6 +9,7 @@ use App\Models\CriteriaWeight;
 use App\Models\CriteriaPairwise;
 use App\Models\AlternativeEvaluation;
 use App\Models\SmartResultDm;
+use App\Models\CriteriaGroupWeight;
 use App\Services\SMART\SmartRankingService;
 use App\Services\Result\DecisionResultService;
 use Illuminate\Http\Request;
@@ -92,9 +93,26 @@ class DecisionMakerController extends Controller
             ->get();
 
         // Data bobot kelompok dan individu
-        $groupResult = CriteriaWeight::where('decision_session_id', $decisionSession->id)
-            ->whereNull('dm_id')
+        $groupWeightRow = CriteriaGroupWeight::where('decision_session_id', $decisionSession->id)
             ->first();
+
+        $groupResult = null;
+
+        if ($groupWeightRow && $groupWeightRow->weights) {
+            $weightsData = $groupWeightRow->weights;
+
+            // Handle jika sudah di-cast jadi array oleh model
+            if (is_array($weightsData)) {
+                $decoded = $weightsData;
+            } else {
+                $decoded = json_decode($weightsData, true);
+            }
+
+            $groupResult = (object)[
+                'weights' => $decoded,
+                'source'  => 'group_pairwise_json'
+            ];
+        }
 
         $individualWeight = CriteriaWeight::where('decision_session_id', $decisionSession->id)
             ->where('dm_id', $user->id)
@@ -154,12 +172,6 @@ class DecisionMakerController extends Controller
             }
         }
 
-        // Analisis kontribusi DM pada hasil akhir
-        $resultContribution = null;
-        if ($currentTab === 'hasil-akhir' && $decisionSession->status === 'closed') {
-            $resultContribution = app(DecisionResultService::class)->dmContribution($decisionSession, $user);
-        }
-
         return view('dms.index', [
             'decisionSession'        => $decisionSession,
             'criteria'               => $criteria,
@@ -171,7 +183,6 @@ class DecisionMakerController extends Controller
             'groupResult'            => $groupResult,
             'smartScores'            => $smartScores,
             'hasSmartResult'         => $hasSmartResult,
-            'resultContribution'     => $resultContribution,
             'dmHasCompleted'         => !is_null($individualWeight),
             'hasCompletedEvaluation' => $hasCompletedEvaluation,
             'tab'                    => $currentTab,
