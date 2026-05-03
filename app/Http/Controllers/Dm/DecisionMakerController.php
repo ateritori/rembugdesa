@@ -7,13 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\DecisionSession;
 use App\Models\CriteriaWeight;
 use App\Models\CriteriaPairwise;
-use App\Models\AlternativeEvaluation;
-use App\Models\SmartResultDm;
 use App\Models\CriteriaGroupWeight;
 use App\Models\EvaluationScore;
 use App\Services\SMART\SmartRankingService;
 use App\Services\Analysis\SmartTraceService;
-use App\Services\Result\DecisionResultService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -187,6 +184,57 @@ class DecisionMakerController extends Controller
             }
         }
 
+        // 🔥 FINAL BORDA (GLOBAL - semua DM, sama dengan admin)
+        $bordaService = app(\App\Services\Borda\NestedBordaService::class);
+
+        $smartBorda = null;
+        $smartTraces = []; // 🔥 penting: inisialisasi global
+
+        if ($smartTraceService && $hasCompletedEvaluation) {
+            try {
+                // Ambil semua DM dalam sesi
+                $userIds = \App\Models\EvaluationScore::where('decision_session_id', $decisionSession->id)
+                    ->whereNotNull('user_id')
+                    ->pluck('user_id')
+                    ->unique()
+                    ->values()
+                    ->toArray();
+
+                // Build SMART traces semua DM
+                foreach ($userIds as $uid) {
+                    $smartTraces[$uid] = $smartTraceService->buildUserFullTrace($decisionSession, $uid);
+                }
+
+                // Tambahkan system trace
+                $smartTraces['system'] = $smartTraceService->build($decisionSession, null, []);
+
+                // Hitung BORDA (GLOBAL)
+                $smartBorda = $bordaService->calculateFromTraces($smartTraces);
+
+                // Mapping alternatif (id + name)
+                $alternativesMap = $alternatives->pluck('name', 'id')->toArray();
+
+                foreach ($smartBorda['ranking'] as $altId => &$row) {
+                    $row['alternative_id'] = $altId;
+                    $row['name'] = $alternativesMap[$altId] ?? null;
+                }
+                unset($row);
+            } catch (Exception $e) {
+                Log::error("SMART BORDA GLOBAL Error: " . $e->getMessage());
+            }
+        }
+
+        // 🔥 INSIGHT via Service (refactored)
+        $insightService = app(\App\Services\Analysis\DecisionInsightService::class);
+
+        $insight = $insightService->build(
+            decisionSession: $decisionSession,
+            userId: $user->id,
+            smartTraces: $smartTraces,
+            smartBorda: $smartBorda,
+            bordaService: $bordaService
+        );
+
         return view('dms.index', [
             'decisionSession'        => $decisionSession,
             'criteria'               => $criteria,
@@ -210,6 +258,8 @@ class DecisionMakerController extends Controller
             'canAccessPairwise'      => $canAccessPairwise,
             'canAccessEvaluate'      => $canAccessEvaluate,
             'smartTrace'             => $smartTrace,
+            'smartBorda'             => $smartBorda,
+            'insight' => $insight,
         ]);
     }
 }
