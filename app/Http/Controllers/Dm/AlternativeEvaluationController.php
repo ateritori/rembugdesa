@@ -77,7 +77,10 @@ class AlternativeEvaluationController extends Controller
                 );
             });
 
-            return back()->with('success', 'Evaluasi berhasil disimpan.');
+            return redirect()->route('dms.index', [
+                'decisionSession' => $decisionSession->id,
+                'tab' => 'evaluasi-alternatif'
+            ])->with('success', 'Evaluasi berhasil disimpan.');
         } catch (\Exception $e) {
 
             Log::error('Gagal simpan evaluasi', [

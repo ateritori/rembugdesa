@@ -10,7 +10,9 @@ use App\Models\CriteriaPairwise;
 use App\Models\AlternativeEvaluation;
 use App\Models\SmartResultDm;
 use App\Models\CriteriaGroupWeight;
+use App\Models\EvaluationScore;
 use App\Services\SMART\SmartRankingService;
+use App\Services\Analysis\SmartTraceService;
 use App\Services\Result\DecisionResultService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,23 +23,23 @@ class DecisionMakerController extends Controller
 {
     public function index(DecisionSession $decisionSession, SmartRankingService $smartRankingService)
     {
-        return $this->renderWorkspace($decisionSession, $smartRankingService);
+        return $this->renderWorkspace($decisionSession, $smartRankingService, app(SmartTraceService::class));
     }
 
     public function weights(DecisionSession $decisionSession)
     {
-        return $this->renderWorkspace($decisionSession);
+        return $this->renderWorkspace($decisionSession, null, app(SmartTraceService::class));
     }
 
     public function groupWeights(DecisionSession $decisionSession)
     {
-        return $this->renderWorkspace($decisionSession);
+        return $this->renderWorkspace($decisionSession, null, app(SmartTraceService::class));
     }
 
     /**
      * Manajemen workspace DM untuk penanganan revisi dan sinkronisasi view.
      */
-    private function renderWorkspace(DecisionSession $decisionSession, ?SmartRankingService $smartRankingService = null)
+    private function renderWorkspace(DecisionSession $decisionSession, ?SmartRankingService $smartRankingService = null, ?SmartTraceService $smartTraceService = null)
     {
         abort_if($decisionSession->status === 'draft', 403, 'Sesi masih dalam tahap draft.');
 
@@ -146,9 +148,8 @@ class DecisionMakerController extends Controller
                 : ($groupResult ?? $individualWeight);
         }
 
-        // Data evaluasi alternatif
-        $evaluations = AlternativeEvaluation::where('decision_session_id', $decisionSession->id)
-            ->where('dm_id', $user->id)
+        // Data evaluasi alternatif (pakai evaluation_scores - Eloquent)
+        $evaluations = EvaluationScore::where('decision_session_id', $decisionSession->id)
             ->when($assignedCriteriaIds->isNotEmpty(), function ($q) use ($assignedCriteriaIds) {
                 $q->whereIn('criteria_id', $assignedCriteriaIds);
             })
@@ -169,6 +170,20 @@ class DecisionMakerController extends Controller
                 $hasSmartResult = $smartScores->isNotEmpty();
             } catch (Exception $e) {
                 Log::error("SMART Calculation Error: " . $e->getMessage());
+            }
+        }
+
+        $smartTrace = collect();
+
+        $debugTraceRaw = null;
+
+        if ($smartTraceService && $hasCompletedEvaluation) {
+            try {
+                $debugTraceRaw = $smartTraceService->buildUserFullTrace($decisionSession, $user->id);
+
+                $smartTrace = collect($debugTraceRaw);
+            } catch (Exception $e) {
+                Log::error("SMART Trace Error: " . $e->getMessage());
             }
         }
 
@@ -194,6 +209,7 @@ class DecisionMakerController extends Controller
             'isEvaluationPhase'      => $isEvaluationPhase,
             'canAccessPairwise'      => $canAccessPairwise,
             'canAccessEvaluate'      => $canAccessEvaluate,
+            'smartTrace'             => $smartTrace,
         ]);
     }
 }
