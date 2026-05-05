@@ -8,12 +8,12 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex items-center gap-3 bg-slate-100 p-2 rounded-lg">
                 <span class="text-[10px] font-black uppercase pl-2">Filter View:</span>
-                <select id="filter-dm" onchange="applyFilters()"
+                <select id="filter-saw-dm" onchange="applySawFilters()"
                     class="text-xs bg-white border border-slate-300 rounded md px-3 py-1 font-bold outline-none focus:ring-2 focus:ring-black">
                     <option value="">Tampilkan Semua DM</option>
                     @foreach ($sawTraces as $userId => $_)
-                        <option value="{{ $userId ?? 'system' }}">
-                            {{ $userId ? 'Decision Maker ' . $userId : 'SYSTEM' }}
+                        <option value="{{ $userId }}">
+                            {{ is_numeric($userId) ? 'Decision Maker ' . $userId : 'SYSTEM' }}
                         </option>
                     @endforeach
                 </select>
@@ -21,11 +21,11 @@
         </div>
 
         @foreach ($sawTraces as $userId => $alternatives)
-            <div class="calculation-block group transition-all" data-dm="{{ $userId ?? 'system' }}">
+            <div class="calculation-block group transition-all" data-saw-dm="{{ $userId }}">
 
                 <div class="flex items-baseline gap-4 mb-4 border-b border-slate-200 pb-2">
                     <h2 class="text-lg font-black text-slate-900">
-                        {{ $userId ? 'DECISION MAKER ' . $userId : 'SYSTEM CALCULATIONS' }}
+                        {{ is_numeric($userId) ? 'DECISION MAKER ' . $userId : 'SYSTEM CALCULATIONS' }}
                     </h2>
                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                         Data Source: {{ $userId ? 'User Input ID ' . $userId : 'Automated System' }}
@@ -122,16 +122,16 @@
 </style>
 
 <script>
-    function applyFilters() {
-        const filter = document.getElementById('filter-dm');
+    function applySawFilters() {
+        const filter = document.getElementById('filter-saw-dm');
         const dmVal = filter ? filter.value : '';
 
-        document.querySelectorAll('[data-dm]').forEach(container => {
-            const isVisible = !dmVal || String(container.dataset.dm) === String(dmVal);
+        document.querySelectorAll('[data-saw-dm]').forEach(container => {
+            const isVisible = !dmVal || String(container.dataset.sawDm) === String(dmVal);
             container.style.display = isVisible ? 'block' : 'none';
         });
     }
 
     // auto-run once (important for partial render)
-    setTimeout(applyFilters, 0);
+    setTimeout(applySawFilters, 0);
 </script>

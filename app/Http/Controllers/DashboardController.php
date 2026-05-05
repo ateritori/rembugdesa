@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\DecisionSession;
 use App\Models\User;
 use App\Models\CriteriaPairwise;
-use App\Models\AlternativeEvaluation;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -68,10 +67,8 @@ class DashboardController extends Controller
                     ->where('dm_id', $user->id)
                     ->exists();
 
-                $session->hasCompletedEvaluation =
-                    AlternativeEvaluation::where('decision_session_id', $session->id)
-                    ->where('dm_id', $user->id)
-                    ->exists();
+                // alternative evaluation sudah dihapus, set default false atau sesuaikan nanti jika ada pengganti
+                $session->hasCompletedEvaluation = false;
             });
 
             // LOGIKA ASLI — TIDAK DIUBAH
